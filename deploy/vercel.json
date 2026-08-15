@@ -1,0 +1,29 @@
+{
+  "buildCommand": "cd .. && pnpm install && pnpm build",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/[...route].ts": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "env": {
+    "DATABASE_URL": "@DATABASE_URL",
+    "JWT_SECRET": "@JWT_SECRET",
+    "OPENAI_API_KEY": "@OPENAI_API_KEY"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        }
+      ]
+    }
+  ]
+}

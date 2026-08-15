@@ -1,0 +1,46 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  name      String
+  plan      String    @default("free") // free, pro, team, enterprise
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  
+  videos    Video[]
+  
+  @@map("users")
+}
+
+model Video {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?
+  content     String    // Math problem / script
+  
+  status      String    @default("pending") // pending, processing, completed, failed
+  progress    Int       @default(0) // 0-100
+  
+  videoUrl    String?
+  thumbnailUrl String?
+  
+  duration    Int?      // seconds
+  fileSize    Int?      // bytes
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@map("videos")
+}

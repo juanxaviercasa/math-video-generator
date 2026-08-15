@@ -1,180 +1,168 @@
-# 🎓 Math Video Generator
+# Math Video Generator
 
-> Transforma problemas matemáticos en videos explicativos automáticamente
+Generador local de videos educativos de matemáticas usando IA, Manim, LaTeX, FFmpeg y voz en off.
 
-## 📋 Descripción
+## Descripción
 
-**Math Video Generator** es una herramienta SaaS que permite a profesores de matemáticas crear videos educativos de calidad profesional sin necesidad de edición.
+Este proyecto convierte problemas matemáticos en videos explicativos con:
 
-**Características:**
-- 🎥 Generación automática de videos desde texto
-- 📝 Escritura elegante de ecuaciones matemáticas
-- 🎨 Temas personalizables (oscuro, claro, colorido)
-- 📊 Incluye gráficos y diagramas automáticos
-- 🌐 API REST para integración
-- 📱 Dashboard intuitivo
+- animaciones matemáticas con Manim Community
+- ecuaciones y texto científico con LaTeX
+- render de video con FFmpeg
+- narración local con TTS
+- IA para generar pasos, explicación y narración
+- UI web para lanzar la generación desde el navegador
 
-## 🚀 Stack Tecnológico
+La idea del proyecto es crear un flujo práctico para producir contenido didáctico de matemáticas sin depender de una sola API ni de una solución manual compleja.
+
+## Estado actual
+
+El proyecto ya incluye:
+
+- backend Express + TypeScript
+- frontend React + Vite + Tailwind
+- integraciones con Manim, FFmpeg y LaTeX
+- soporte para proveedores de IA como OpenRouter, Gemini y OpenAI
+- selector de narración, proveedor y uso opcional de ComfyUI
+- pipeline local para generación y render de videos
+
+## Stack
 
 ### Frontend
-- **Framework**: React 18 + TypeScript
-- **Build**: Vite
-- **UI**: Tailwind CSS + shadcn/ui
-- **State**: TanStack Query + Zustand
-- **Video Preview**: Three.js + Canvas API
+- React
+- Vite
+- TypeScript
+- Tailwind CSS
+- Zustand
 
 ### Backend
-- **Runtime**: Node.js 20 + Express
-- **Language**: TypeScript
-- **Database**: PostgreSQL + Prisma
-- **Video Processing**: FFmpeg + Manim
-- **Storage**: AWS S3 / Cloudflare R2
-- **Queue**: Bull (Redis)
+- Node.js
+- Express
+- TypeScript
+- Axios
 
-## 📁 Estructura del Proyecto
-
-```
-math-video-generator/
-├── frontend/              # React app (SPA)
-│   ├── src/
-│   │   ├── components/   # Componentes reutilizables
-│   │   ├── pages/        # Páginas principales
-│   │   ├── hooks/        # Hooks personalizados
-│   │   ├── services/     # API calls
-│   │   ├── store/        # Zustand state
-│   │   └── App.tsx
-│   ├── public/
-│   ├── vite.config.ts
-│   ├── tsconfig.json
-│   └── package.json
-│
-├── backend/               # Express API
-│   ├── src/
-│   │   ├── routes/       # API endpoints
-│   │   ├── controllers/  # Lógica de negocio
-│   │   ├── services/     # Servicios (IA, video, etc)
-│   │   ├── models/       # Database models (Prisma)
-│   │   ├── middleware/   # Auth, validación, etc
-│   │   ├── utils/        # Utilities
-│   │   ├── config/       # Configuración
-│   │   └── index.ts
-│   ├── prisma/
-│   │   ├── schema.prisma
-│   │   └── migrations/
-│   ├── .env.example
-│   ├── tsconfig.json
-│   └── package.json
-│
-├── docs/                  # Documentación
-│   ├── SETUP.md          # Guía de instalación
-│   ├── API.md            # Documentación API
-│   ├── ARCHITECTURE.md   # Arquitectura del sistema
-│   └── MONETIZATION.md   # Estrategia de ingresos
-│
-├── deploy/               # Configuración de deploy
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   ├── vercel.json
-│   └── .github/workflows/ci-cd.yml
-│
-├── .gitignore
-├── .env.example
-├── LICENSE
-├── package.json          # Workspace root (pnpm/yarn)
-└── README.md
-```
-
-## ⚡ Quick Start
-
-### Prerequisitos
-- Node.js 18+
-- Python 3.10+ (para Manim)
+### Generación multimedia
+- Manim Community
+- MiKTeX / LaTeX
 - FFmpeg
-- PostgreSQL
 
-### Instalación
+### IA
+- OpenRouter
+- Gemini
+- OpenAI
+
+## Estructura del proyecto
+
+```text
+math-video-generator/
+├── backend/
+│   ├── src/
+│   ├── prisma/
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   └── package.json
+├── deploy/
+├── docs/
+├── scripts/
+├── .env.example
+├── package.json
+├── README.md
+├── QUICK_START.md
+├── LICENSE
+└── .gitignore
+```
+
+## Requisitos previos
+
+- Node.js 18+
+- npm
+- Python 3.12 recomendado para Manim
+- FFmpeg instalado y disponible en PATH
+- MiKTeX o LaTeX para render de ecuaciones
+- Windows recomendado para la voz local nativa, aunque también hay fallback con espeak
+
+## Inicio rápido
+
+### 1) Instalar dependencias
 
 ```bash
-# Clonar repo
-git clone https://github.com/tu-usuario/math-video-generator
-cd math-video-generator
-
-# Instalar dependencias (recomendado pnpm)
-pnpm install
-
-# Setup backend
-cd backend
-cp .env.example .env
-pnpm prisma migrate dev
-
-# Setup frontend
-cd ../frontend
-pnpm install
-
-# Iniciar dev servers
-# Terminal 1
-cd backend && pnpm dev
-
-# Terminal 2
-cd frontend && pnpm dev
+cd C:/Users/pc/Videos/math-video-generator
+npm install
 ```
 
-## 📊 Planes de Precios
+### 2) Instalar dependencias del backend y frontend
 
-| Plan | Precio | Límite | Usuarios |
-|------|--------|--------|----------|
-| **Free** | $0 | 5 videos/mes | 1 |
-| **Pro** | $29.99 | 50 videos/mes | 1 |
-| **Team** | $79.99 | 500 videos/mes | 5 |
-| **Enterprise** | Custom | Ilimitado | Ilimitado |
+```bash
+npm install --workspace backend
+npm install --workspace frontend
+```
 
-## 📚 Documentación
+### 3) Ejecutar proyecto en desarrollo
 
-- [Setup & Instalación](./docs/SETUP.md)
-- [API REST](./docs/API.md)
-- [Arquitectura del Sistema](./docs/ARCHITECTURE.md)
-- [Estrategia de Monetización](./docs/MONETIZATION.md)
+Terminal 1:
 
-## 🔐 Seguridad
+```bash
+cd C:/Users/pc/Videos/math-video-generator
+npm run dev --workspace backend
+```
 
-- ✅ Autenticación JWT
-- ✅ Rate limiting
-- ✅ CORS configurado
-- ✅ Validación de input
-- ✅ Sanitización de datos
+Terminal 2:
 
-## 📈 Roadmap
+```bash
+cd C:/Users/pc/Videos/math-video-generator
+npm run dev --workspace frontend -- --host 0.0.0.0
+```
 
-- [ ] v0.1 - MVP básico (generador de videos simple)
-- [ ] v0.2 - Integración con IA (GPT-4 para descriptions)
-- [ ] v0.3 - Múltiples idiomas
-- [ ] v0.4 - API pública
-- [ ] v1.0 - Lanzamiento beta pública
+### 4) Abrir la app
 
-## 💰 Monetización
+```text
+http://localhost:5173
+```
 
-Ver [MONETIZATION.md](./docs/MONETIZATION.md) para estrategia completa.
+## Variables de entorno
 
-## 🤝 Contribuciones
+Copia el ejemplo:
 
-Las contribuciones son bienvenidas. Por favor:
-1. Fork el repo
-2. Crea branch feature (`git checkout -b feature/AmazingFeature`)
-3. Commit cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push (`git push origin feature/AmazingFeature`)
-5. Open Pull Request
+```bash
+copy .env.example .env
+```
 
-## 📄 Licencia
+Luego ajusta tus claves de IA si quieres usar OpenRouter, Gemini o OpenAI.
 
-MIT License - ver [LICENSE](LICENSE) para detalles
+## Cómo funciona
 
-## 📧 Contacto
+1. El usuario escribe un problema o tema matemático.
+2. El backend genera una explicación y pasos de solución con IA.
+3. El render matemático se ejecuta con Manim.
+4. FFmpeg procesa y optimiza la salida final.
+5. La narración puede añadirse con TTS local.
+6. El video final queda listo para descargar o compartir.
 
-**Email**: tu-email@duckmartians.info
-**Twitter**: [@duckmartians](https://twitter.com/duckmartians)
-**Discord**: [Servidor privado](https://discord.gg/duckmartians)
+## Casos de uso
 
----
+- resolución de ecuaciones
+- explicación paso a paso de álgebra
+- vídeos educativos para clase
+- demostración de conceptos matemáticos
+- material didáctico de apoyo docente
 
-**Last Updated**: 2026-08-14
-**Status**: 🟡 En Desarrollo
+## Documentación adicional
+
+- [QUICK_START.md](./QUICK_START.md)
+- [docs/SETUP.md](./docs/SETUP.md)
+- [docs/API.md](./docs/API.md)
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+- [docs/MANIM_FFMPEG_SETUP.md](./docs/MANIM_FFMPEG_SETUP.md)
+
+## Licencia
+
+MIT
+
+## Repositorio
+
+- GitHub: https://github.com/juanxaviercasa/math-video-generator
+
+## Nota importante
+
+Este proyecto está pensado como una base funcional para generar videos matemáticos con herramientas locales y con integración opcional de IA. El objetivo es seguir mejorando la calidad pedagógica, el render y la experiencia del usuario.

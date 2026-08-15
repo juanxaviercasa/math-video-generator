@@ -1,208 +1,82 @@
-# 🚀 Quick Start Guide
+# Quick Start
 
-## Estado Actual
+## Requisitos
 
-✅ **Completado:**
-- Estructura completa del proyecto (frontend + backend)
-- Servicios de Manim, FFmpeg y OpenAI integrados
-- API REST lista con endpoint de generación de videos
-- Frontend React con interfaz para generar videos
-- Documentación completa
+- Node.js 18+
+- npm
+- Python 3.12
+- FFmpeg instalado y en PATH
+- MiKTeX o LaTeX para compilar ecuaciones
 
-🔄 **En Progreso:**
-- Instalación de npm dependencies
-
-⏳ **Próximos Pasos:**
-1. Esperar a que npm install termine
-2. Instalar Manim + FFmpeg
-3. Probar generación de videos
-
----
-
-## ⚡ Inicio Rápido (5 minutos)
-
-### 1. Esperar Instalación
+## 1) Instalar dependencias
 
 ```bash
-# Verificar que npm install terminó
-cd C:\Users\pc\Videos\math-video-generator
-dir node_modules  # Debería existir
-
-cd backend
-dir node_modules
-
-cd ../frontend
-dir node_modules
+cd C:/Users/pc/Videos/math-video-generator
+npm install
+npm install --workspace backend
+npm install --workspace frontend
 ```
 
-### 2. Instalar Manim + FFmpeg
-
-```powershell
-# Windows PowerShell (Admin)
-
-# FFmpeg
-choco install ffmpeg
-# O descargar desde https://ffmpeg.org/download.html
-
-# Python + Manim
-pip install manim
-pip install pycairo  # Si hay errores
-
-# Verificar
-ffmpeg -version
-manim --version
-```
-
-### 3. Configurar Backend
+## 2) Ejecutar backend
 
 ```bash
-cd backend
-cp .env.example .env
-
-# Edita backend\.env y agrega:
-# OPENAI_API_KEY=sk-... (opcional por ahora)
-# DATABASE_URL=postgresql://...
-# JWT_SECRET=tu-clave-super-secreta-123456789
+cd C:/Users/pc/Videos/math-video-generator
+npm run dev --workspace backend
 ```
 
-### 4. Iniciar Desarrollo
+## 3) Ejecutar frontend
 
-**Terminal 1 - Backend:**
 ```bash
-cd backend
-npm run dev
-# Debería mostrar: 🚀 Server running on http://localhost:3001
+cd C:/Users/pc/Videos/math-video-generator
+npm run dev --workspace frontend -- --host 0.0.0.0
 ```
 
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm run dev
-# Debería mostrar: http://localhost:5173
-```
+## 4) Abrir la app
 
-### 5. Abre el Navegador
-
-```
+```text
 http://localhost:5173
 ```
 
-¡Deberías ver la interfaz de Math Video Generator! 🎉
+## 5) Probar una generación
 
----
+Desde la interfaz, introduce un problema como:
 
-## 🧪 Probar API Manualmente
-
-### Usar cURL o Postman
-
-```bash
-curl -X POST http://localhost:3001/api/generate-video \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id": "test_1",
-    "title": "Resolver x² - 5x + 6 = 0",
-    "content": "x² - 5x + 6 = 0\nFactorizar: (x-2)(x-3)=0\nSoluciones: x=2, x=3",
-    "quality": "medium"
-  }'
+```text
+x^2 - 5x + 6 = 0
+Factoriza y resuelve
 ```
 
-### Respuesta Esperada
+Luego activa o desactiva narración y genera el video.
 
-```json
-{
-  "status": "processing",
-  "progress": 20,
-  "message": "Verificando Manim y FFmpeg...",
-  "videoUrl": null
-}
-```
+## Solución rápida si algo falla
 
----
-
-## 📝 Archivos Importantes
-
-| Archivo | Propósito |
-|---------|-----------|
-| `backend/src/services/manim.service.ts` | Generación de animaciones |
-| `backend/src/services/ffmpeg.service.ts` | Procesamiento de video |
-| `backend/src/services/video-processing.service.ts` | Orquestación completa |
-| `backend/src/routes/video.routes.ts` | Endpoints API |
-| `frontend/src/components/VideoGenerator.tsx` | Formulario de generación |
-| `frontend/src/store/video.store.ts` | Estado global |
-
----
-
-## 🐛 Si Algo No Funciona
-
-### Error: "Manim not found"
+### FFmpeg no detecta el binario
 
 ```bash
-pip install --force-reinstall manim
-manim --version
-```
-
-### Error: "FFmpeg not found"
-
-```bash
-# Windows
-choco install ffmpeg
-
-# Verificar PATH
 ffmpeg -version
 ```
 
-### Error: "Port 3001 already in use"
+Si no funciona, instala FFmpeg y vuelve a abrir el terminal.
+
+### Manim no está disponible
 
 ```bash
-# Cambiar puerto en backend/.env
-BACKEND_PORT=3002
+python --version
+manim --version
 ```
 
-### Error: "Cannot find module"
+### Error de dependencias
 
 ```bash
-# Reinstalar dependencias
-cd backend
-rm -r node_modules
+cd C:/Users/pc/Videos/math-video-generator
 npm install
-
-cd ../frontend
-rm -r node_modules
-npm install
+npm install --workspace backend
+npm install --workspace frontend
 ```
 
----
+## Documentación extra
 
-## 📊 Arquitectura
-
-```
-User Input
-    ↓
-Frontend (React)
-    ↓
-Backend API
-    ↓
-VideoProcessing Service
-    ├─→ OpenAI (genera pasos)
-    ├─→ Manim (renderiza animaciones)
-    └─→ FFmpeg (procesa video)
-    ↓
-Video Output
-```
-
----
-
-## 🎯 Próximos Pasos
-
-1. **Prueba Local**: Genera tu primer video
-2. **Integración BD**: Conecta con PostgreSQL
-3. **Autenticación**: Implementa JWT
-4. **Stripe**: Agregar pagos
-5. **Deploy**: Vercel (frontend) + Railway (backend)
-
----
-
-**¿Problemas? Ver:**
+- [README.md](./README.md)
 - [docs/SETUP.md](./docs/SETUP.md)
 - [docs/MANIM_FFMPEG_SETUP.md](./docs/MANIM_FFMPEG_SETUP.md)
 - [docs/API.md](./docs/API.md)

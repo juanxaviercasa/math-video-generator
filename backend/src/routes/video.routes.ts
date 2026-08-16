@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { videoProcessing } from '../services/video-processing.service.js';
+import { videoGenerationSchema } from '../schemas/video.schema.js';
 import * as path from 'path';
 import * as os from 'os';
 
@@ -12,13 +13,30 @@ const generationJobs = new Map<string, any>();
  */
 router.post('/generate-video', async (req: Request, res: Response) => {
   try {
-    const { id, title, content, quality, enableNarration, aiProvider, enableComfyUI } = req.body;
+    const parsed = videoGenerationSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      const fields = parsed.error.issues.reduce<Record<string, string[]>>((acc, issue) => {
+        const field = issue.path[0]?.toString() || 'request';
+        acc[field] = [...(acc[field] || []), issue.message];
+        return acc;
+      }, {});
+
+      return res.status(400).json({
+        code: 'VALIDATION_ERROR',
+        error: 'La solicitud contiene datos inválidos',
+        fields,
+      });
+    }
+
+    const { id, title, content, quality, enableNarration, aiProvider, enableComfyUI } = parsed.data;
     const videoId = id || `video_${Date.now()}`;
 
-    // Validar input
-    if (!title || !content) {
-      return res.status(400).json({
-        error: 'Missing required fields: title, content',
+    if (generationJobs.has(videoId)) {
+      return res.status(409).json({
+        code: 'VIDEO_ID_EXISTS',
+        error: 'Ya existe un trabajo con ese identificador',
+        id: videoId,
       });
     }
 
@@ -56,9 +74,10 @@ router.post('/generate-video', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('API Error:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    if (req.body?.id) {
-      generationJobs.set(req.body.id, {
-        id: req.body.id,
+    const requestedId = typeof req.body?.id === 'string' ? req.body.id : undefined;
+    if (requestedId) {
+      generationJobs.set(requestedId, {
+        id: requestedId,
         status: 'failed',
         progress: 100,
         message: 'Fallo en la generación',
@@ -66,8 +85,9 @@ router.post('/generate-video', async (req: Request, res: Response) => {
       });
     }
     res.status(500).json({
-      error: 'Video generation failed',
-      details: errorMessage,
+      code: 'GENERATION_FAILED',
+      error: 'La generación del video falló',
+      details: process.env.NODE_ENV === 'production' ? undefined : errorMessage,
     });
   }
 });

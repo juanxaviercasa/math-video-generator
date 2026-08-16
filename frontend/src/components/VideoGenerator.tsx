@@ -61,6 +61,10 @@ export function VideoGenerator() {
         thumbnailUrl: response.thumbnailUrl,
       })
 
+      if (finalStatus === 'failed') {
+        setError(response.error || response.message || 'La generación falló')
+      }
+
       if (finalStatus === 'processing' || finalStatus === 'pending') {
         let polling = true
         const interval = window.setInterval(async () => {
@@ -82,6 +86,11 @@ export function VideoGenerator() {
           } catch (pollError) {
             polling = false
             window.clearInterval(interval)
+            useVideoStore.getState().updateVideo(currentId, {
+              status: 'failed',
+              progress: 100,
+            })
+            setError('No se pudo consultar el estado del video. Intenta actualizar la página.')
           }
         }, 1500)
       }
@@ -179,6 +188,7 @@ export function VideoGenerator() {
           <div className="grid grid-cols-3 gap-2">
             {['openrouter', 'gemini', 'openai'].map((provider) => (
               <button
+                type="button"
                 key={provider}
                 onClick={() => setAiProvider(provider as any)}
                 className={`px-3 py-2 rounded text-sm font-medium transition ${

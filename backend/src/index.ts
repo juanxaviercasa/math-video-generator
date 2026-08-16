@@ -3,6 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import { videoRoutes } from './routes/video.routes.js'
 import { authRoutes } from './routes/auth.routes.js'
+import * as os from 'node:os'
 
 dotenv.config()
 
@@ -29,6 +30,9 @@ app.get('/health', (req, res) => {
 app.get('/api', (req, res) => {
   res.json({ message: 'Math Video Generator API v0.1.0' })
 })
+
+// Generated media: only files under the temporary output directory are exposed.
+app.use('/media', express.static(os.tmpdir(), { index: false, fallthrough: false }))
 
 // Authentication routes
 app.use('/api/auth', authRoutes)

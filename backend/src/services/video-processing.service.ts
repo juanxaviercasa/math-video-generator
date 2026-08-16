@@ -7,6 +7,17 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 
+const toMediaUrl = (filePath: string): string => {
+  const relativePath = path.relative(os.tmpdir(), filePath);
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    throw new Error('El archivo generado está fuera del directorio multimedia permitido');
+  }
+  return `/media/${relativePath
+    .split(path.sep)
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')}`;
+};
+
 /**
  * Video Processing Service
  * Orquesta Manim + FFmpeg + OpenAI para generar videos
@@ -214,12 +225,12 @@ export const videoProcessing = {
       }
 
       progress.duration = duration;
+      progress.videoUrl = toMediaUrl(processedPath);
+      progress.thumbnailUrl = toMediaUrl(thumbnailPath);
       progress.status = 'completed';
       progress.progress = 100;
       progress.message = 'Video completado';
       report();
-      progress.videoUrl = processedPath;
-      progress.thumbnailUrl = thumbnailPath;
 
       console.log(`✅ Video generado exitosamente: ${processedPath}`);
 

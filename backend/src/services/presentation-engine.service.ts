@@ -127,10 +127,18 @@ export const buildPresentationPlan = ({
     const resolved = resolveSceneLayout(scene, canvas, tokens);
     scene.blocks = resolved.blocks;
     const checked = validateSceneConstraints(scene, canvas, tokens);
+    const constraintDiagnostics = checked.constraints.filter((constraint) => !constraint.passed).map((constraint) => ({
+      code: constraint.code,
+      severity: constraint.severity === 'error' ? 'error' as const : 'warning' as const,
+      sceneId: scene.id,
+      blockIds: constraint.blockIds,
+      message: constraint.message,
+      details: constraint.details,
+    }));
     return {
       sceneId: scene.id,
       blocks: scene.blocks.flatMap((block) => block.resolved ? [{ blockId: block.id, ...block.resolved }] : []),
-      diagnostics: [...resolved.diagnostics, ...checked.diagnostics],
+      diagnostics: [...resolved.diagnostics, ...checked.diagnostics, ...constraintDiagnostics],
       score: checked.score,
     };
   });
@@ -160,8 +168,10 @@ export const buildPresentationPlan = ({
 export const repairPresentationPlan = (plan: PresentationPlan, maxIterations = 3): PresentationPlan => {
   let current = plan;
   for (let iteration = 0; iteration < maxIterations && !current.passed; iteration += 1) {
+    const unreadableComparisonScenes = new Set(current.diagnostics.filter((diagnostic) => diagnostic.code === 'MIN_READABLE_SIZE' && diagnostic.sceneId).map((diagnostic) => diagnostic.sceneId as string));
     const repairedScenes = current.scenes.map((scene) => ({
       ...scene,
+      layout: unreadableComparisonScenes.has(scene.id) && scene.layout === 'comparison' ? 'vertical-stack' as const : scene.layout,
       blocks: scene.blocks.map((block) => ({ ...block, minReadableSize: Math.max(0.42, block.minReadableSize - 0.04) })),
     }));
     const canvas = createPresentationCanvas(current.canvas);
@@ -170,7 +180,8 @@ export const repairPresentationPlan = (plan: PresentationPlan, maxIterations = 3
       const resolved = resolveSceneLayout(scene, canvas, tokens);
       scene.blocks = resolved.blocks;
       const checked = validateSceneConstraints(scene, canvas, tokens);
-      return { sceneId: scene.id, blocks: scene.blocks.flatMap((block) => block.resolved ? [{ blockId: block.id, ...block.resolved }] : []), diagnostics: [...resolved.diagnostics, ...checked.diagnostics], score: checked.score };
+      const constraintDiagnostics = checked.constraints.filter((constraint) => !constraint.passed).map((constraint) => ({ code: constraint.code, severity: constraint.severity === 'error' ? 'error' as const : 'warning' as const, sceneId: scene.id, blockIds: constraint.blockIds, message: constraint.message, details: constraint.details }));
+      return { sceneId: scene.id, blocks: scene.blocks.flatMap((block) => block.resolved ? [{ blockId: block.id, ...block.resolved }] : []), diagnostics: [...resolved.diagnostics, ...checked.diagnostics, ...constraintDiagnostics], score: checked.score };
     });
     const diagnostics = resolvedLayouts.flatMap((layout) => layout.diagnostics);
     current = { ...current, scenes: repairedScenes, resolvedLayouts, diagnostics, passed: !diagnostics.some((diagnostic) => diagnostic.severity === 'error') };

@@ -385,8 +385,6 @@ export const manim = {
     const debugOverlayForScene = (sceneId: string, index: number): { enter: string; exit: string } => {
       if (!debug || !presentationPlan) return { enter: '', exit: '' };
       const layout = presentationPlan.resolvedLayouts.find((candidate) => candidate.sceneId === sceneId);
-      const safeX = -formatProfile.frameWidth / 2 + formatProfile.safeMargin;
-      const safeY = -formatProfile.frameHeight / 2 + formatProfile.safeMargin;
       const safeWidth = formatProfile.frameWidth - formatProfile.safeMargin * 2;
       const safeHeight = formatProfile.frameHeight - formatProfile.safeMargin * 2;
       const errorBlockIds = new Set(presentationPlan.diagnostics.filter((diagnostic) => diagnostic.severity === 'error').flatMap((diagnostic) => diagnostic.blockIds || []));
@@ -398,7 +396,9 @@ export const manim = {
       const groupItems = [`debug_safe_${index}`, ...boxes.flatMap((_, blockIndex) => [`debug_box_${index}_${blockIndex}`, `debug_label_${index}_${blockIndex}`])];
       const safeCode = `debug_safe_${index} = Rectangle(width=${safeWidth.toFixed(3)}, height=${safeHeight.toFixed(3)}, stroke_color=BLUE, stroke_width=2, fill_opacity=0).move_to([0, 0, 0])`;
       const textCode = `debug_score_${index} = Text(${escapeForPythonString(`DEBUG ${sceneId} | score ${layout?.score.total ?? presentationPlan.score.total} | iteration ${debugIteration}`)}, font_size=14, color=BLUE).to_corner(DR)`;
-      return { enter: `${safeCode}\n${boxes.join('\n')}\n${textCode}\ndebug_group_${index} = VGroup(${groupItems.join(', ')})\nself.add(debug_group_${index})`, exit: `self.remove(debug_group_${index})` };
+      const enterCode = `${safeCode}\n${boxes.join('\n')}\n${textCode}\ndebug_group_${index} = VGroup(${groupItems.join(', ')})\nself.add(debug_group_${index})`;
+      const indentedEnterCode = enterCode.split('\n').map((line, lineIndex) => lineIndex === 0 ? line : `        ${line}`).join('\n');
+      return { enter: indentedEnterCode, exit: `self.remove(debug_group_${index})` };
     };
 
     const pedagogicalBlock = pedagogicalScenes.length

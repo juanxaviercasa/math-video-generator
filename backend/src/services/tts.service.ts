@@ -75,22 +75,27 @@ export const tts = {
     const style = options.style || 'warm_teacher';
 
     if (provider !== 'espeak' && provider !== 'local') {
-      removeIfExists(neuralOutputPath);
-      try {
-        await execFileAsync('edge-tts', getEdgeTtsArgs(neuralOutputPath, normalized, style), {
-          timeout: 45000,
-          killSignal: 'SIGKILL',
-        });
-        if (await isValidAudioFile(neuralOutputPath)) return neuralOutputPath;
+      const retryCount = Math.max(1, Math.min(3, Number(process.env.TTS_NEURAL_RETRIES || 2)));
+      let lastError: unknown;
+      for (let attempt = 1; attempt <= retryCount; attempt += 1) {
         removeIfExists(neuralOutputPath);
-        throw new Error('Edge TTS produjo un archivo vacío o no decodificable');
-      } catch (error) {
-        removeIfExists(neuralOutputPath);
-        console.warn('⚠️ TTS neural no disponible:', error instanceof Error ? error.message : error);
-        if (process.env.TTS_ALLOW_LOCAL_FALLBACK !== 'true') {
-          console.warn('⚠️ Fallback local deshabilitado para conservar la voz neural aprobada.');
-          return '';
+        try {
+          await execFileAsync('edge-tts', getEdgeTtsArgs(neuralOutputPath, normalized, style), {
+            timeout: 45000,
+            killSignal: 'SIGKILL',
+          });
+          if (await isValidAudioFile(neuralOutputPath)) return neuralOutputPath;
+          throw new Error('Edge TTS produjo un archivo vacío o no decodificable');
+        } catch (error) {
+          lastError = error;
+          removeIfExists(neuralOutputPath);
+          if (attempt < retryCount) console.warn(`⚠️ TTS neural reintento ${attempt}/${retryCount}:`, error instanceof Error ? error.message : error);
         }
+      }
+      console.warn('⚠️ TTS neural no disponible:', lastError instanceof Error ? lastError.message : lastError);
+      if (process.env.TTS_ALLOW_LOCAL_FALLBACK !== 'true') {
+        console.warn('⚠️ Fallback local deshabilitado para conservar la voz neural aprobada.');
+        return '';
       }
     }
 

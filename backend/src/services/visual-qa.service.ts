@@ -70,7 +70,7 @@ const toIssue = (
   reason: string,
 ): VisualIssue => ({ type, severity, element, scene, measuredValue, expectedValue, suggestedRepair, reason });
 
-const constraintToIssue = (sceneId: string, constraint: ConstraintResult): VisualIssue | null => {
+export const constraintToIssue = (sceneId: string, constraint: ConstraintResult): VisualIssue | null => {
   if (constraint.passed) return null;
   const element = constraint.blockIds?.join(', ') || 'scene';
   const details = constraint.details || {};
@@ -101,7 +101,7 @@ const diagnosticToIssue = (diagnostic: LayoutDiagnostic): VisualIssue => toIssue
   diagnostic.message,
 );
 
-const geometryIssues = (scene: VisualSceneSpec, safeArea: BoundingBox): VisualIssue[] => {
+export const geometryIssues = (scene: VisualSceneSpec, safeArea: BoundingBox): VisualIssue[] => {
   const resolved = scene.blocks.filter((block) => block.resolved).map((block) => ({ block, bbox: block.resolved?.bbox as BoundingBox }));
   const issues: VisualIssue[] = [];
   const safeAreaArea = Math.max(0.001, safeArea.width * safeArea.height);

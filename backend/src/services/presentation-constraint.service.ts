@@ -54,8 +54,9 @@ export const validateSceneConstraints = (scene: VisualSceneSpec, canvas: Present
     constraints.push({ code: 'SAFE_FRAME', passed: safe, severity: 'error', message: safe ? 'El bloque permanece dentro del área segura.' : 'El bloque desborda el área segura.', blockIds: [block.id], details: { x: box.x, y: box.y, width: box.width, height: box.height } });
     if (!safe) diagnostics.push({ code: 'OVERFLOW', severity: 'error', sceneId: scene.id, blockIds: [block.id], message: 'El bloque sale del área segura.' });
 
-    const readable = (block.resolved?.scale || 0) >= tokens.minFormulaScale || block.semanticRole === 'caption' || block.semanticRole === 'explanation';
-    constraints.push({ code: 'MIN_READABLE_SIZE', passed: readable, severity: 'error', message: readable ? 'El bloque conserva escala legible.' : 'El bloque quedó por debajo de la escala mínima legible.', blockIds: [block.id], details: { scale: block.resolved?.scale || 0 } });
+    const minimumScale = block.minReadableSize || tokens.minFormulaScale;
+    const readable = (block.resolved?.scale || 0) >= minimumScale || block.semanticRole === 'caption' || block.semanticRole === 'explanation';
+    constraints.push({ code: 'MIN_READABLE_SIZE', passed: readable, severity: 'error', message: readable ? 'El bloque conserva escala legible.' : 'El bloque quedó por debajo de la escala mínima legible.', blockIds: [block.id], details: { scale: block.resolved?.scale || 0, minimumScale } });
   });
 
   for (let index = 0; index < blocks.length; index += 1) {

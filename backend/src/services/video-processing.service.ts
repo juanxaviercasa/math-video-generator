@@ -22,6 +22,7 @@ interface VideoGenerationRequest {
   aiProvider?: 'openrouter' | 'gemini' | 'openai';
     enableComfyUI?: boolean;
   allowSimulation?: boolean;
+  onProgress?: (progress: VideoGenerationProgress) => void;
 }
 
 interface VideoGenerationProgress {
@@ -55,12 +56,15 @@ export const videoProcessing = {
       progress: 0,
       message: 'Iniciando procesamiento...',
     };
+    const report = () => request.onProgress?.({ ...progress });
+    report();
 
     try {
       // 1. Verificar dependencias
       console.log('🔍 Verificando dependencias...');
       progress.progress = 10;
       progress.message = 'Verificando Manim y FFmpeg...';
+      report();
 
       const manimReady = await manim.isInstalled();
       const ffmpegReady = await ffmpeg.isInstalled();
@@ -80,6 +84,7 @@ export const videoProcessing = {
         progress.status = 'completed';
         progress.progress = 100;
         progress.message = 'Modo demo completado; no se creó un video real.';
+        report();
         return progress;
       }
 
@@ -91,6 +96,7 @@ export const videoProcessing = {
       console.log('🤖 Generando descripción...');
       progress.progress = 20;
       progress.message = 'Generando descripción con IA...';
+      report();
 
       const steps = await openai.generateSolutionSteps(content);
       if (!steps.length) {
@@ -119,6 +125,7 @@ export const videoProcessing = {
       console.log('📝 Generando animaciones...');
       progress.progress = 30;
       progress.message = 'Renderizando animaciones matemáticas...';
+      report();
 
       const manimScene = {
         title,
@@ -128,11 +135,14 @@ export const videoProcessing = {
 
       const videoPath = await manim.renderVideo(manimScene);
       progress.progress = 70;
+      progress.message = 'Animación renderizada; preparando video final...';
+      report();
 
       // 4. Procesar con FFmpeg
       console.log('🎬 Procesando video...');
       progress.progress = 75;
       progress.message = 'Optimizando video...';
+      report();
 
       const resolution =
         quality === 'high' ? '4k' : quality === 'medium' ? '1080' : '480';
@@ -163,16 +173,21 @@ export const videoProcessing = {
       }
 
       progress.progress = 85;
+      progress.message = 'Video optimizado; generando miniatura...';
+      report();
 
       // 5. Generar thumbnail
       console.log('🖼️  Generando thumbnail...');
       progress.progress = 90;
       progress.message = 'Generando miniatura...';
+      report();
 
       const thumbnailPath = path.join(outputDir, `${id}-thumbnail.jpg`);
       await ffmpeg.extractThumbnail(processedPath, thumbnailPath);
 
       progress.progress = 95;
+      progress.message = 'Validando artefactos finales...';
+      report();
 
       // 6. Obtener información del video
       const videoInfo = await ffmpeg.getVideoInfo(processedPath);
@@ -185,6 +200,7 @@ export const videoProcessing = {
       progress.status = 'completed';
       progress.progress = 100;
       progress.message = 'Video completado';
+      report();
       progress.videoUrl = processedPath;
       progress.thumbnailUrl = thumbnailPath;
 
@@ -197,6 +213,7 @@ export const videoProcessing = {
       progress.status = 'failed';
       progress.message = 'Error en procesamiento';
       progress.error = error instanceof Error ? error.message : String(error);
+      report();
 
       return progress;
     }

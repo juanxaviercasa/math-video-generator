@@ -1,11 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { videoProcessing } from '../services/video-processing.service.js';
+import { generationJobs } from '../services/job.service.js';
 import { videoGenerationSchema } from '../schemas/video.schema.js';
 import * as path from 'path';
 import * as os from 'os';
 
 const router = Router();
-const generationJobs = new Map<string, any>();
 
 /**
  * POST /api/generate-video
@@ -40,57 +40,34 @@ router.post('/generate-video', async (req: Request, res: Response) => {
       });
     }
 
-    const initialStatus = {
-      id: videoId,
-      status: 'pending',
-      progress: 0,
-      message: 'Video en cola...',
-    };
+    const initialStatus = generationJobs.create(videoId);
 
-    generationJobs.set(videoId, initialStatus);
-
-    // Crear directorio temporal
+    // Crear directorio temporal para este trabajo.
     const outputDir = path.join(os.tmpdir(), `mvg-${videoId}`);
     console.log(`📂 Output directory: ${outputDir}`);
 
-    // Procesar video
-    const result = await videoProcessing.generateVideo({
-      id: videoId,
-      title,
-      content,
-      quality: quality || 'medium',
-      userId: 'temp-user',
-      outputDir,
-      enableNarration: enableNarration !== false,
-      aiProvider: aiProvider || 'openrouter',
-      enableComfyUI: enableComfyUI === true,
-    });
+    generationJobs.enqueue(videoId, (onProgress) =>
+      videoProcessing.generateVideo({
+        id: videoId,
+        title,
+        content,
+        quality,
+        userId: 'temp-user',
+        outputDir,
+        enableNarration,
+        aiProvider,
+        enableComfyUI,
+        onProgress,
+      })
+    );
 
-    const finalResult = { id: videoId, ...result };
-    generationJobs.set(videoId, finalResult);
-
-    // Un trabajo fallido no debe parecer una respuesta exitosa para el cliente.
-    if (result.status === 'failed') {
-      return res.status(422).json({
-        code: 'GENERATION_FAILED',
-        ...finalResult,
-      });
-    }
-
-    // Retornar resultado
-    res.json(finalResult);
+    return res.status(202).json(initialStatus);
   } catch (error) {
     console.error('API Error:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     const requestedId = typeof req.body?.id === 'string' ? req.body.id : undefined;
     if (requestedId) {
-      generationJobs.set(requestedId, {
-        id: requestedId,
-        status: 'failed',
-        progress: 100,
-        message: 'Fallo en la generación',
-        error: errorMessage,
-      });
+      generationJobs.fail(requestedId, errorMessage);
     }
     res.status(500).json({
       code: 'GENERATION_FAILED',

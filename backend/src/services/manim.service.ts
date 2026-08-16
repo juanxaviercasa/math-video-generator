@@ -237,7 +237,7 @@ export const manim = {
    * Generar script Python de Manim para una animación matemática
    */
   generatePythonScript(scene: ManimScene, useLatex = latexCompilerAvailable()): string {
-    const { title, steps, outputDir } = scene;
+    const { title, steps } = scene;
 
     // Sanitizar nombre de archivo
     const safeName = title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();

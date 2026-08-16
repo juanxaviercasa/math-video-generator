@@ -93,7 +93,7 @@ export const ffmpeg = {
 
       console.log(`🎬 FFmpeg processing: ${path.basename(inputPath)} -> ${path.basename(outputPath)}`);
 
-      const { stdout, stderr } = await execAsync(cmd, {
+      const { stderr } = await execAsync(cmd, {
         maxBuffer: 1024 * 1024 * 50,
       });
 

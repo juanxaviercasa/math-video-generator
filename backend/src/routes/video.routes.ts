@@ -126,8 +126,11 @@ router.get('/generate-video/status/:id', (req: Request, res: Response) => {
 });
 
 router.get('/videos', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ code: 'UNAUTHENTICATED', error: 'Debes iniciar sesión' });
+
   try {
-    const videos = await generationJobs.listForUser(req.user!.id);
+    const videos = await generationJobs.listForUser(user.id);
     return res.json({ videos });
   } catch (error) {
     console.error('[Videos] Could not list videos:', error);
@@ -136,8 +139,11 @@ router.get('/videos', requireAuth, async (req: AuthenticatedRequest, res: Respon
 });
 
 router.get('/videos/:id', requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  const user = req.user;
+  if (!user) return res.status(401).json({ code: 'UNAUTHENTICATED', error: 'Debes iniciar sesión' });
+
   const job = generationJobs.get(req.params.id);
-  if (!job || !generationJobs.belongsTo(req.params.id, req.user!.id)) {
+  if (!job || !generationJobs.belongsTo(req.params.id, user.id)) {
     return res.status(404).json({ code: 'VIDEO_NOT_FOUND', error: 'Video no encontrado' });
   }
   return res.json({ video: job });

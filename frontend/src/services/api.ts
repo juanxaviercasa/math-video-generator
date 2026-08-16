@@ -25,10 +25,14 @@ interface VideoResponse {
 export const api = {
   async generateVideo(data: VideoRequest): Promise<VideoResponse> {
     try {
-      const response = await axios.post(`${API_URL}/generate-video`, {
-        ...data,
-        id: data.id || `video_${Date.now()}`,
-      })
+      const response = await axios.post(
+        `${API_URL}/generate-video`,
+        {
+          ...data,
+          id: data.id || `video_${Date.now()}`,
+        },
+        { withCredentials: true },
+      )
       return response.data
     } catch (error) {
       console.error('API Error:', error)
@@ -38,7 +42,9 @@ export const api = {
 
   async getVideoStatus(id: string): Promise<VideoResponse> {
     try {
-      const response = await axios.get(`${API_URL}/generate-video/status/${id}`)
+      const response = await axios.get(`${API_URL}/generate-video/status/${id}`, {
+        withCredentials: true,
+      })
       return response.data
     } catch (error) {
       console.error('API Error:', error)

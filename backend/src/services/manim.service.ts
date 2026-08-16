@@ -150,18 +150,22 @@ const buildMathTextWithSpaces = (value: string): string => {
 
   if (!cleaned) return 'x = 0';
 
-  const tokens = cleaned.split(/(\s+|[=+\-*\/^()]+)/).filter((token) => token !== undefined && token !== null && token.length > 0);
+  const tokens = cleaned
+    .split(/(\s+|[=+\-*\/^()]+)/)
+    .filter((token) => token !== undefined && token !== null && token.trim().length > 0);
 
-  return tokens
-    .map((token) => {
-      if (token.trim() === '') return ' ';
-      if (/^[=+\-*\/^()]+$/.test(token)) return token;
-      if (/^[A-Za-z]+$/.test(token)) return `\\text{${token}}`;
-      return token;
-    })
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const mapped = tokens.map((token) => {
+    if (/^[=+\-*\/^()]+$/.test(token)) return token;
+    if (/^[A-Za-z]+$/.test(token)) return `\\text{${token}}`;
+    return token;
+  });
+
+  return mapped.reduce((result, token, index) => {
+    if (index === 0) return token;
+    const previous = mapped[index - 1];
+    const tight = token === '^' || previous === '^';
+    return `${result}${tight ? '' : '\\quad '}${token}`;
+  }, '').trim();
 };
 
 const extractMathFormula = (value: string): string => {

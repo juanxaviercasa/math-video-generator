@@ -1,5 +1,4 @@
 import { Router, type Request, type Response } from 'express';
-import { prisma } from '../lib/prisma.js';
 import { supabaseAuth } from '../lib/supabase.js';
 import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { loginSchema, registerSchema } from '../schemas/auth.schema.js';
@@ -8,7 +7,6 @@ import { syncSupabaseProfile } from '../services/profile.service.js';
 const router = Router();
 const ACCESS_COOKIE = 'mvg_access_token';
 const REFRESH_COOKIE = 'mvg_refresh_token';
-const ACCESS_MAX_AGE = 60 * 60 * 1000;
 const REFRESH_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
 
 const cookieOptions = (maxAge: number) => ({

@@ -1,5 +1,4 @@
 import type { NextFunction, Request, Response } from 'express';
-import { prisma } from '../lib/prisma.js';
 import { supabaseAuth } from '../lib/supabase.js';
 import { syncSupabaseProfile } from '../services/profile.service.js';
 

@@ -118,14 +118,21 @@ export const ffmpeg = {
   /**
    * Extraer thumbnail del video
    */
-  async extractThumbnail(videoPath: string, outputPath: string, timeCode: string = '00:00:02'): Promise<string> {
+  async extractThumbnail(videoPath: string, outputPath: string, timeCode: string = '00:00:08'): Promise<string> {
     try {
       const ffmpegCommand = this.getCommand();
-      const cmd = `"${ffmpegCommand}" -i "${videoPath}" -ss ${timeCode} -vf scale=1280:720 -vframes 1 -y "${outputPath}"`;
+      // Rendered scenes spend their first seconds writing text. Extract after
+      // that transition so the library thumbnail captures a stable equation,
+      // not a black frame or partially written glyphs.
+      const representativeCmd = `"${ffmpegCommand}" -ss ${timeCode} -i "${videoPath}" -vf scale=1280:720 -frames:v 1 -y "${outputPath}"`;
+      await execAsync(representativeCmd, { maxBuffer: 1024 * 1024 * 10 });
 
-      await execAsync(cmd);
+      if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size === 0) {
+        const fallbackCmd = `"${ffmpegCommand}" -ss 00:00:02 -i "${videoPath}" -vf scale=1280:720 -frames:v 1 -y "${outputPath}"`;
+        await execAsync(fallbackCmd, { maxBuffer: 1024 * 1024 * 10 });
+      }
 
-      if (!fs.existsSync(outputPath)) {
+      if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size === 0) {
         throw new Error('Thumbnail not created');
       }
 

@@ -56,6 +56,8 @@ interface ManimScene {
   formatProfile?: VideoFormatProfile;
   layoutDensity?: 'comfortable' | 'compact';
   narrationStyle?: 'warm_teacher' | 'neutral_teacher';
+  debug?: boolean;
+  debugIteration?: number;
   presentationPlan?: PresentationPlan;
 }
 
@@ -322,7 +324,7 @@ export const manim = {
    * Generar script Python de Manim para una animación matemática
    */
   generatePythonScript(scene: ManimScene, useLatex = latexCompilerAvailable()): string {
-    const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [], presentationPlan } = scene;
+    const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [], presentationPlan, debug = process.env.MPE_DEBUG === 'true', debugIteration = 0 } = scene;
     const formatProfile = scene.formatProfile || getVideoFormatProfile('16:9', 'medium');
     const panelWidth = formatProfile.panelWidth.toFixed(2);
     const panelHeight = formatProfile.panelHeight.toFixed(2);
@@ -379,6 +381,26 @@ export const manim = {
     const introDuration = pedagogicalScenes.length
       ? 1.8
       : Math.max(3, synchronizedScenes[0]?.duration ?? synchronizedScenes[0]?.estimatedDuration ?? 4);
+
+    const debugOverlayForScene = (sceneId: string, index: number): { enter: string; exit: string } => {
+      if (!debug || !presentationPlan) return { enter: '', exit: '' };
+      const layout = presentationPlan.resolvedLayouts.find((candidate) => candidate.sceneId === sceneId);
+      const safeX = -formatProfile.frameWidth / 2 + formatProfile.safeMargin;
+      const safeY = -formatProfile.frameHeight / 2 + formatProfile.safeMargin;
+      const safeWidth = formatProfile.frameWidth - formatProfile.safeMargin * 2;
+      const safeHeight = formatProfile.frameHeight - formatProfile.safeMargin * 2;
+      const errorBlockIds = new Set(presentationPlan.diagnostics.filter((diagnostic) => diagnostic.severity === 'error').flatMap((diagnostic) => diagnostic.blockIds || []));
+      const boxes = (layout?.blocks || []).map((block, blockIndex) => {
+        const color = errorBlockIds.has(block.blockId) ? 'RED' : 'GREEN';
+        const label = `Text(${escapeForPythonString(`${block.blockId} | ${presentationPlan.scenes.find((candidate) => candidate.id === sceneId)?.blocks.find((candidate) => candidate.id === block.blockId)?.semanticRole || 'element'} | ${block.scale.toFixed(2)}x`)}, font_size=11, color=${color})`;
+        return `debug_box_${index}_${blockIndex} = Rectangle(width=${block.bbox.width.toFixed(3)}, height=${block.bbox.height.toFixed(3)}, stroke_color=${color}, stroke_width=2, fill_opacity=0).move_to([${block.bbox.x.toFixed(3)}, ${block.bbox.y.toFixed(3)}, 0])\ndebug_label_${index}_${blockIndex} = ${label}.next_to(debug_box_${index}_${blockIndex}, UP, buff=0.03)`;
+      });
+      const groupItems = [`debug_safe_${index}`, ...boxes.flatMap((_, blockIndex) => [`debug_box_${index}_${blockIndex}`, `debug_label_${index}_${blockIndex}`])];
+      const safeCode = `debug_safe_${index} = Rectangle(width=${safeWidth.toFixed(3)}, height=${safeHeight.toFixed(3)}, stroke_color=BLUE, stroke_width=2, fill_opacity=0).move_to([0, 0, 0])`;
+      const textCode = `debug_score_${index} = Text(${escapeForPythonString(`DEBUG ${sceneId} | score ${layout?.score.total ?? presentationPlan.score.total} | iteration ${debugIteration}`)}, font_size=14, color=BLUE).to_corner(DR)`;
+      return { enter: `${safeCode}\n${boxes.join('\n')}\n${textCode}\ndebug_group_${index} = VGroup(${groupItems.join(', ')})\nself.add(debug_group_${index})`, exit: `self.remove(debug_group_${index})` };
+    };
+
     const pedagogicalBlock = pedagogicalScenes.length
       ? pedagogicalScenes.map((pedScene, i) => {
           const duration = Math.max(4, pedScene.duration ?? pedScene.estimatedDuration);
@@ -432,7 +454,9 @@ export const manim = {
         content_${i}.move_to(DOWN * ${stageContentY.toFixed(2)})
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
+        ${debugOverlayForScene(pedScene.id, i).enter}
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
+        ${debugOverlayForScene(pedScene.id, i).exit}
         self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
 `;
           }
@@ -452,8 +476,10 @@ export const manim = {
         graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP)
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, root_3_${i}, root_2_label_${i}, root_3_label_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
+        ${debugOverlayForScene(pedScene.id, i).enter}
         self.play(FadeIn(root_2_${i}), FadeIn(root_3_${i}), Write(root_2_label_${i}), Write(root_3_label_${i}), FadeIn(graph_title_${i}), run_time=2)
         self.wait(max(0.5, ${duration.toFixed(2)} - 5.5))
+        ${debugOverlayForScene(pedScene.id, i).exit}
         self.play(FadeOut(graph_group_${i}), run_time=1)
 `;
           }
@@ -472,7 +498,9 @@ export const manim = {
         content_${i} = ${recapContent}
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
+        ${debugOverlayForScene(pedScene.id, i).enter}
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
+        ${debugOverlayForScene(pedScene.id, i).exit}
         self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
 `;
           }
@@ -496,7 +524,9 @@ export const manim = {
         content_${i} = ${compactGroup}
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
+        ${debugOverlayForScene(pedScene.id, i).enter}
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
+        ${debugOverlayForScene(pedScene.id, i).exit}
         self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
 `;
           }
@@ -508,7 +538,9 @@ export const manim = {
         content_${i} = ${contentGroup}.scale_to_fit_height(${contentHeight}).scale(${compactScale}).move_to(DOWN * ${compactY})
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
+        ${debugOverlayForScene(pedScene.id, i).enter}
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
+        ${debugOverlayForScene(pedScene.id, i).exit}
         self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
 `;
         }).join('\n')

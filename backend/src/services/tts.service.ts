@@ -6,7 +6,35 @@ import * as path from 'path';
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
+const DEFAULT_NEURAL_VOICE = 'es-MX-DaliaNeural';
+const DEFAULT_NEURAL_RATE = '-8%';
+
 const escapeSingleQuotes = (value: string): string => value.replace(/'/g, "''");
+
+const removeIfExists = (filePath: string): void => {
+  try {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  } catch {
+    // Best-effort cleanup; invalid output is still rejected below.
+  }
+};
+
+const isValidAudioFile = async (filePath: string): Promise<boolean> => {
+  try {
+    const stat = await fs.promises.stat(filePath);
+    if (!stat.isFile() || stat.size < 1024) return false;
+
+    const { stdout } = await execFileAsync(
+      'ffprobe',
+      ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', filePath],
+      { timeout: 5000, killSignal: 'SIGKILL' },
+    );
+    const duration = Number.parseFloat(stdout.trim());
+    return Number.isFinite(duration) && duration > 0;
+  } catch {
+    return false;
+  }
+};
 
 const buildWindowsTtsCommand = (outputPath: string, text: string): string => {
   const safeOutput = outputPath.replace(/'/g, "''");
@@ -15,8 +43,8 @@ const buildWindowsTtsCommand = (outputPath: string, text: string): string => {
 };
 
 const getEdgeTtsArgs = (outputPath: string, text: string, style: 'warm_teacher' | 'neutral_teacher'): string[] => [
-  `--voice=${process.env.TTS_NEURAL_VOICE || 'es-MX-DaliaNeural'}`,
-  `--rate=${style === 'warm_teacher' ? (process.env.TTS_NEURAL_RATE || '-8%') : '-10%'}`,
+  `--voice=${process.env.TTS_NEURAL_VOICE || DEFAULT_NEURAL_VOICE}`,
+  `--rate=${style === 'warm_teacher' ? (process.env.TTS_NEURAL_RATE || DEFAULT_NEURAL_RATE) : '-10%'}`,
   '--text', text,
   '--write-media', outputPath,
 ];
@@ -47,14 +75,22 @@ export const tts = {
     const style = options.style || 'warm_teacher';
 
     if (provider !== 'espeak' && provider !== 'local') {
+      removeIfExists(neuralOutputPath);
       try {
         await execFileAsync('edge-tts', getEdgeTtsArgs(neuralOutputPath, normalized, style), {
           timeout: 45000,
           killSignal: 'SIGKILL',
         });
-        if (fs.existsSync(neuralOutputPath)) return neuralOutputPath;
+        if (await isValidAudioFile(neuralOutputPath)) return neuralOutputPath;
+        removeIfExists(neuralOutputPath);
+        throw new Error('Edge TTS produjo un archivo vacío o no decodificable');
       } catch (error) {
-        console.warn('⚠️ TTS neural no disponible; se usará fallback local:', error instanceof Error ? error.message : error);
+        removeIfExists(neuralOutputPath);
+        console.warn('⚠️ TTS neural no disponible:', error instanceof Error ? error.message : error);
+        if (process.env.TTS_ALLOW_LOCAL_FALLBACK !== 'true') {
+          console.warn('⚠️ Fallback local deshabilitado para conservar la voz neural aprobada.');
+          return '';
+        }
       }
     }
 
@@ -72,7 +108,8 @@ export const tts = {
         timeout: 15000,
         killSignal: 'SIGKILL',
       });
-      if (fs.existsSync(outputPath)) return outputPath;
+      if (await isValidAudioFile(outputPath)) return outputPath;
+      removeIfExists(outputPath);
     } catch (error) {
       console.warn('⚠️ espeak TTS falló:', error instanceof Error ? error.message : error);
     }

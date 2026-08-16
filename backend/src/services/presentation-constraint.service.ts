@@ -1,5 +1,5 @@
 import type { MathDesignTokens, PresentationCanvas } from './presentation-design.service.js';
-import type { BoundingBox, ConstraintResult, LayoutDiagnostic, ResolvedSceneLayout, VisualSceneSpec, VisualScore } from './presentation.types.js';
+import { DEFAULT_VISUAL_SCORE_WEIGHTS, type BoundingBox, type ConstraintResult, type LayoutDiagnostic, type ResolvedSceneLayout, type VisualSceneSpec, type VisualScore, type VisualScoreWeights } from './presentation.types.js';
 
 const intersectionArea = (a: BoundingBox, b: BoundingBox): number => {
   const width = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
@@ -12,22 +12,36 @@ const inside = (box: BoundingBox, area: BoundingBox): boolean => {
   return box.x >= area.x - epsilon && box.y >= area.y - epsilon && box.x + box.width <= area.x + area.width + epsilon && box.y + box.height <= area.y + area.height + epsilon;
 };
 
-export const calculateVisualScore = (constraints: ConstraintResult[], density: number, blockCount: number, critical = false): VisualScore => {
+export const calculateVisualScore = (
+  constraints: ConstraintResult[],
+  density: number,
+  blockCount: number,
+  critical = false,
+  configuredWeights: Partial<VisualScoreWeights> = {},
+): VisualScore => {
+  const weights = { ...DEFAULT_VISUAL_SCORE_WEIGHTS, ...configuredWeights };
   const errors = constraints.filter((constraint) => !constraint.passed && constraint.severity === 'error').length;
   const warnings = constraints.filter((constraint) => !constraint.passed && constraint.severity === 'warning').length;
-  const base = 100 - errors * 22 - warnings * 5;
   const geometry = constraints.filter((constraint) => ['SAFE_FRAME', 'NO_OVERLAP', 'CHART_CONTAINMENT'].includes(constraint.code) && constraint.passed).length >= 3 ? 100 : 68;
   const readability = constraints.some((constraint) => constraint.code === 'MIN_READABLE_SIZE' && !constraint.passed) ? 45 : 96;
   const hierarchy = blockCount > 0 ? 92 : 35;
   const spacing = density > 0.68 ? 52 : density > 0.5 ? 78 : 94;
-  const consistency = 94;
+  const consistency = warnings > 2 ? 78 : 94;
   const densityScore = Math.round(Math.max(0, Math.min(100, 100 - density * 100)));
   const semanticClarity = blockCount <= 8 ? 94 : 72;
-  const total = Math.max(0, Math.min(100, Math.round((base + geometry + readability + hierarchy + spacing + consistency + densityScore + semanticClarity) / 8)));
+  const weightedTotal = (
+    geometry * weights.geometry
+    + readability * weights.readability
+    + hierarchy * weights.hierarchy
+    + spacing * weights.spacing
+    + consistency * weights.consistency
+    + semanticClarity * weights.pedagogicalClarity
+  ) / Math.max(1, Object.values(weights).reduce((sum, weight) => sum + Math.max(0, weight), 0));
+  const total = Math.max(0, Math.min(100, Math.round(weightedTotal - errors * 8 - warnings * 2)));
   return { total, geometry, readability, hierarchy, spacing, consistency, density: densityScore, semanticClarity, critical: critical || errors > 0 };
 };
 
-export const validateSceneConstraints = (scene: VisualSceneSpec, canvas: PresentationCanvas, tokens: MathDesignTokens): { constraints: ConstraintResult[]; diagnostics: LayoutDiagnostic[]; score: VisualScore } => {
+export const validateSceneConstraints = (scene: VisualSceneSpec, canvas: PresentationCanvas, tokens: MathDesignTokens, configuredWeights: Partial<VisualScoreWeights> = {}): { constraints: ConstraintResult[]; diagnostics: LayoutDiagnostic[]; score: VisualScore } => {
   const constraints: ConstraintResult[] = [];
   const diagnostics: LayoutDiagnostic[] = [];
   const blocks = scene.blocks.filter((block) => block.resolved);
@@ -69,15 +83,15 @@ export const validateSceneConstraints = (scene: VisualSceneSpec, canvas: Present
   constraints.push({ code: 'VISUAL_DENSITY', passed: densityPassed, severity: 'warning', message: densityPassed ? 'La densidad visual está dentro del umbral.' : 'La densidad visual supera el umbral recomendado.', details: { density, maxDensity: tokens.maxDensity } });
 
   const critical = constraints.some((constraint) => !constraint.passed && constraint.severity === 'error');
-  const score = calculateVisualScore(constraints, density, blocks.length, critical);
+  const score = calculateVisualScore(constraints, density, blocks.length, critical, configuredWeights);
   return { constraints, diagnostics, score };
 };
 
-export const validateResolvedScene = (scene: VisualSceneSpec, layout: ResolvedSceneLayout, canvas: PresentationCanvas, tokens: MathDesignTokens): { constraints: ConstraintResult[]; diagnostics: LayoutDiagnostic[]; score: VisualScore } => {
+export const validateResolvedScene = (scene: VisualSceneSpec, layout: ResolvedSceneLayout, canvas: PresentationCanvas, tokens: MathDesignTokens, configuredWeights: Partial<VisualScoreWeights> = {}): { constraints: ConstraintResult[]; diagnostics: LayoutDiagnostic[]; score: VisualScore } => {
   const clone: VisualSceneSpec = { ...scene, blocks: scene.blocks.map((block) => ({ ...block })) };
   clone.blocks.forEach((block) => {
     const resolved = layout.blocks.find((item) => item.blockId === block.id);
     if (resolved) block.resolved = resolved;
   });
-  return validateSceneConstraints(clone, canvas, tokens);
+  return validateSceneConstraints(clone, canvas, tokens, configuredWeights);
 };

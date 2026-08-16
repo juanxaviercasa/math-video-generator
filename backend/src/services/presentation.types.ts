@@ -131,6 +131,10 @@ export interface VisualQAReport {
   engineVersion: string;
   sceneReports: Array<{ sceneId: string; constraints: ConstraintResult[]; score: VisualScore; sampleFrames?: string[] }>;
   aiReviews?: Array<{ sceneId: string; status: 'skipped' | 'completed' | 'failed'; diagnostics: Array<{ category: string; severity: 'info' | 'warning' | 'error'; message: string; confidence?: number }> }>;
+  issues?: VisualIssue[];
+  score?: VisualScore;
+  debugOverlays?: VisualDebugOverlaySpec[];
+  repairIterations?: number;
   errors: string[];
   warnings: string[];
   passed: boolean;
@@ -142,4 +146,75 @@ export interface RepairAction {
   blockIds?: string[];
   parameters?: Record<string, number | string | boolean>;
   reason: string;
+}
+
+
+export type VisualIssueSeverity = 'info' | 'warning' | 'error';
+
+export interface VisualIssue {
+  type: string;
+  severity: VisualIssueSeverity;
+  element: string;
+  scene: string;
+  measuredValue: number | string | boolean;
+  expectedValue: number | string | boolean;
+  suggestedRepair: string;
+  reason: string;
+  repairAction?: RepairAction;
+}
+
+export interface VisualScoreWeights {
+  geometry: number;
+  readability: number;
+  hierarchy: number;
+  spacing: number;
+  consistency: number;
+  pedagogicalClarity: number;
+}
+
+export const DEFAULT_VISUAL_SCORE_WEIGHTS: VisualScoreWeights = {
+  geometry: 25,
+  readability: 20,
+  hierarchy: 20,
+  spacing: 15,
+  consistency: 10,
+  pedagogicalClarity: 10,
+};
+
+export interface VisualReviewerContext {
+  screenshotPath: string;
+  scene: VisualSceneSpec;
+  plan: PresentationPlan;
+  pedagogicalObjective: string;
+  solutionContext: string;
+}
+
+export interface VisualReviewerResult {
+  score: Partial<VisualScore>;
+  issues: VisualIssue[];
+  summary: string;
+}
+
+export interface VisualReviewer {
+  readonly name: string;
+  review(context: VisualReviewerContext): Promise<VisualReviewerResult>;
+}
+
+export interface VisualDebugOverlaySpec {
+  enabled: boolean;
+  sceneId: string;
+  safeArea: BoundingBox;
+  guides: BoundingBox[];
+  elements: Array<{ id: string; bbox: BoundingBox; priority: VisualPriority; role: VisualBlockRole }>;
+  collisions: Array<{ firstId: string; secondId: string; bbox: BoundingBox }>;
+  overflows: string[];
+  visualScore: VisualScore;
+  repairIteration: number;
+}
+
+export interface VisualQAConfig {
+  scoreWeights?: Partial<VisualScoreWeights>;
+  reviewer?: VisualReviewer;
+  debug?: boolean;
+  maxRepairIterations?: number;
 }

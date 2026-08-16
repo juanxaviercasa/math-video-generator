@@ -159,6 +159,18 @@ export const ffmpeg = {
   async concatenateAudio(audioPaths: string[], outputPath: string): Promise<string> {
     if (!audioPaths.length) throw new Error('No hay segmentos de audio para concatenar');
 
+    for (const audioPath of audioPaths) {
+      if (!fs.existsSync(audioPath) || fs.statSync(audioPath).size < 1024) {
+        throw new Error(`Segmento de audio inválido o vacío: ${audioPath}`);
+      }
+      const metadata = await this.getVideoInfo(audioPath);
+      const audioStream = metadata?.streams?.find((stream: any) => stream.codec_type === 'audio');
+      const duration = Number(metadata?.format?.duration);
+      if (!audioStream || !Number.isFinite(duration) || duration <= 0) {
+        throw new Error(`Segmento de audio no decodificable: ${audioPath}`);
+      }
+    }
+
     const concatPath = path.join(path.dirname(outputPath), `${path.basename(outputPath)}.concat.txt`);
     const concatContent = audioPaths
       .map((audioPath) => `file '${path.resolve(audioPath).replace(/'/g, "'\\\\''")}'`)

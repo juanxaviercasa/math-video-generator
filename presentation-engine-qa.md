@@ -12,3 +12,7 @@ El portrait v2 centra los cuatro micro-pasos en una pila vertical: fórmula base
 El render narrado `render_presentation_engine_narrated_final_1786918532` completó con `presentationPlanVersion=math-presentation-engine-v1`, `presentationScore=87`, `visualQaPassed=true`, sin warnings de frames vacíos y con duración de aproximadamente 143 segundos.
 
 La hoja de contacto y el frame nativo de simplificación del release narrado fueron inspeccionados. La escena de simplificación conserva la fórmula de referencia (`x = (−(−5) ± √1)/(2(1))`) y la operación activa (`x = (5 ± 1)/2`) dentro del panel, sin recorte ni superposición. El tamaño es legible en 854×480 y el espacio restante funciona como separación visual; no se detecta un fallo crítico.
+
+## Diagnóstico de voz neural solicitado por el usuario
+
+La referencia aprobada `render_responsive_warm_fixed_1786908979` contiene audio neural segmentado válido en MP3 a 24 kHz y el video final conserva AAC a 24 kHz. El render `render_presentation_engine_narrated_final_1786918532` creó archivos MP3 de 0 bytes y continuó silenciosamente con WAV de fallback a 22.05 kHz; por tanto, aunque la configuración nominal seguía siendo `es-MX-DaliaNeural`, la voz escuchada no era la neural aprobada. El pipeline debe validar que el archivo neural sea no vacío y decodificable, eliminar artefactos parciales y no degradar silenciosamente a espeak cuando `TTS_PROVIDER=edge` sea explícito.

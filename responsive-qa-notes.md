@@ -16,3 +16,7 @@ El render v3 ya presenta correctamente la jerarquía solicitada: etiqueta de eta
 El candidato 16:9 final cumple la corrección: la fórmula de partida aparece arriba, la operación `x = (5 ± 1) / 2` aparece debajo, ambas están centradas, legibles y separadas del encabezado y del borde inferior. El grupo conserva aire visual dentro del panel.
 
 La revisión de resolución nativa confirma que la composición de micro-pasos funciona en 1:1 (480×480) y 9:16 (480×854). La fórmula de partida aparece arriba, la operación activa debajo y ninguna fracción sale del panel. El vertical aprovecha el espacio alto sin inflar la tipografía; el cuadrado conserva una lectura equilibrada.
+
+La revisión del render narrado final encontró una excepción importante: las escenas de dos etapas (`formula-substitution` y `formula-simplify`) ya se ven bien, pero la escena de cuatro etapas (`discriminant-calculate`) todavía excede el panel vertical. La primera fórmula invade el encabezado y el resultado queda cortado. El auditor debe usar un factor adicional para escenas con cuatro etapas: menor tamaño de fórmula, etiquetas más pequeñas, menor separación y una altura reservada específica.
+
+La composición v2 del discriminante queda aprobada visualmente: `Δ = b² − 4ac` aparece como fórmula base en la parte superior; debajo se muestran `Reemplazamos`, `Operamos` y `Resultado` en una fila ordenada. El contenido está centrado, legible y dentro del panel en 16:9.

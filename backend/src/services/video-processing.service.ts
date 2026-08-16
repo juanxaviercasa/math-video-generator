@@ -6,6 +6,8 @@ import { validateMathProblem, type MathValidation } from './math-validation.serv
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
 import { buildQuadraticStoryboard } from './pedagogy.service.js';
 import { getVideoFormatProfile, type VideoAspectRatio, type VideoQuality } from './video-format.service.js';
+import { buildPresentationPlan, repairPresentationPlan } from './presentation-engine.service.js';
+import { auditRenderedVideo } from './visual-qa.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -53,6 +55,10 @@ interface VideoGenerationProgress {
   error?: string;
   duration?: number;
   validation?: MathValidation;
+  presentationScore?: number;
+  presentationPlanVersion?: string;
+  visualQaPassed?: boolean;
+  visualQaWarnings?: string[];
 }
 
 export const videoProcessing = {
@@ -181,6 +187,25 @@ export const videoProcessing = {
         console.log('🔇 Narración deshabilitada por el usuario');
       }
 
+      let presentationPlan = buildPresentationPlan({
+        problem: content,
+        validation,
+        pedagogicalScenes,
+        aspectRatio,
+        quality,
+        density: layoutDensity,
+      });
+      if (!presentationPlan.passed) {
+        presentationPlan = repairPresentationPlan(presentationPlan, 3);
+      }
+      progress.presentationScore = presentationPlan.score.total;
+      progress.presentationPlanVersion = presentationPlan.engineVersion;
+      report();
+      if (!presentationPlan.passed) {
+        const criticalDiagnostics = presentationPlan.diagnostics.filter((diagnostic) => diagnostic.severity === 'error');
+        throw new Error(`La composición no superó las restricciones visuales después de reparar: ${criticalDiagnostics.map((diagnostic) => diagnostic.message).join('; ')}`);
+      }
+
       // 3. Renderizar con Manim
       console.log('📝 Generando animaciones...');
       progress.progress = 30;
@@ -198,6 +223,7 @@ export const videoProcessing = {
         formatProfile,
         layoutDensity,
         narrationStyle,
+        presentationPlan,
       };
 
       const videoPath = await manim.renderVideo(manimScene);
@@ -237,6 +263,14 @@ export const videoProcessing = {
           audioPath: narrationAudioPath,
           outputPath: narratedVideoPath,
         });
+      }
+
+      const visualQa = await auditRenderedVideo(processedPath, presentationPlan, outputDir);
+      progress.visualQaPassed = visualQa.passed;
+      progress.visualQaWarnings = visualQa.warnings;
+      report();
+      if (!visualQa.passed) {
+        throw new Error(`El video no superó el QA visual: ${visualQa.errors.join('; ')}`);
       }
 
       progress.progress = 85;

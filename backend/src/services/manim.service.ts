@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { SynchronizedScene } from './synchronization.service.js';
+import type { PresentationPlan } from './presentation.types.js';
 import { getVideoFormatProfile, type VideoFormatProfile } from './video-format.service.js';
 
 const execAsync = promisify(exec);
@@ -55,6 +56,7 @@ interface ManimScene {
   formatProfile?: VideoFormatProfile;
   layoutDensity?: 'comfortable' | 'compact';
   narrationStyle?: 'warm_teacher' | 'neutral_teacher';
+  presentationPlan?: PresentationPlan;
 }
 
 const escapeForPythonString = (value: string): string => JSON.stringify(value);
@@ -320,7 +322,7 @@ export const manim = {
    * Generar script Python de Manim para una animación matemática
    */
   generatePythonScript(scene: ManimScene, useLatex = latexCompilerAvailable()): string {
-    const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [] } = scene;
+    const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [], presentationPlan } = scene;
     const formatProfile = scene.formatProfile || getVideoFormatProfile('16:9', 'medium');
     const panelWidth = formatProfile.panelWidth.toFixed(2);
     const panelHeight = formatProfile.panelHeight.toFixed(2);
@@ -417,10 +419,10 @@ export const manim = {
               const detail = stage.detail ? `, Text(${escapeForPythonString(stage.detail)}, font_size=13, color=GREY_B)` : '';
               return `VGroup(${label}, ${formula}${detail}).arrange(DOWN, buff=0.10)`;
             });
-            const stageContentY = formatProfile.orientation === 'portrait' ? 0.50 : 0.42;
-            const stageArrangement = visualStages.length >= 4
+            const stageContentY = formatProfile.orientation === 'portrait' ? 0.05 : 0.42;
+            const stageArrangement = visualStages.length >= 4 && formatProfile.orientation !== 'portrait'
               ? `VGroup(${stageObjects[0]}, VGroup(${stageObjects.slice(1).join(', ')}).arrange(RIGHT, buff=0.28)).arrange(DOWN, buff=0.30)`
-              : `VGroup(${stageObjects.join(', ')}).arrange(DOWN, buff=0.30)`;
+              : `VGroup(${stageObjects.join(', ')}).arrange(DOWN, buff=${formatProfile.orientation === 'portrait' ? '0.22' : '0.30'})`;
             return `
         # Storyboard pedagógico: micro-pasos de ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -610,6 +612,7 @@ from manim import *
 
 class ${className}(Scene):
     def construct(self):
+        # Math Presentation Engine: ${presentationPlan?.engineVersion || 'legacy'} | score=${presentationPlan?.score.total ?? 'n/a'}
         self.camera.frame_width = ${formatProfile.frameWidth}
         self.camera.frame_height = ${formatProfile.frameHeight}
         # Título científico con estilo tipo revista

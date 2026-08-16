@@ -1,0 +1,10 @@
+
+La hoja de contacto cuadrada y vertical muestra los paneles centrados, pero su método de composición reduce demasiado las capturas para compararlas en una cuadrícula. No se tomará esa miniatura como criterio de legibilidad; se inspeccionarán fotogramas nativos de cada formato y se generarán contactos normalizados con padding visual, manteniendo la relación de aspecto.
+
+La segunda regresión corrigió el fallo de escalado: en resolución nativa, 16:9 (854×480) y 1:1 (480×480) muestran `Paso 1`, `Paso 2` y `Paso 3` completamente dentro del panel, con el encabezado separado y márgenes visibles. La causa era que `scale_to_fit_width` se ejecutaba después de limitar altura y volvía a agrandar el grupo.
+
+La inspección nativa de 9:16 (480×854) también quedó dentro de límites: la ecuación del discriminante, `25 − 24` y los tres micro pasos se apilan verticalmente sin salir del panel. La fórmula es más ancha, pero conserva margen lateral dentro del marco seguro.
+
+La revisión del render narrado final detectó tres regresiones visuales que deben corregirse antes de publicar: la tarjeta `a, b y c` desborda horizontalmente y solo deja visible parte de los coeficientes; la escena `Dos soluciones` corta los extremos izquierdo y derecho; y la recapitulación corta las etiquetas inferiores. La escena de discriminante y la fórmula vertical sí quedaron contenidas. La causa probable es el límite por ancho aplicado a grupos con columnas: el ancho de cada par fórmula-caption excede el ancho disponible y el escalado posterior por altura no lo reduce de forma suficiente. Se requiere una composición específica: coeficientes apilados o tarjetas compactas, ramas en fila con fórmulas reducidas o apiladas, y recapitulación con etiquetas en una columna o texto más pequeño.
+
+La segunda revisión del render narrado confirma la corrección: `a = 1`, `b = -5` y `c = 6` aparecen simultáneamente con sus explicaciones; las dos ramas muestran las fracciones completas y sus etiquetas; y la recapitulación conserva `x₁ = 3`, `x₂ = 2` y las cuatro acciones pedagógicas dentro del panel. El tono cálido se renderizó con voz neural y el job terminó con video H.264 y audio AAC.

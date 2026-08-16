@@ -20,6 +20,9 @@ export const videoGenerationSchema = z
       .min(1, 'El contenido matemático es obligatorio')
       .max(10000, 'El contenido no puede superar 10000 caracteres'),
     quality: z.enum(['low', 'medium', 'high']).default('medium'),
+    aspectRatio: z.enum(['16:9', '1:1', '9:16']).default('16:9'),
+    layoutDensity: z.enum(['comfortable', 'compact']).default('comfortable'),
+    narrationStyle: z.enum(['warm_teacher', 'neutral_teacher']).default('warm_teacher'),
     enableNarration: z.boolean().default(true),
     aiProvider: z.enum(['openrouter', 'gemini', 'openai']).default('openrouter'),
     enableComfyUI: z.boolean().default(false),

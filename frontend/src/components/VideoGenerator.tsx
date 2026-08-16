@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { api, PreviewResponse } from '../services/api'
 import { useVideoStore } from '../store/video.store'
+import { InteractiveMathEditor } from './InteractiveMathEditor'
+import { InteractiveLessonPreview } from './InteractiveLessonPreview'
 
 type VideoGeneratorProps = {
   onGenerated?: () => void
@@ -10,6 +12,9 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('medium')
+  const [aspectRatio, setAspectRatio] = useState<'16:9' | '1:1' | '9:16'>('16:9')
+  const [layoutDensity, setLayoutDensity] = useState<'comfortable' | 'compact'>('comfortable')
+  const [narrationStyle, setNarrationStyle] = useState<'warm_teacher' | 'neutral_teacher'>('warm_teacher')
   const [enableNarration, setEnableNarration] = useState(true)
   const [aiProvider, setAiProvider] = useState<'openrouter' | 'gemini' | 'openai'>('openrouter')
   const [enableComfyUI, setEnableComfyUI] = useState(false)
@@ -30,7 +35,7 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
 
     setPreviewLoading(true)
     try {
-      const result = await api.preview({ title, content })
+      const result = await api.preview({ title, content, aspectRatio, layoutDensity, narrationStyle })
       setPreview(result)
       setSteps(result.steps)
       if (result.requiresReview) {
@@ -73,6 +78,9 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
         title,
         content,
         quality,
+        aspectRatio,
+        layoutDensity,
+        narrationStyle,
         enableNarration,
         aiProvider,
         enableComfyUI,
@@ -175,6 +183,7 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
             className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 transition min-h-32"
             disabled={loading}
           />
+          <InteractiveMathEditor value={content} onChange={setContent} disabled={loading} />
           <button
             type="button"
             onClick={handlePreview}
@@ -187,6 +196,12 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
 
         {preview && (
           <div className="rounded border border-slate-600 bg-slate-700/40 p-4">
+            <InteractiveLessonPreview validation={preview.validation} steps={steps} />
+            <div className="mt-3 grid grid-cols-3 gap-2 rounded border border-slate-600 bg-slate-900/70 p-3 text-center text-[11px] text-slate-300">
+              <div><span className="block text-slate-500">Canvas</span>{preview.formatProfile.width} × {preview.formatProfile.height}</div>
+              <div><span className="block text-slate-500">Orientación</span>{preview.formatProfile.orientation}</div>
+              <div><span className="block text-slate-500">Safe margin</span>{preview.formatProfile.safeMargin}u</div>
+            </div>
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-white">Guion editable</h3>
@@ -235,6 +250,47 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
             <option value="medium">Media (1080p)</option>
             <option value="high">Alta (4K)</option>
           </select>
+        </div>
+
+        {/* Formato de salida */}
+        <div className="rounded border border-slate-600 bg-slate-700/40 p-4">
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-white">Formato del video</label>
+            <p className="mt-1 text-xs text-slate-400">El contenido se compone dentro de una zona segura; nunca se estira para llenar a la fuerza.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: '16:9', label: '16:9', hint: 'YouTube / Facebook', shape: 'aspect-video' },
+              { value: '1:1', label: '1:1', hint: 'Instagram', shape: 'aspect-square' },
+              { value: '9:16', label: '9:16', hint: 'Reels / Shorts', shape: 'aspect-[9/16]' },
+            ].map((format) => (
+              <button
+                type="button"
+                key={format.value}
+                onClick={() => setAspectRatio(format.value as '16:9' | '1:1' | '9:16')}
+                className={`rounded border p-2 text-left transition ${aspectRatio === format.value ? 'border-blue-400 bg-blue-500/20 text-white' : 'border-slate-600 bg-slate-800 text-slate-300 hover:border-slate-400'}`}
+                disabled={loading}
+              >
+                <span className={`mx-auto mb-2 block w-10 rounded border border-blue-300/70 bg-slate-950 ${format.shape}`} />
+                <span className="block text-xs font-semibold">{format.label}</span>
+                <span className="block text-[10px] text-slate-400">{format.hint}</span>
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="text-xs text-slate-300">Densidad visual
+              <select value={layoutDensity} onChange={(event) => setLayoutDensity(event.target.value as 'comfortable' | 'compact')} className="mt-1 w-full rounded border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-white" disabled={loading}>
+                <option value="comfortable">Cómoda: más aire y lectura</option>
+                <option value="compact">Compacta: más contenido por escena</option>
+              </select>
+            </label>
+            <label className="text-xs text-slate-300">Tono de narración
+              <select value={narrationStyle} onChange={(event) => setNarrationStyle(event.target.value as 'warm_teacher' | 'neutral_teacher')} className="mt-1 w-full rounded border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-white" disabled={loading}>
+                <option value="warm_teacher">Docente cercano y motivador</option>
+                <option value="neutral_teacher">Docente claro y neutral</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         {/* Narración */}

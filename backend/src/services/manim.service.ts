@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { SynchronizedScene } from './synchronization.service.js';
+import { getVideoFormatProfile, type VideoFormatProfile } from './video-format.service.js';
 
 const execAsync = promisify(exec);
 
@@ -51,6 +52,9 @@ interface ManimScene {
   content?: string;
   synchronizedScenes?: SynchronizedScene[];
   pedagogicalScenes?: Array<SynchronizedScene & { visualLatex?: string[]; visualTextLines?: string[]; emphasis?: string; layout?: string }>;
+  formatProfile?: VideoFormatProfile;
+  layoutDensity?: 'comfortable' | 'compact';
+  narrationStyle?: 'warm_teacher' | 'neutral_teacher';
 }
 
 const escapeForPythonString = (value: string): string => JSON.stringify(value);
@@ -317,6 +321,14 @@ export const manim = {
    */
   generatePythonScript(scene: ManimScene, useLatex = latexCompilerAvailable()): string {
     const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [] } = scene;
+    const formatProfile = scene.formatProfile || getVideoFormatProfile('16:9', 'medium');
+    const panelWidth = formatProfile.panelWidth.toFixed(2);
+    const panelHeight = formatProfile.panelHeight.toFixed(2);
+    const contentWidth = formatProfile.contentWidth.toFixed(2);
+    const headerY = Math.max(0.8, formatProfile.panelHeight / 2 - 0.45).toFixed(2);
+    const contentY = Math.min(0.5, formatProfile.panelHeight * 0.05).toFixed(2);
+    const graphXLength = Math.max(3.8, Math.min(formatProfile.panelWidth - 1.0, formatProfile.frameWidth * 0.72)).toFixed(2);
+    const graphYLength = Math.max(4.0, Math.min(formatProfile.panelHeight - 1.8, formatProfile.frameHeight * 0.54)).toFixed(2);
 
     // Sanitizar nombre de archivo
     const safeName = title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
@@ -379,7 +391,7 @@ export const manim = {
           );
           const allObjects = [...mathObjects, ...textObjects];
           const contentGroup = allObjects.length
-            ? `VGroup(${allObjects.join(', ')}).arrange(DOWN, buff=0.18).scale_to_fit_width(11.5)`
+            ? `VGroup(${allObjects.join(', ')}).arrange(DOWN, buff=0.18).scale_to_fit_width(${contentWidth})`
             : `Text(${escapeForPythonString(emphasis)}, font_size=42, color=WHITE)`;
           const compactScale = pedScene.layout === 'hero'
             ? '0.9'
@@ -388,14 +400,18 @@ export const manim = {
               : pedScene.layout === 'equation' && latexLines.length > 1
                 ? '0.88'
                 : '1';
-          const compactY = '0.4';
-          const contentHeight = pedScene.layout === 'hero' ? '3.7' : '4.0';
+          const compactY = contentY;
+          const contentHeight = pedScene.layout === 'equation'
+            ? Math.min(formatProfile.orientation === 'portrait' ? 5.2 : 3.2, formatProfile.contentHeight).toFixed(2)
+            : pedScene.layout === 'hero'
+              ? Math.min(3.7, formatProfile.contentHeight).toFixed(2)
+              : Math.min(4.0, formatProfile.contentHeight).toFixed(2);
 
           if (pedScene.layout === 'graph') {
             return `
         # Storyboard pedagógico: gráfica a pantalla completa
-        panel_${i} = RoundedRectangle(width=13.5, height=7.0, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
-        axes_${i} = Axes(x_range=[-1, 6, 1], y_range=[-4, 5, 1], x_length=10, y_length=5, axis_config={"include_tip": True}).shift(DOWN * 0.2)
+        panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        axes_${i} = Axes(x_range=[-1, 6, 1], y_range=[-4, 5, 1], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).shift(DOWN * 0.2)
         curve_${i} = axes_${i}.plot(lambda x: (x - 2) * (x - 3), x_range=[-0.5, 5.5], color=YELLOW)
         x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x"))
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
@@ -413,13 +429,16 @@ export const manim = {
           }
 
           if (pedScene.layout === 'recap') {
-            const recapMath = latexLines.map((line) => `MathTex(${escapeForPythonString(line)}, font_size=48, color=YELLOW)`);
-            const recapLabels = textLines.map((line) => `Text(${escapeForPythonString(line)}, font_size=28, color=GREY_B)`);
-            const recapContent = `VGroup(VGroup(${recapMath.join(', ')}).arrange(RIGHT, buff=0.9), VGroup(${recapLabels.join(', ')}).arrange(RIGHT, buff=0.35)).arrange(DOWN, buff=0.65).scale_to_fit_width(11.5).scale_to_fit_height(4.2).move_to(DOWN * 0.35)`;
+            const recapMath = latexLines.map((line) => `MathTex(${escapeForPythonString(line)}, font_size=40, color=YELLOW)`);
+            const recapLabels = textLines.map((line) => `Text(${escapeForPythonString(line)}, font_size=18, color=GREY_B)`);
+            const recapMathDirection = formatProfile.orientation === 'portrait' ? 'DOWN' : 'RIGHT';
+            const recapLabelsDirection = formatProfile.orientation === 'portrait' ? 'DOWN' : 'RIGHT';
+            const recapFit = formatProfile.orientation === 'portrait' ? `.scale_to_fit_height(${contentHeight})` : `.scale_to_fit_width(${contentWidth})`;
+            const recapContent = `VGroup(VGroup(${recapMath.join(', ')}).arrange(${recapMathDirection}, buff=0.55), VGroup(${recapLabels.join(', ')}).arrange(${recapLabelsDirection}, buff=0.25)).arrange(DOWN, buff=0.5)${recapFit}.move_to(DOWN * ${contentY})`;
             return `
         # Storyboard pedagógico: recapitulación
-        panel_${i} = RoundedRectangle(width=13.5, height=7.0, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
-        header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * 2.85)
+        panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * ${headerY})
         content_${i} = ${recapContent}
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
@@ -430,17 +449,20 @@ export const manim = {
 
           if (pedScene.layout === 'card' || pedScene.layout === 'split') {
             const pairCount = Math.max(latexLines.length, textLines.length);
+            const formulaFontSize = pedScene.id === 'coefficients' ? 32 : pedScene.id === 'solution-branches' ? 30 : 40;
+            const captionFontSize = pedScene.id === 'coefficients' ? 16 : pedScene.id === 'solution-branches' ? 18 : 22;
             const pairObjects = Array.from({ length: pairCount }, (_, pairIndex) => {
-              const formula = latexLines[pairIndex] ? `MathTex(${escapeForPythonString(latexLines[pairIndex])}, font_size=40, color=YELLOW)` : `Text("", font_size=24)`;
-              const caption = textLines[pairIndex] ? `Text(${escapeForPythonString(textLines[pairIndex])}, font_size=22, color=GREY_B)` : `Text("", font_size=22)`;
+              const formula = latexLines[pairIndex] ? `MathTex(${escapeForPythonString(latexLines[pairIndex])}, font_size=${formulaFontSize}, color=YELLOW)` : `Text("", font_size=24)`;
+              const caption = textLines[pairIndex] ? `Text(${escapeForPythonString(textLines[pairIndex])}, font_size=${captionFontSize}, color=GREY_B)` : `Text("", font_size=${captionFontSize})`;
               return `VGroup(${formula}, ${caption}).arrange(DOWN, buff=0.18)`;
             });
-            const arrangement = pedScene.layout === 'card' ? 'RIGHT' : 'RIGHT';
-            const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=0.55).scale_to_fit_width(11.5).move_to(DOWN * 0.7)`;
+            const arrangement = formatProfile.orientation === 'portrait' ? 'DOWN' : 'RIGHT';
+            const cardFit = formatProfile.orientation === 'portrait' ? `.scale_to_fit_height(${contentHeight})` : `.scale_to_fit_width(${contentWidth})`;
+            const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=${formatProfile.orientation === 'portrait' ? '0.35' : '0.55'})${cardFit}.move_to(DOWN * ${contentY})`;
             return `
         # Storyboard pedagógico: ${pedScene.id}
-        panel_${i} = RoundedRectangle(width=13.5, height=7.0, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
-        header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * 2.85)
+        panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * ${headerY})
         content_${i} = ${compactGroup}
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
@@ -451,9 +473,9 @@ export const manim = {
 
           return `
         # Storyboard pedagógico: ${pedScene.id}
-        panel_${i} = RoundedRectangle(width=13.5, height=7.0, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
-        header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * 2.85)
-        content_${i} = ${contentGroup}.scale_to_fit_height(${contentHeight}).scale_to_fit_width(11.5).scale(${compactScale}).move_to(DOWN * ${compactY})
+        panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * ${headerY})
+        content_${i} = ${contentGroup}.scale_to_fit_height(${contentHeight}).scale(${compactScale}).move_to(DOWN * ${compactY})
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
@@ -560,6 +582,8 @@ from manim import *
 
 class ${className}(Scene):
     def construct(self):
+        self.camera.frame_width = ${formatProfile.frameWidth}
+        self.camera.frame_height = ${formatProfile.frameHeight}
         # Título científico con estilo tipo revista
         title = ${titleObject}
         title.to_edge(UP)
@@ -588,6 +612,7 @@ ${sceneBlock}
         .join('') || 'MathScene';
       const scriptPath = path.join(scene.outputDir, `${safeName}_scene.py`);
       const useLatex = latexCompilerAvailable();
+      const formatProfile = scene.formatProfile || getVideoFormatProfile('16:9', 'medium');
       const pythonCode = this.generatePythonScript(scene, useLatex);
 
       if (!useLatex) {
@@ -605,7 +630,7 @@ ${sceneBlock}
       const manimCommand = this.getCommand();
       const mediaDir = path.resolve(scene.outputDir);
       const { stdout, stderr } = await execAsync(
-        `"${manimCommand}" --media_dir "${mediaDir}" -ql -o ${safeName}.mp4 "${scriptPath}" ${className}`,
+        `"${manimCommand}" --media_dir "${mediaDir}" -ql -r ${formatProfile.width},${formatProfile.height} -o ${safeName}.mp4 "${scriptPath}" ${className}`,
         { cwd: scene.outputDir, maxBuffer: 1024 * 1024 * 10, env: buildProcessEnv() }
       );
 

@@ -38,7 +38,9 @@ const resolveBinary = (candidates: string[]) => {
 interface VideoProcessingOptions {
   inputPath: string;
   outputPath: string;
-  resolution?: string; // "1080" | "4k"
+  width?: number;
+  height?: number;
+  resolution?: string; // compatibilidad con llamadas antiguas
   fps?: number; // Frames per second
   bitrate?: string; // "5000k" | "10000k"
 }
@@ -58,6 +60,8 @@ export const ffmpeg = {
       const {
         inputPath,
         outputPath,
+        width,
+        height,
         resolution = '1080',
         fps = 30,
         bitrate = '5000k',
@@ -72,12 +76,10 @@ export const ffmpeg = {
       const ffmpegCommand = this.getCommand();
       let cmd = `"${ffmpegCommand}" -i "${inputPath}"`;
 
-      // Resolución
-      if (resolution === '4k') {
-        cmd += ' -s 3840x2160';
-      } else if (resolution === '1080') {
-        cmd += ' -s 1920x1080';
-      }
+      // Dimensiones explícitas con padding: nunca estirar ni deformar contenido.
+      const targetWidth = width || (resolution === '4k' ? 3840 : resolution === '1080' ? 1920 : 854);
+      const targetHeight = height || (resolution === '4k' ? 2160 : resolution === '1080' ? 1080 : 480);
+      cmd += ` -vf "scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:color=#000000"`;
 
       // FPS y bitrate
       cmd += ` -r ${fps} -b:v ${bitrate}`;
@@ -118,17 +120,24 @@ export const ffmpeg = {
   /**
    * Extraer thumbnail del video
    */
-  async extractThumbnail(videoPath: string, outputPath: string, timeCode: string = '00:00:08'): Promise<string> {
+  async extractThumbnail(
+    videoPath: string,
+    outputPath: string,
+    timeCode: string = '00:00:08',
+    width = 1280,
+    height = 720,
+  ): Promise<string> {
     try {
       const ffmpegCommand = this.getCommand();
       // Rendered scenes spend their first seconds writing text. Extract after
       // that transition so the library thumbnail captures a stable equation,
       // not a black frame or partially written glyphs.
-      const representativeCmd = `"${ffmpegCommand}" -ss ${timeCode} -i "${videoPath}" -vf scale=1280:720 -frames:v 1 -y "${outputPath}"`;
+      const filter = `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=#000000`;
+      const representativeCmd = `"${ffmpegCommand}" -ss ${timeCode} -i "${videoPath}" -vf "${filter}" -frames:v 1 -y "${outputPath}"`;
       await execAsync(representativeCmd, { maxBuffer: 1024 * 1024 * 10 });
 
       if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size === 0) {
-        const fallbackCmd = `"${ffmpegCommand}" -ss 00:00:02 -i "${videoPath}" -vf scale=1280:720 -frames:v 1 -y "${outputPath}"`;
+        const fallbackCmd = `"${ffmpegCommand}" -ss 00:00:02 -i "${videoPath}" -vf "${filter}" -frames:v 1 -y "${outputPath}"`;
         await execAsync(fallbackCmd, { maxBuffer: 1024 * 1024 * 10 });
       }
 

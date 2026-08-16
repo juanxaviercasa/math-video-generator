@@ -18,6 +18,9 @@ interface VideoRequest {
   title: string
   content: string
   quality?: 'low' | 'medium' | 'high'
+  aspectRatio?: '16:9' | '1:1' | '9:16'
+  layoutDensity?: 'comfortable' | 'compact'
+  narrationStyle?: 'warm_teacher' | 'neutral_teacher'
   enableNarration?: boolean
   aiProvider?: 'openrouter' | 'gemini' | 'openai'
   enableComfyUI?: boolean
@@ -39,6 +42,14 @@ export interface PreviewResponse {
   title: string
   validation: MathValidation
   steps: string[]
+  formatProfile: {
+    aspectRatio: '16:9' | '1:1' | '9:16'
+    quality: 'low' | 'medium' | 'high'
+    width: number
+    height: number
+    safeMargin: number
+    orientation: 'landscape' | 'square' | 'portrait'
+  }
   requiresReview: boolean
 }
 

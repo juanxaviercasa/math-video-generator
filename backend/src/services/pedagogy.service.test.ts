@@ -31,6 +31,10 @@ test('builds a complete quadratic teaching storyboard', () => {
   assert.match(calculation?.narrationText ?? '', /veinticuatro/);
   assert.doesNotMatch(calculation?.narrationText ?? '', /dos cinco|dos cuatro/);
 
+  assert.match(scenes.find((scene) => scene.id === 'hook')?.narrationText ?? '', /Muy bien/);
+  const neutralScenes = buildQuadraticStoryboard('x^2 - 5x + 6 = 0', validation, 'neutral_teacher');
+  assert.doesNotMatch(neutralScenes.find((scene) => scene.id === 'hook')?.narrationText ?? '', /Muy bien/);
+
   const branches = scenes.find((scene) => scene.id === 'solution-branches');
   assert.equal(branches?.visualLatex?.length, 2);
   assert.equal(scenes.find((scene) => scene.id === 'graph')?.layout, 'graph');

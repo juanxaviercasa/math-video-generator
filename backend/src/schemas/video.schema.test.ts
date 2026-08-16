@@ -9,9 +9,26 @@ test('applies safe defaults to a valid generation request', () => {
   });
 
   assert.equal(result.quality, 'medium');
+  assert.equal(result.aspectRatio, '16:9');
+  assert.equal(result.layoutDensity, 'comfortable');
+  assert.equal(result.narrationStyle, 'warm_teacher');
   assert.equal(result.enableNarration, true);
   assert.equal(result.aiProvider, 'openrouter');
   assert.equal(result.enableComfyUI, false);
+});
+
+test('accepts supported social formats', () => {
+  const result = videoGenerationSchema.parse({
+    title: 'Formato vertical',
+    content: 'x^2 - 5x + 6 = 0',
+    aspectRatio: '9:16',
+    layoutDensity: 'compact',
+    narrationStyle: 'neutral_teacher',
+  });
+
+  assert.equal(result.aspectRatio, '9:16');
+  assert.equal(result.layoutDensity, 'compact');
+  assert.equal(result.narrationStyle, 'neutral_teacher');
 });
 
 test('rejects oversized content and unsupported options', () => {

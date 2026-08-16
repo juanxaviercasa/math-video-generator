@@ -42,6 +42,7 @@ const formatValue = (value: number): string => Number.isInteger(value) ? String(
 export const buildQuadraticStoryboard = (
   problem: string,
   validation: MathValidation,
+  narrationStyle: 'warm_teacher' | 'neutral_teacher' = 'warm_teacher',
 ): PedagogicalScene[] => {
   if (!validation.supported || validation.kind !== 'quadratic' || !validation.valid) return [];
 
@@ -56,6 +57,9 @@ export const buildQuadraticStoryboard = (
   };
 
   const oralProblem = synchronization.oralizeMath(problem);
+  const warm = narrationStyle === 'warm_teacher';
+  const lead = warm ? 'Muy bien. ' : '';
+  const calm = warm ? ' Vamos con calma y sin saltarnos ningún paso.' : '';
   const a = parse(match[1], 1);
   const b = parse(match[2], 0);
   const c = parse(match[3], 0);
@@ -90,7 +94,7 @@ export const buildQuadraticStoryboard = (
     make(
       'hook',
       'intro',
-      `Hoy resolveremos ${oralProblem}. Primero veremos el mapa completo del procedimiento y después comprobaremos cada resultado.`,
+      `${lead}Hoy resolveremos ${oralProblem}.${calm} Primero veremos el mapa completo del procedimiento y después comprobaremos cada resultado.`,
       [`${validation.normalizedInput}`, `a x^2 + b x + c = 0`],
       'hero',
       'Ruta de solución',
@@ -100,7 +104,7 @@ export const buildQuadraticStoryboard = (
     make(
       'coefficients',
       'step',
-      `Antes de calcular, identificamos todos los coeficientes. A es ${numberToSpanish(a)}, B es ${numberToSpanish(b)} y C es ${numberToSpanish(c)}. Los tres valores quedan visibles para no perder ninguna información.`,
+      `${lead}Antes de calcular, identifiquemos todos los coeficientes. A es ${numberToSpanish(a)}, B es ${numberToSpanish(b)} y C es ${numberToSpanish(c)}. Los tres valores quedan visibles para que no perdamos ninguna información.`,
       [`a = ${formatValue(a)}`, `b = ${formatValue(b)}`, `c = ${formatValue(c)}`],
       'card',
       'a, b y c',
@@ -110,7 +114,7 @@ export const buildQuadraticStoryboard = (
     make(
       'discriminant-setup',
       'step',
-      `Ahora usamos la definición del discriminante. Todavía no simplificamos: primero reemplazamos cada letra por su valor numérico.`,
+      `${lead}Ahora usamos la definición del discriminante. Todavía no simplificamos: primero reemplazamos cada letra por su valor numérico y lo comprobamos juntos.`,
       ['\\Delta = b^2 - 4ac', `\\Delta = (${formatValue(b)})^2 - 4(${formatValue(a)})(${formatValue(c)})`],
       'split',
       'Sustitución del discriminante',
@@ -120,7 +124,7 @@ export const buildQuadraticStoryboard = (
     make(
       'discriminant-calculate',
       'calculation',
-      `Simplificamos con calma: ${numberToSpanish(b)} al cuadrado es ${numberToSpanish(b * b)}, cuatro por ${numberToSpanish(a)} por ${numberToSpanish(c)} es ${numberToSpanish(4 * a * c)}, y la resta nos da un discriminante de ${numberToSpanish(delta)}.`,
+      `${lead}Fíjate en cada operación: ${numberToSpanish(b)} al cuadrado es ${numberToSpanish(b * b)}; cuatro por ${numberToSpanish(a)} por ${numberToSpanish(c)} es ${numberToSpanish(4 * a * c)}; y la resta nos da un discriminante de ${numberToSpanish(delta)}.`,
       [`\\Delta = (${formatValue(b)})^2 - 4(${formatValue(a)})(${formatValue(c)})`, `\\Delta = ${formatValue(b * b)} - ${formatValue(4 * a * c)}`, `\\Delta = ${formatValue(delta)}`],
       'equation',
       'Discriminante = ' + formatValue(delta),
@@ -130,7 +134,7 @@ export const buildQuadraticStoryboard = (
     make(
       'formula-symbolic',
       'formula',
-      'Con el discriminante listo, presentamos la fórmula general en su forma simbólica. Esta es la estructura que vamos a completar.',
+      `${lead}Con el discriminante listo, presentamos la fórmula general en su forma simbólica. Esta es la estructura que vamos a completar juntos.`,
       ['x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}'],
       'equation',
       'Fórmula general',
@@ -139,7 +143,7 @@ export const buildQuadraticStoryboard = (
     make(
       'formula-substitution',
       'formula',
-      `Ahora reemplazamos cada símbolo: el signo menos delante de b se convierte en menos, entre paréntesis, ${numberToSpanish(b)}; la raíz contiene ${numberToSpanish(delta)} y el denominador es dos por ${numberToSpanish(a)}.`,
+      `${lead}Ahora reemplazamos cada símbolo. El signo menos delante de B se convierte en menos, entre paréntesis, ${numberToSpanish(b)}; la raíz contiene ${numberToSpanish(delta)} y el denominador es dos por ${numberToSpanish(a)}.`,
       [`x = \\frac{-(${formatValue(b)}) \\pm \\sqrt{${formatValue(delta)}}}{2(${formatValue(a)})}`],
       'equation',
       'Reemplazo en la fórmula',
@@ -148,7 +152,7 @@ export const buildQuadraticStoryboard = (
     make(
       'formula-simplify',
       'calculation',
-      `Simplificamos la expresión antes de separar las dos soluciones: la raíz de ${numberToSpanish(delta)} es ${numberToSpanish(sqrtDelta)} y el denominador vale ${numberToSpanish(denominator)}.`,
+      `${lead}Ya casi terminamos. Simplificamos la expresión antes de separar las dos soluciones: la raíz de ${numberToSpanish(delta)} es ${numberToSpanish(sqrtDelta)} y el denominador vale ${numberToSpanish(denominator)}.`,
       [`x = \\frac{${formatValue(-b)} \\pm ${formatValue(sqrtDelta)}}{${formatValue(denominator)}}`],
       'equation',
       'Simplificación',
@@ -157,7 +161,7 @@ export const buildQuadraticStoryboard = (
     make(
       'solution-branches',
       'step',
-      `La expresión más o menos produce dos caminos. En el primero sumamos; en el segundo restamos. Así obtenemos x uno igual a ${numberToSpanish(x1)} y x dos igual a ${numberToSpanish(x2)}.`,
+      `${lead}La expresión más o menos produce dos caminos. En el primero sumamos; en el segundo restamos. Así obtenemos x uno igual a ${numberToSpanish(x1)} y x dos igual a ${numberToSpanish(x2)}.`,
       [`x_1 = \\frac{${formatValue(-b)} + ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x1)}`, `x_2 = \\frac{${formatValue(-b)} - ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x2)}`],
       'split',
       'Dos soluciones',
@@ -167,7 +171,7 @@ export const buildQuadraticStoryboard = (
     make(
       'graph',
       'graph',
-      `Finalmente, la gráfica confirma la respuesta: la parábola corta el eje horizontal en ${numberToSpanish(x2)} y ${numberToSpanish(x1)}.`,
+      `${lead}Finalmente, la gráfica confirma la respuesta: la parábola corta el eje horizontal en ${numberToSpanish(x2)} y ${numberToSpanish(x1)}.`,
       ['y = ax² + bx + c', `raíces: ${formatValue(x2)} y ${formatValue(x1)}`],
       'graph',
       'Comprobación gráfica',
@@ -176,7 +180,7 @@ export const buildQuadraticStoryboard = (
     make(
       'recap',
       'conclusion',
-      `Recapitulamos: identificamos a, b y c; sustituimos sus valores; calculamos el discriminante; aplicamos la fórmula y comprobamos las dos raíces en la gráfica.`,
+      `${warm ? 'Excelente. ' : ''}Recapitulamos: identificamos a, b y c; sustituimos sus valores; calculamos el discriminante; aplicamos la fórmula y comprobamos las dos raíces en la gráfica.`,
       [`x_1 = ${formatValue(x1)}`, `x_2 = ${formatValue(x2)}`],
       'recap',
       'Solución comprobada',

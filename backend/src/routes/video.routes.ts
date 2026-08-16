@@ -4,6 +4,7 @@ import { generationJobs } from '../services/job.service.js';
 import { optionalAuth, requireAuth, type AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { validateMathProblem } from '../services/math-validation.service.js';
 import { videoGenerationSchema } from '../schemas/video.schema.js';
+import { getVideoFormatProfile } from '../services/video-format.service.js';
 import * as path from 'path';
 import * as os from 'os';
 
@@ -32,7 +33,18 @@ router.post('/generate-video', async (req: Request, res: Response) => {
       });
     }
 
-    const { id, title, content, quality, enableNarration, aiProvider, enableComfyUI } = parsed.data;
+    const {
+      id,
+      title,
+      content,
+      quality,
+      aspectRatio,
+      layoutDensity,
+      narrationStyle,
+      enableNarration,
+      aiProvider,
+      enableComfyUI,
+    } = parsed.data;
     const videoId = id || `video_${Date.now()}`;
 
     if (generationJobs.has(videoId)) {
@@ -60,6 +72,9 @@ router.post('/generate-video', async (req: Request, res: Response) => {
         title,
         content,
         quality,
+        aspectRatio,
+        layoutDensity,
+        narrationStyle,
         userId: authenticatedUserId || 'temp-user',
         outputDir,
         enableNarration,
@@ -106,6 +121,7 @@ router.post('/preview', (req: Request, res: Response) => {
     title: parsed.data.title,
     validation,
     steps: steps.length ? steps : [parsed.data.content],
+    formatProfile: getVideoFormatProfile(parsed.data.aspectRatio, parsed.data.quality),
     requiresReview: !validation.supported || !validation.valid,
   });
 });

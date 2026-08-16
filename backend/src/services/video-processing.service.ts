@@ -5,6 +5,7 @@ import { tts } from './tts.service.js';
 import { validateMathProblem, type MathValidation } from './math-validation.service.js';
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
 import { buildQuadraticStoryboard } from './pedagogy.service.js';
+import { getVideoFormatProfile, type VideoAspectRatio, type VideoQuality } from './video-format.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -29,7 +30,10 @@ interface VideoGenerationRequest {
   id: string;
   title: string;
   content: string; // Problema matemático
-  quality?: 'low' | 'medium' | 'high'; // Calidad del video
+  quality?: VideoQuality; // Calidad del video
+  aspectRatio?: VideoAspectRatio;
+  layoutDensity?: 'comfortable' | 'compact';
+  narrationStyle?: 'warm_teacher' | 'neutral_teacher';
   userId: string;
   outputDir: string;
   enableNarration?: boolean;
@@ -61,6 +65,9 @@ export const videoProcessing = {
       title,
       content,
       quality = 'medium',
+      aspectRatio = '16:9',
+      layoutDensity = 'comfortable',
+      narrationStyle = 'warm_teacher',
       outputDir,
       enableNarration = true,
       aiProvider = 'openrouter',
@@ -136,7 +143,7 @@ export const videoProcessing = {
       }
 
       const pedagogicalScenes = validation.supported && validation.kind === 'quadratic'
-        ? buildQuadraticStoryboard(content, validation)
+        ? buildQuadraticStoryboard(content, validation, narrationStyle)
         : [];
       const synchronizedScenes: SynchronizedScene[] = pedagogicalScenes.length
         ? pedagogicalScenes
@@ -146,7 +153,12 @@ export const videoProcessing = {
         console.log(`🎙️ Generando narración sincronizada con ${aiProvider}...`);
         const audioSegments: string[] = [];
         for (const scene of synchronizedScenes) {
-          const segmentPath = await tts.generateNarrationAudio(scene.narrationText, outputDir, `${id}-${scene.id}`);
+          const segmentPath = await tts.generateNarrationAudio(
+            scene.narrationText,
+            outputDir,
+            `${id}-${scene.id}`,
+            { style: narrationStyle },
+          );
           if (!segmentPath) continue;
           audioSegments.push(segmentPath);
           const audioInfo = await ffmpeg.getVideoInfo(segmentPath);
@@ -175,6 +187,7 @@ export const videoProcessing = {
       progress.message = 'Renderizando animaciones matemáticas...';
       report();
 
+      const formatProfile = getVideoFormatProfile(aspectRatio, quality);
       const manimScene = {
         title,
         content,
@@ -182,6 +195,9 @@ export const videoProcessing = {
         synchronizedScenes,
         pedagogicalScenes,
         outputDir,
+        formatProfile,
+        layoutDensity,
+        narrationStyle,
       };
 
       const videoPath = await manim.renderVideo(manimScene);
@@ -195,8 +211,7 @@ export const videoProcessing = {
       progress.message = 'Optimizando video...';
       report();
 
-      const resolution =
-        quality === 'high' ? '4k' : quality === 'medium' ? '1080' : '480';
+      const exportProfile = getVideoFormatProfile(aspectRatio, quality);
       const bitrate =
         quality === 'high' ? '10000k' : quality === 'medium' ? '5000k' : '2500k';
 
@@ -205,7 +220,8 @@ export const videoProcessing = {
       let processedPath = await ffmpeg.processVideo({
         inputPath: videoPath,
         outputPath: outputVideoPath,
-        resolution,
+        width: exportProfile.width,
+        height: exportProfile.height,
         bitrate,
         fps: 30,
       });
@@ -234,7 +250,13 @@ export const videoProcessing = {
       report();
 
       const thumbnailPath = path.join(outputDir, `${id}-thumbnail.jpg`);
-      await ffmpeg.extractThumbnail(processedPath, thumbnailPath);
+      await ffmpeg.extractThumbnail(
+        processedPath,
+        thumbnailPath,
+        '00:00:08',
+        exportProfile.width,
+        exportProfile.height,
+      );
 
       progress.progress = 95;
       progress.message = 'Validando artefactos finales...';

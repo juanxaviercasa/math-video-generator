@@ -2,6 +2,17 @@ import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 
+export interface MathValidation {
+  supported: boolean
+  valid: boolean
+  kind: 'quadratic' | 'unsupported'
+  normalizedInput: string
+  method?: string
+  result?: string
+  steps: string[]
+  warnings: string[]
+}
+
 interface VideoRequest {
   id?: string
   title: string
@@ -10,6 +21,7 @@ interface VideoRequest {
   enableNarration?: boolean
   aiProvider?: 'openrouter' | 'gemini' | 'openai'
   enableComfyUI?: boolean
+  steps?: string[]
 }
 
 interface VideoResponse {
@@ -20,9 +32,24 @@ interface VideoResponse {
   videoUrl?: string
   thumbnailUrl?: string
   error?: string
+  validation?: MathValidation
+}
+
+export interface PreviewResponse {
+  title: string
+  validation: MathValidation
+  steps: string[]
+  requiresReview: boolean
 }
 
 export const api = {
+  async preview(data: Omit<VideoRequest, 'id'>): Promise<PreviewResponse> {
+    const response = await axios.post<PreviewResponse>(`${API_URL}/preview`, data, {
+      withCredentials: true,
+    })
+    return response.data
+  },
+
   async generateVideo(data: VideoRequest): Promise<VideoResponse> {
     try {
       const response = await axios.post(

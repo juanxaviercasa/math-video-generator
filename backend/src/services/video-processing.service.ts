@@ -2,6 +2,7 @@ import { manim } from './manim.service.js';
 import { ffmpeg } from './ffmpeg.service.js';
 import { openai } from './openai.service.js';
 import { tts } from './tts.service.js';
+import { validateMathProblem, type MathValidation } from './math-validation.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -23,6 +24,7 @@ interface VideoGenerationRequest {
     enableComfyUI?: boolean;
   allowSimulation?: boolean;
   onProgress?: (progress: VideoGenerationProgress) => void;
+  steps?: string[];
 }
 
 interface VideoGenerationProgress {
@@ -33,6 +35,7 @@ interface VideoGenerationProgress {
   thumbnailUrl?: string;
   error?: string;
   duration?: number;
+  validation?: MathValidation;
 }
 
 export const videoProcessing = {
@@ -50,6 +53,7 @@ export const videoProcessing = {
       aiProvider = 'openrouter',
       enableComfyUI = false,
       allowSimulation = process.env.ALLOW_SIMULATION === 'true',
+      steps: requestedSteps,
     } = request;
     let progress: VideoGenerationProgress = {
       status: 'processing',
@@ -92,13 +96,26 @@ export const videoProcessing = {
         throw new Error('La integración con ComfyUI todavía no está implementada. Desactiva esta opción.');
       }
 
+      const validation = validateMathProblem(content);
+      progress.validation = validation;
+      report();
+
+      if (validation.supported && !validation.valid) {
+        throw new Error(validation.warnings[0] || 'El problema matemático no superó la validación');
+      }
+
       // 2. Generar descripción con OpenAI (opcional)
       console.log('🤖 Generando descripción...');
       progress.progress = 20;
       progress.message = 'Generando descripción con IA...';
       report();
 
-      const steps = await openai.generateSolutionSteps(content);
+      const generatedSteps = requestedSteps?.length
+        ? requestedSteps
+        : await openai.generateSolutionSteps(content);
+      const steps = validation.supported && validation.valid
+        ? [...validation.steps, ...generatedSteps]
+        : generatedSteps;
       if (!steps.length) {
         steps.push(content);
       }

@@ -23,6 +23,10 @@ export const videoGenerationSchema = z
     enableNarration: z.boolean().default(true),
     aiProvider: z.enum(['openrouter', 'gemini', 'openai']).default('openrouter'),
     enableComfyUI: z.boolean().default(false),
+    steps: z
+      .array(z.string().trim().min(1).max(500))
+      .max(12, 'El guion no puede tener más de 12 pasos')
+      .optional(),
   })
   .strict();
 

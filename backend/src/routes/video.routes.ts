@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { videoProcessing } from '../services/video-processing.service.js';
 import { generationJobs } from '../services/job.service.js';
 import { optionalAuth, requireAuth, type AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { validateMathProblem } from '../services/math-validation.service.js';
 import { videoGenerationSchema } from '../schemas/video.schema.js';
 import * as path from 'path';
 import * as os from 'os';
@@ -64,6 +65,7 @@ router.post('/generate-video', async (req: Request, res: Response) => {
         enableNarration,
         aiProvider,
         enableComfyUI,
+        steps: parsed.data.steps,
         onProgress,
       })
     );
@@ -88,6 +90,26 @@ router.post('/generate-video', async (req: Request, res: Response) => {
  * GET /api/generate-video/status/:id
  * Verificar estado de generación
  */
+router.post('/preview', (req: Request, res: Response) => {
+  const parsed = videoGenerationSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      code: 'VALIDATION_ERROR',
+      error: 'La solicitud de previsualización no es válida',
+      fields: parsed.error.flatten().fieldErrors,
+    });
+  }
+
+  const validation = validateMathProblem(parsed.data.content);
+  const steps = parsed.data.steps?.length ? parsed.data.steps : validation.steps;
+  return res.json({
+    title: parsed.data.title,
+    validation,
+    steps: steps.length ? steps : [parsed.data.content],
+    requiresReview: !validation.supported || !validation.valid,
+  });
+});
+
 router.get('/generate-video/status/:id', (req: Request, res: Response) => {
   try {
     const { id } = req.params;

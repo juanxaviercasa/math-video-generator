@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api } from '../services/api'
+import { api, PreviewResponse } from '../services/api'
 import { useVideoStore } from '../store/video.store'
 
 export function VideoGenerator() {
@@ -10,9 +10,34 @@ export function VideoGenerator() {
   const [aiProvider, setAiProvider] = useState<'openrouter' | 'gemini' | 'openai'>('openrouter')
   const [enableComfyUI, setEnableComfyUI] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [preview, setPreview] = useState<PreviewResponse | null>(null)
+  const [steps, setSteps] = useState<string[]>([])
   const [error, setError] = useState('')
 
   const addVideo = useVideoStore((state) => state.addVideo)
+
+  const handlePreview = async () => {
+    setError('')
+    if (!title.trim() || !content.trim()) {
+      setError('Completa el título y el contenido antes de previsualizar')
+      return
+    }
+
+    setPreviewLoading(true)
+    try {
+      const result = await api.preview({ title, content })
+      setPreview(result)
+      setSteps(result.steps)
+      if (result.requiresReview) {
+        setError('Este problema requiere revisión manual antes de generar el video.')
+      }
+    } catch (previewError) {
+      setError('No se pudo preparar la previsualización')
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,6 +71,7 @@ export function VideoGenerator() {
         enableNarration,
         aiProvider,
         enableComfyUI,
+        steps: steps.length ? steps : undefined,
       })
 
       const finalStatus = response.status || 'pending'
@@ -97,6 +123,8 @@ export function VideoGenerator() {
 
       setTitle('')
       setContent('')
+      setSteps([])
+      setPreview(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
@@ -142,7 +170,50 @@ export function VideoGenerator() {
             className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 transition min-h-32"
             disabled={loading}
           />
+          <button
+            type="button"
+            onClick={handlePreview}
+            disabled={loading || previewLoading}
+            className="mt-2 rounded border border-blue-500 px-3 py-2 text-sm font-medium text-blue-300 transition hover:bg-blue-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {previewLoading ? 'Preparando revisión...' : 'Revisar solución antes de generar'}
+          </button>
         </div>
+
+        {preview && (
+          <div className="rounded border border-slate-600 bg-slate-700/40 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Guion editable</h3>
+                <p className="text-xs text-slate-400">
+                  {preview.validation.valid
+                    ? preview.validation.result || 'Validación completada'
+                    : preview.validation.warnings[0] || 'Revisión manual necesaria'}
+                </p>
+              </div>
+              <span className={`text-xs font-semibold ${preview.validation.valid ? 'text-emerald-300' : 'text-amber-300'}`}>
+                {preview.validation.valid ? 'Verificado' : 'Revisar'}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {steps.map((step, index) => (
+                <div key={`${index}-${step.slice(0, 12)}`} className="flex items-start gap-2">
+                  <span className="pt-2 text-xs text-slate-400">{index + 1}.</span>
+                  <textarea
+                    value={step}
+                    onChange={(event) => {
+                      const next = [...steps]
+                      next[index] = event.target.value
+                      setSteps(next)
+                    }}
+                    rows={2}
+                    className="min-w-0 flex-1 rounded border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-white outline-none focus:border-blue-400"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Calidad */}
         <div>

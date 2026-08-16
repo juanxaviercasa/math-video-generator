@@ -29,6 +29,39 @@ const getToken = (req: Request): string | undefined => {
 
 export const getAuthCookieName = () => AUTH_COOKIE;
 
+const resolveUser = async (req: Request) => {
+  const secret = process.env.JWT_SECRET;
+  const token = secret ? getToken(req) : undefined;
+  if (!secret || !token) return undefined;
+
+  const payload = jwt.verify(token, secret);
+  if (typeof payload !== 'object' || typeof payload.sub !== 'string') return undefined;
+
+  const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+  if (!user) return undefined;
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    plan: user.plan,
+  };
+};
+
+export async function optionalAuth(
+  req: AuthenticatedRequest,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    req.user = await resolveUser(req);
+  } catch {
+    // Una sesión opcional inválida no debe bloquear la creación anónima durante la migración.
+    req.user = undefined;
+  }
+  next();
+}
+
 export async function requireAuth(
   req: AuthenticatedRequest,
   res: Response,
@@ -47,24 +80,12 @@ export async function requireAuth(
   }
 
   try {
-    const payload = jwt.verify(token, secret);
-    if (typeof payload !== 'object' || typeof payload.sub !== 'string') {
-      res.status(401).json({ code: 'INVALID_SESSION', error: 'La sesión no es válida' });
-      return;
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    const user = await resolveUser(req);
     if (!user) {
       res.status(401).json({ code: 'INVALID_SESSION', error: 'La sesión no es válida' });
       return;
     }
-
-    req.user = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      plan: user.plan,
-    };
+    req.user = user;
     next();
   } catch (error) {
     res.status(401).json({ code: 'INVALID_SESSION', error: 'La sesión no es válida' });

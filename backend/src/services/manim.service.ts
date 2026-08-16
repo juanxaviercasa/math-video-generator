@@ -50,6 +50,7 @@ interface ManimScene {
   outputDir: string;
   content?: string;
   synchronizedScenes?: SynchronizedScene[];
+  pedagogicalScenes?: Array<SynchronizedScene & { visualLatex?: string[]; visualTextLines?: string[]; emphasis?: string; layout?: string }>;
 }
 
 const escapeForPythonString = (value: string): string => JSON.stringify(value);
@@ -315,7 +316,7 @@ export const manim = {
    * Generar script Python de Manim para una animación matemática
    */
   generatePythonScript(scene: ManimScene, useLatex = latexCompilerAvailable()): string {
-    const { title, steps, content = '', synchronizedScenes = [] } = scene;
+    const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [] } = scene;
 
     // Sanitizar nombre de archivo
     const safeName = title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
@@ -361,8 +362,107 @@ export const manim = {
         self.play(FadeOut(graph_group))
 ` : '';
 
-    const introDuration = Math.max(3, synchronizedScenes[0]?.duration ?? synchronizedScenes[0]?.estimatedDuration ?? 4);
-    const synchronizedBlock = synchronizedScenes.length
+    const introDuration = pedagogicalScenes.length
+      ? 1.8
+      : Math.max(3, synchronizedScenes[0]?.duration ?? synchronizedScenes[0]?.estimatedDuration ?? 4);
+    const pedagogicalBlock = pedagogicalScenes.length
+      ? pedagogicalScenes.map((pedScene, i) => {
+          const duration = Math.max(4, pedScene.duration ?? pedScene.estimatedDuration);
+          const emphasis = pedScene.emphasis || pedScene.visualText || 'Paso matemático';
+          const latexLines = pedScene.visualLatex || [];
+          const textLines = pedScene.visualTextLines || [];
+          const mathObjects = latexLines.map((line, lineIndex) =>
+            `MathTex(${escapeForPythonString(line)}, font_size=${lineIndex === 0 ? 46 : 38}, color=${lineIndex === latexLines.length - 1 ? 'YELLOW' : 'WHITE'})`
+          );
+          const textObjects = textLines.map((line) =>
+            `Text(${escapeForPythonString(line)}, font_size=26, color=GREY_B)`
+          );
+          const allObjects = [...mathObjects, ...textObjects];
+          const contentGroup = allObjects.length
+            ? `VGroup(${allObjects.join(', ')}).arrange(DOWN, buff=0.18).scale_to_fit_width(11.5)`
+            : `Text(${escapeForPythonString(emphasis)}, font_size=42, color=WHITE)`;
+          const compactScale = pedScene.layout === 'hero'
+            ? '0.9'
+            : pedScene.layout === 'recap'
+              ? '0.82'
+              : pedScene.layout === 'equation' && latexLines.length > 1
+                ? '0.88'
+                : '1';
+          const compactY = '0.4';
+          const contentHeight = pedScene.layout === 'hero' ? '3.7' : '4.0';
+
+          if (pedScene.layout === 'graph') {
+            return `
+        # Storyboard pedagógico: gráfica a pantalla completa
+        panel_${i} = RoundedRectangle(width=13.5, height=7.0, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        axes_${i} = Axes(x_range=[-1, 6, 1], y_range=[-4, 5, 1], x_length=10, y_length=5, axis_config={"include_tip": True}).shift(DOWN * 0.2)
+        curve_${i} = axes_${i}.plot(lambda x: (x - 2) * (x - 3), x_range=[-0.5, 5.5], color=YELLOW)
+        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x"))
+        y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
+        root_2_${i} = Dot(axes_${i}.c2p(2, 0), color=GREEN)
+        root_3_${i} = Dot(axes_${i}.c2p(3, 0), color=GREEN)
+        root_2_label_${i} = MathTex("x=2", font_size=26).next_to(root_2_${i}, DOWN)
+        root_3_label_${i} = MathTex("x=3", font_size=26).next_to(root_3_${i}, DOWN)
+        graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP)
+        graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, root_3_${i}, root_2_label_${i}, root_3_label_${i}, graph_title_${i})
+        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
+        self.play(FadeIn(root_2_${i}), FadeIn(root_3_${i}), Write(root_2_label_${i}), Write(root_3_label_${i}), FadeIn(graph_title_${i}), run_time=2)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 5.5))
+        self.play(FadeOut(graph_group_${i}), run_time=1)
+`;
+          }
+
+          if (pedScene.layout === 'recap') {
+            const recapMath = latexLines.map((line) => `MathTex(${escapeForPythonString(line)}, font_size=48, color=YELLOW)`);
+            const recapLabels = textLines.map((line) => `Text(${escapeForPythonString(line)}, font_size=28, color=GREY_B)`);
+            const recapContent = `VGroup(VGroup(${recapMath.join(', ')}).arrange(RIGHT, buff=0.9), VGroup(${recapLabels.join(', ')}).arrange(RIGHT, buff=0.35)).arrange(DOWN, buff=0.65).scale_to_fit_width(11.5).scale_to_fit_height(4.2).move_to(DOWN * 0.35)`;
+            return `
+        # Storyboard pedagógico: recapitulación
+        panel_${i} = RoundedRectangle(width=13.5, height=7.0, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * 2.85)
+        content_${i} = ${recapContent}
+        content_group_${i} = VGroup(header_${i}, content_${i})
+        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
+`;
+          }
+
+          if (pedScene.layout === 'card' || pedScene.layout === 'split') {
+            const pairCount = Math.max(latexLines.length, textLines.length);
+            const pairObjects = Array.from({ length: pairCount }, (_, pairIndex) => {
+              const formula = latexLines[pairIndex] ? `MathTex(${escapeForPythonString(latexLines[pairIndex])}, font_size=40, color=YELLOW)` : `Text("", font_size=24)`;
+              const caption = textLines[pairIndex] ? `Text(${escapeForPythonString(textLines[pairIndex])}, font_size=22, color=GREY_B)` : `Text("", font_size=22)`;
+              return `VGroup(${formula}, ${caption}).arrange(DOWN, buff=0.18)`;
+            });
+            const arrangement = pedScene.layout === 'card' ? 'RIGHT' : 'RIGHT';
+            const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=0.55).scale_to_fit_width(11.5).move_to(DOWN * 0.7)`;
+            return `
+        # Storyboard pedagógico: ${pedScene.id}
+        panel_${i} = RoundedRectangle(width=13.5, height=7.0, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * 2.85)
+        content_${i} = ${compactGroup}
+        content_group_${i} = VGroup(header_${i}, content_${i})
+        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
+`;
+          }
+
+          return `
+        # Storyboard pedagógico: ${pedScene.id}
+        panel_${i} = RoundedRectangle(width=13.5, height=7.0, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * 2.85)
+        content_${i} = ${contentGroup}.scale_to_fit_height(${contentHeight}).scale_to_fit_width(11.5).scale(${compactScale}).move_to(DOWN * ${compactY})
+        content_group_${i} = VGroup(header_${i}, content_${i})
+        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
+`;
+        }).join('\n')
+      : '';
+
+    const synchronizedBlock = !pedagogicalScenes.length && synchronizedScenes.length
       ? synchronizedScenes.slice(1).map((syncScene, i) => {
           const duration = Math.max(3, syncScene.duration ?? syncScene.estimatedDuration);
           const safeStep = normalizeForText(syncScene.visualText || 'Paso');
@@ -448,7 +548,11 @@ ${graphBlock}
         self.play(Write(final))
         self.wait(2)`;
 
-    const sceneBlock = synchronizedScenes.length ? synchronizedBlock : legacyBlock;
+    const sceneBlock = pedagogicalScenes.length
+      ? pedagogicalBlock
+      : synchronizedScenes.length
+        ? synchronizedBlock
+        : legacyBlock;
 
     const pythonCode = `
 # -*- coding: utf-8 -*-
@@ -460,9 +564,9 @@ class ${className}(Scene):
         title = ${titleObject}
         title.to_edge(UP)
         self.add(title)
-        self.play(Write(title), run_time=1)
-        self.wait(max(0.5, ${introDuration.toFixed(2)} - 2))
-        self.play(FadeOut(title), run_time=1)
+        self.play(Write(title), run_time=${pedagogicalScenes.length ? '0.6' : '1'})
+        self.wait(${pedagogicalScenes.length ? '0.2' : `max(0.5, ${introDuration.toFixed(2)} - 2)`})
+        self.play(FadeOut(title), run_time=${pedagogicalScenes.length ? '0.5' : '1'})
 
         # Contenido sincronizado con la narración
 ${sceneBlock}

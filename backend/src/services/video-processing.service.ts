@@ -4,6 +4,7 @@ import { openai } from './openai.service.js';
 import { tts } from './tts.service.js';
 import { validateMathProblem, type MathValidation } from './math-validation.service.js';
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
+import { buildQuadraticStoryboard } from './pedagogy.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -134,7 +135,12 @@ export const videoProcessing = {
         steps.push(content);
       }
 
-      const synchronizedScenes: SynchronizedScene[] = synchronization.buildSynchronizedScenes(content, steps);
+      const pedagogicalScenes = validation.supported && validation.kind === 'quadratic'
+        ? buildQuadraticStoryboard(content, validation)
+        : [];
+      const synchronizedScenes: SynchronizedScene[] = pedagogicalScenes.length
+        ? pedagogicalScenes
+        : synchronization.buildSynchronizedScenes(content, steps);
       let narrationAudioPath = '';
       if (enableNarration) {
         console.log(`🎙️ Generando narración sincronizada con ${aiProvider}...`);
@@ -174,6 +180,7 @@ export const videoProcessing = {
         content,
         steps: steps.slice(0, 5), // Máx 5 pasos por video
         synchronizedScenes,
+        pedagogicalScenes,
         outputDir,
       };
 

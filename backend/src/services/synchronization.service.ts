@@ -1,4 +1,4 @@
-export type SynchronizedSceneKind = 'intro' | 'step' | 'formula' | 'graph' | 'conclusion';
+export type SynchronizedSceneKind = 'intro' | 'step' | 'calculation' | 'formula' | 'graph' | 'conclusion';
 
 export interface SynchronizedScene {
   id: string;

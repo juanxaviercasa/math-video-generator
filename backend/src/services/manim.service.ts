@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import type { SynchronizedScene } from './synchronization.service.js';
 
 const execAsync = promisify(exec);
 
@@ -48,6 +49,7 @@ interface ManimScene {
   steps: string[];
   outputDir: string;
   content?: string;
+  synchronizedScenes?: SynchronizedScene[];
 }
 
 const escapeForPythonString = (value: string): string => JSON.stringify(value);
@@ -313,7 +315,7 @@ export const manim = {
    * Generar script Python de Manim para una animación matemática
    */
   generatePythonScript(scene: ManimScene, useLatex = latexCompilerAvailable()): string {
-    const { title, steps, content = '' } = scene;
+    const { title, steps, content = '', synchronizedScenes = [] } = scene;
 
     // Sanitizar nombre de archivo
     const safeName = title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
@@ -335,7 +337,7 @@ export const manim = {
       : `Text(${escapeForPythonString(safeFinal)}, font_size=48, color=GREEN, font='DejaVu Serif')`;
 
     const hasQuadraticGraph = /x\s*\^?\s*2/i.test(normalizeForText(content));
-    const graphBlock = hasQuadraticGraph ? `
+    const graphBlock = hasQuadraticGraph && synchronizedScenes.length === 0 ? `
         # Grafica didactica de la parabola y sus raices
         axes = Axes(
             x_range=[-1, 6, 1],
@@ -359,21 +361,64 @@ export const manim = {
         self.play(FadeOut(graph_group))
 ` : '';
 
-    const pythonCode = `
-# -*- coding: utf-8 -*-
-from manim import *
+    const introDuration = Math.max(3, synchronizedScenes[0]?.duration ?? synchronizedScenes[0]?.estimatedDuration ?? 4);
+    const synchronizedBlock = synchronizedScenes.length
+      ? synchronizedScenes.slice(1).map((syncScene, i) => {
+          const duration = Math.max(3, syncScene.duration ?? syncScene.estimatedDuration);
+          const safeStep = normalizeForText(syncScene.visualText || 'Paso');
+          const mathFormula = extractMathFormula(safeStep);
+          const isMath = isMathLike(safeStep) || /[=^]/.test(mathFormula);
+          const isQuadraticFormula = /(formula|fórmula).*x.*=/i.test(safeStep) && (safeStep.includes('/') || safeStep.includes('√'));
 
-class ${className}(Scene):
-    def construct(self):
-        # Título científico con estilo tipo revista
-        title = ${titleObject}
-        title.to_edge(UP)
-        self.add(title)
-        self.wait(1)
-        self.play(FadeOut(title))
+          if (syncScene.kind === 'graph') {
+            return `
+        # Escena sincronizada: gráfica
+        axes_${i} = Axes(x_range=[-1, 6, 1], y_range=[-4, 5, 1], x_length=9, y_length=5, axis_config={"include_tip": True})
+        curve_${i} = axes_${i}.plot(lambda x: (x - 2) * (x - 3), x_range=[-0.5, 5.5], color=YELLOW)
+        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x"))
+        y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
+        root_2_${i} = Dot(axes_${i}.c2p(2, 0), color=GREEN)
+        root_3_${i} = Dot(axes_${i}.c2p(3, 0), color=GREEN)
+        root_2_label_${i} = MathTex("x=2", font_size=24).next_to(root_2_${i}, DOWN)
+        root_3_label_${i} = MathTex("x=3", font_size=24).next_to(root_3_${i}, DOWN)
+        graph_title_${i} = Text("Raices de la parabola", font_size=28, color=BLUE).to_edge(UP)
+        graph_group_${i} = VGroup(axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, root_3_${i}, root_2_label_${i}, root_3_label_${i}, graph_title_${i})
+        self.play(Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=3)
+        self.play(FadeIn(root_2_${i}), FadeIn(root_3_${i}), Write(root_2_label_${i}), Write(root_3_label_${i}), FadeIn(graph_title_${i}), run_time=2)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 6))
+        self.play(FadeOut(graph_group_${i}), run_time=1)
+`;
+          }
 
-        # Contenido
-${steps
+          if (syncScene.kind === 'conclusion') {
+            return `
+        # Escena sincronizada: conclusión
+        final = Tex(r"\\textbf{Solucion comprobada}", font_size=42, color=GREEN)
+        self.play(Write(final), run_time=1)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 1))
+`;
+          }
+
+          const rendered = useLatex
+            ? isQuadraticFormula
+              ? `VGroup(Tex(${escapeForPythonString('\\text{Aplicamos la fórmula general:}')}, font_size=30, color=WHITE), MathTex(${escapeForPythonString('x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}')}, font_size=54, color=YELLOW)).arrange(DOWN, buff=0.45)`
+              : isMath
+                ? `MathTex(${escapeForPythonString(latexMath(mathFormula))}, font_size=36, color=WHITE)`
+                : `Tex(${escapeForPythonString(latexText(safeStep))}, font_size=36, color=WHITE)`
+            : `Text(${escapeForPythonString(safeStep)}, font_size=36, color=WHITE, font='DejaVu Serif')`;
+
+          return `
+        # Escena sincronizada: ${syncScene.id}
+        scene_${i} = ${rendered}
+        scene_${i}.to_edge(UP)
+        self.play(Write(scene_${i}), run_time=1.2)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
+        self.play(FadeOut(scene_${i}), run_time=1)
+`;
+        }).join('\n')
+      : '';
+
+    const legacyBlock = `${steps
   .map((step, i) => {
     const safeStep = normalizeForText((step || 'Paso').trim() || 'Paso');
     const mathFormula = extractMathFormula(safeStep);
@@ -381,7 +426,7 @@ ${steps
     const isQuadraticFormula = /(formula|fórmula).*x.*=/i.test(safeStep) && (safeStep.includes('/') || safeStep.includes('√') || safeStep.includes('\\\\sqrt'));
     const rendered = useLatex
       ? isQuadraticFormula
-        ? `VGroup(Tex(${escapeForPythonString('\\text{Aplicamos la fórmula general:}')}, font_size=30, color=WHITE), MathTex(${escapeForPythonString('x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}')}, font_size=54, color=YELLOW)).arrange(DOWN, buff=0.45)`
+        ? `VGroup(Tex(${escapeForPythonString('\\\\text{Aplicamos la fórmula general:}')}, font_size=30, color=WHITE), MathTex(${escapeForPythonString('x = \\\\frac{-b \\\\pm \\\\sqrt{\\\\Delta}}{2a}')}, font_size=54, color=YELLOW)).arrange(DOWN, buff=0.45)`
         : isMath
           ? `MathTex(${escapeForPythonString(latexMath(mathFormula))}, font_size=36, color=WHITE)`
           : `Tex(${escapeForPythonString(latexText(safeStep))}, font_size=36, color=WHITE)`
@@ -396,12 +441,31 @@ ${steps
         self.play(FadeOut(step_${i}))
 `;
   })
-  .join('\n')}
+  .join('\\n')}
 ${graphBlock}
         # Final
         final = ${finalObject}
         self.play(Write(final))
-        self.wait(2)
+        self.wait(2)`;
+
+    const sceneBlock = synchronizedScenes.length ? synchronizedBlock : legacyBlock;
+
+    const pythonCode = `
+# -*- coding: utf-8 -*-
+from manim import *
+
+class ${className}(Scene):
+    def construct(self):
+        # Título científico con estilo tipo revista
+        title = ${titleObject}
+        title.to_edge(UP)
+        self.add(title)
+        self.play(Write(title), run_time=1)
+        self.wait(max(0.5, ${introDuration.toFixed(2)} - 2))
+        self.play(FadeOut(title), run_time=1)
+
+        # Contenido sincronizado con la narración
+${sceneBlock}
 `;
 
     return pythonCode;

@@ -14,6 +14,13 @@ const buildWindowsTtsCommand = (outputPath: string, text: string): string => {
   return `powershell -NoProfile -ExecutionPolicy Bypass -Command "$tts = New-Object System.Speech.Synthesis.SpeechSynthesizer; $tts.SetOutputToWaveFile('${safeOutput}'); $tts.Rate = -1; $tts.Volume = 100; $tts.Speak('${safeText}'); $tts.Dispose()"`;
 };
 
+const getEdgeTtsArgs = (outputPath: string, text: string): string[] => [
+  `--voice=${process.env.TTS_NEURAL_VOICE || 'es-MX-DaliaNeural'}`,
+  `--rate=${process.env.TTS_NEURAL_RATE || '-8%'}`,
+  '--text', text,
+  '--write-media', outputPath,
+];
+
 const getEspeakArgs = (outputPath: string, text: string): string[] => [
   '-v', process.env.TTS_VOICE || 'es-la',
   '-s', process.env.TTS_SPEED || '145',
@@ -30,6 +37,17 @@ export const tts = {
 
     fs.mkdirSync(outputDir, { recursive: true });
     const outputPath = path.join(outputDir, `${fileName}-narration.wav`);
+    const neuralOutputPath = path.join(outputDir, `${fileName}-narration.mp3`);
+    const provider = (process.env.TTS_PROVIDER || 'edge').toLowerCase();
+
+    if (provider !== 'espeak' && provider !== 'local') {
+      try {
+        await execFileAsync('edge-tts', getEdgeTtsArgs(neuralOutputPath, normalized));
+        if (fs.existsSync(neuralOutputPath)) return neuralOutputPath;
+      } catch (error) {
+        console.warn('⚠️ TTS neural no disponible; se usará fallback local:', error instanceof Error ? error.message : error);
+      }
+    }
 
     if (process.platform === 'win32') {
       try {

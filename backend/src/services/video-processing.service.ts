@@ -3,6 +3,7 @@ import { ffmpeg } from './ffmpeg.service.js';
 import { openai } from './openai.service.js';
 import { tts } from './tts.service.js';
 import { validateMathProblem, type MathValidation } from './math-validation.service.js';
+import { synchronization, type SynchronizedScene } from './synchronization.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -124,24 +125,37 @@ export const videoProcessing = {
       const generatedSteps = requestedSteps?.length
         ? requestedSteps
         : await openai.generateSolutionSteps(content);
-      const steps = validation.supported && validation.valid
-        ? [...validation.steps, ...generatedSteps]
-        : generatedSteps;
+      const steps = requestedSteps?.length
+        ? requestedSteps
+        : validation.supported && validation.valid
+          ? validation.steps
+          : generatedSteps;
       if (!steps.length) {
         steps.push(content);
       }
 
+      const synchronizedScenes: SynchronizedScene[] = synchronization.buildSynchronizedScenes(content, steps);
       let narrationAudioPath = '';
       if (enableNarration) {
-        console.log(`🎙️ Generando narración con ${aiProvider}...`);
-        const narrationScript = await openai.generateNarrationScript(content, steps);
-        narrationAudioPath = await tts.generateNarrationAudio(
-          narrationScript.join(' '),
-          outputDir,
-          id
-        );
-        if (narrationAudioPath) {
-          console.log(`✓ Audio de narración generado: ${narrationAudioPath}`);
+        console.log(`🎙️ Generando narración sincronizada con ${aiProvider}...`);
+        const audioSegments: string[] = [];
+        for (const scene of synchronizedScenes) {
+          const segmentPath = await tts.generateNarrationAudio(scene.narrationText, outputDir, `${id}-${scene.id}`);
+          if (!segmentPath) continue;
+          audioSegments.push(segmentPath);
+          const audioInfo = await ffmpeg.getVideoInfo(segmentPath);
+          const audioDuration = Number(audioInfo.format?.duration);
+          if (Number.isFinite(audioDuration) && audioDuration > 0) {
+            scene.duration = Math.max(2, audioDuration);
+          }
+        }
+
+        if (audioSegments.length) {
+          narrationAudioPath = await ffmpeg.concatenateAudio(
+            audioSegments,
+            path.join(outputDir, `${id}-narration.wav`)
+          );
+          console.log(`✓ Audio sincronizado generado: ${narrationAudioPath}`);
         } else {
           console.log('⚠️ No se pudo generar audio; continuando sin narración');
         }
@@ -159,6 +173,7 @@ export const videoProcessing = {
         title,
         content,
         steps: steps.slice(0, 5), // Máx 5 pasos por video
+        synchronizedScenes,
         outputDir,
       };
 

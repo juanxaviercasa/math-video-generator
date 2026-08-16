@@ -145,6 +145,31 @@ export const ffmpeg = {
   },
 
   /**
+   * Unir segmentos de narración sin recomprimir el audio PCM.
+   */
+  async concatenateAudio(audioPaths: string[], outputPath: string): Promise<string> {
+    if (!audioPaths.length) throw new Error('No hay segmentos de audio para concatenar');
+
+    const concatPath = path.join(path.dirname(outputPath), `${path.basename(outputPath)}.concat.txt`);
+    const concatContent = audioPaths
+      .map((audioPath) => `file '${path.resolve(audioPath).replace(/'/g, "'\\\\''")}'`)
+      .join('\n');
+    fs.writeFileSync(concatPath, concatContent);
+
+    try {
+      const ffmpegCommand = this.getCommand();
+      const cmd = `"${ffmpegCommand}" -f concat -safe 0 -i "${concatPath}" -c:a pcm_s16le -y "${outputPath}"`;
+      await execAsync(cmd, { maxBuffer: 1024 * 1024 * 10 });
+      if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size === 0) {
+        throw new Error('Audio concatenado no creado');
+      }
+      return outputPath;
+    } finally {
+      if (fs.existsSync(concatPath)) fs.unlinkSync(concatPath);
+    }
+  },
+
+  /**
    * Combinar múltiples videos
    */
   async concatenateVideos(

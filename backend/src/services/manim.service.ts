@@ -3,7 +3,6 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { SynchronizedScene } from './synchronization.service.js';
-import type { PresentationPlan } from './presentation.types.js';
 import { getVideoFormatProfile, type VideoFormatProfile } from './video-format.service.js';
 
 const execAsync = promisify(exec);
@@ -56,9 +55,6 @@ interface ManimScene {
   formatProfile?: VideoFormatProfile;
   layoutDensity?: 'comfortable' | 'compact';
   narrationStyle?: 'warm_teacher' | 'neutral_teacher';
-  debug?: boolean;
-  debugIteration?: number;
-  presentationPlan?: PresentationPlan;
 }
 
 const escapeForPythonString = (value: string): string => JSON.stringify(value);
@@ -324,7 +320,7 @@ export const manim = {
    * Generar script Python de Manim para una animación matemática
    */
   generatePythonScript(scene: ManimScene, useLatex = latexCompilerAvailable()): string {
-    const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [], presentationPlan, debug = process.env.MPE_DEBUG === 'true', debugIteration = 0 } = scene;
+    const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [] } = scene;
     const formatProfile = scene.formatProfile || getVideoFormatProfile('16:9', 'medium');
     const panelWidth = formatProfile.panelWidth.toFixed(2);
     const panelHeight = formatProfile.panelHeight.toFixed(2);
@@ -381,27 +377,6 @@ export const manim = {
     const introDuration = pedagogicalScenes.length
       ? 1.8
       : Math.max(3, synchronizedScenes[0]?.duration ?? synchronizedScenes[0]?.estimatedDuration ?? 4);
-    const titleWait = pedagogicalScenes.length || synchronizedScenes.length ? 0.2 : Math.max(0.5, introDuration - 2);
-
-    const debugOverlayForScene = (sceneId: string, index: number): { enter: string; exit: string } => {
-      if (!debug || !presentationPlan) return { enter: '', exit: '' };
-      const layout = presentationPlan.resolvedLayouts.find((candidate) => candidate.sceneId === sceneId);
-      const safeWidth = formatProfile.frameWidth - formatProfile.safeMargin * 2;
-      const safeHeight = formatProfile.frameHeight - formatProfile.safeMargin * 2;
-      const errorBlockIds = new Set(presentationPlan.diagnostics.filter((diagnostic) => diagnostic.severity === 'error').flatMap((diagnostic) => diagnostic.blockIds || []));
-      const boxes = (layout?.blocks || []).map((block, blockIndex) => {
-        const color = errorBlockIds.has(block.blockId) ? 'RED' : 'GREEN';
-        const label = `Text(${escapeForPythonString(`${block.blockId} | ${presentationPlan.scenes.find((candidate) => candidate.id === sceneId)?.blocks.find((candidate) => candidate.id === block.blockId)?.semanticRole || 'element'} | ${block.scale.toFixed(2)}x`)}, font_size=11, color=${color})`;
-        return `debug_box_${index}_${blockIndex} = Rectangle(width=${block.bbox.width.toFixed(3)}, height=${block.bbox.height.toFixed(3)}, stroke_color=${color}, stroke_width=2, fill_opacity=0).move_to([${block.bbox.x.toFixed(3)}, ${block.bbox.y.toFixed(3)}, 0])\ndebug_label_${index}_${blockIndex} = ${label}.next_to(debug_box_${index}_${blockIndex}, UP, buff=0.03)`;
-      });
-      const groupItems = [`debug_safe_${index}`, ...boxes.flatMap((_, blockIndex) => [`debug_box_${index}_${blockIndex}`, `debug_label_${index}_${blockIndex}`])];
-      const safeCode = `debug_safe_${index} = Rectangle(width=${safeWidth.toFixed(3)}, height=${safeHeight.toFixed(3)}, stroke_color=BLUE, stroke_width=2, fill_opacity=0).move_to([0, 0, 0])`;
-      const textCode = `debug_score_${index} = Text(${escapeForPythonString(`DEBUG ${sceneId} | score ${layout?.score.total ?? presentationPlan.score.total} | iteration ${debugIteration}`)}, font_size=14, color=BLUE).to_corner(DR)`;
-      const enterCode = `${safeCode}\n${boxes.join('\n')}\n${textCode}\ndebug_group_${index} = VGroup(${groupItems.join(', ')})\nself.add(debug_group_${index})`;
-      const indentedEnterCode = enterCode.split('\n').map((line, lineIndex) => lineIndex === 0 ? line : `        ${line}`).join('\n');
-      return { enter: indentedEnterCode, exit: `self.remove(debug_group_${index})` };
-    };
-
     const pedagogicalBlock = pedagogicalScenes.length
       ? pedagogicalScenes.map((pedScene, i) => {
           const duration = Math.max(4, pedScene.duration ?? pedScene.estimatedDuration);
@@ -442,10 +417,10 @@ export const manim = {
               const detail = stage.detail ? `, Text(${escapeForPythonString(stage.detail)}, font_size=13, color=GREY_B)` : '';
               return `VGroup(${label}, ${formula}${detail}).arrange(DOWN, buff=0.10)`;
             });
-            const stageContentY = formatProfile.orientation === 'portrait' ? 0.05 : 0.42;
-            const stageArrangement = visualStages.length >= 4 && formatProfile.orientation !== 'portrait'
+            const stageContentY = formatProfile.orientation === 'portrait' ? 0.50 : 0.42;
+            const stageArrangement = visualStages.length >= 4
               ? `VGroup(${stageObjects[0]}, VGroup(${stageObjects.slice(1).join(', ')}).arrange(RIGHT, buff=0.28)).arrange(DOWN, buff=0.30)`
-              : `VGroup(${stageObjects.join(', ')}).arrange(DOWN, buff=${formatProfile.orientation === 'portrait' ? '0.22' : '0.30'})`;
+              : `VGroup(${stageObjects.join(', ')}).arrange(DOWN, buff=0.30)`;
             return `
         # Storyboard pedagógico: micro-pasos de ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -455,9 +430,7 @@ export const manim = {
         content_${i}.move_to(DOWN * ${stageContentY.toFixed(2)})
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
-        ${debugOverlayForScene(pedScene.id, i).enter}
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
-        ${debugOverlayForScene(pedScene.id, i).exit}
         self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
 `;
           }
@@ -477,10 +450,8 @@ export const manim = {
         graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP)
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, root_3_${i}, root_2_label_${i}, root_3_label_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
-        ${debugOverlayForScene(pedScene.id, i).enter}
         self.play(FadeIn(root_2_${i}), FadeIn(root_3_${i}), Write(root_2_label_${i}), Write(root_3_label_${i}), FadeIn(graph_title_${i}), run_time=2)
         self.wait(max(0.5, ${duration.toFixed(2)} - 5.5))
-        ${debugOverlayForScene(pedScene.id, i).exit}
         self.play(FadeOut(graph_group_${i}), run_time=1)
 `;
           }
@@ -499,9 +470,7 @@ export const manim = {
         content_${i} = ${recapContent}
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
-        ${debugOverlayForScene(pedScene.id, i).enter}
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
-        ${debugOverlayForScene(pedScene.id, i).exit}
         self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
 `;
           }
@@ -525,9 +494,7 @@ export const manim = {
         content_${i} = ${compactGroup}
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
-        ${debugOverlayForScene(pedScene.id, i).enter}
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
-        ${debugOverlayForScene(pedScene.id, i).exit}
         self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
 `;
           }
@@ -539,9 +506,7 @@ export const manim = {
         content_${i} = ${contentGroup}.scale_to_fit_height(${contentHeight}).scale(${compactScale}).move_to(DOWN * ${compactY})
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
-        ${debugOverlayForScene(pedScene.id, i).enter}
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
-        ${debugOverlayForScene(pedScene.id, i).exit}
         self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
 `;
         }).join('\n')
@@ -577,14 +542,10 @@ export const manim = {
 
           if (syncScene.kind === 'conclusion') {
             return `
-        # Escena sincronizada: conclusión neutral
-        panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
-        header_${i} = Text("Resumen del procedimiento", font_size=32, color=BLUE).move_to(UP * ${headerY})
-        final_${i} = Text("Revisa los pasos y comprueba el resultado", font_size=30, color=GREEN).move_to(DOWN * ${contentY})
-        content_group_${i} = VGroup(header_${i}, final_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
+        # Escena sincronizada: conclusión
+        final = Tex(r"\\textbf{Solucion comprobada}", font_size=42, color=GREEN)
+        self.play(Write(final), run_time=1)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 1))
 `;
           }
 
@@ -597,16 +558,12 @@ export const manim = {
             : `Text(${escapeForPythonString(safeStep)}, font_size=36, color=WHITE, font='DejaVu Serif')`;
 
           return `
-        # Escena sincronizada contenida: ${syncScene.id}
-        panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
-        header_${i} = Text("Paso ${i + 1}", font_size=32, color=BLUE).move_to(UP * ${headerY})
-        content_${i} = ${rendered}
-        content_${i}.scale(min(${contentWidth} / content_${i}.width, ${formatProfile.contentHeight.toFixed(2)} / content_${i}.height))
-        content_${i}.move_to(DOWN * ${contentY})
-        content_group_${i} = VGroup(header_${i}, content_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
+        # Escena sincronizada: ${syncScene.id}
+        scene_${i} = ${rendered}
+        scene_${i}.to_edge(UP)
+        self.play(Write(scene_${i}), run_time=1.2)
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
+        self.play(FadeOut(scene_${i}), run_time=1)
 `;
         }).join('\n')
       : '';
@@ -646,14 +603,6 @@ ${graphBlock}
       : synchronizedScenes.length
         ? synchronizedBlock
         : legacyBlock;
-    const titleBlock = pedagogicalScenes.length || synchronizedScenes.length ? '' : `
-        title = ${titleObject}
-        title.to_edge(UP)
-        self.add(title)
-        self.play(Write(title), run_time=1)
-        self.wait(${titleWait.toFixed(2)})
-        self.play(FadeOut(title), run_time=1)
-`;
 
     const pythonCode = `
 # -*- coding: utf-8 -*-
@@ -661,11 +610,16 @@ from manim import *
 
 class ${className}(Scene):
     def construct(self):
-        # Math Presentation Engine: ${presentationPlan?.engineVersion || 'legacy'} | score=${presentationPlan?.score.total ?? 'n/a'}
         self.camera.frame_width = ${formatProfile.frameWidth}
         self.camera.frame_height = ${formatProfile.frameHeight}
-        # El storyboard contiene sus propios encabezados y paneles.
-${titleBlock}
+        # Título científico con estilo tipo revista
+        title = ${titleObject}
+        title.to_edge(UP)
+        self.add(title)
+        self.play(Write(title), run_time=${pedagogicalScenes.length ? '0.6' : '1'})
+        self.wait(${pedagogicalScenes.length ? '0.2' : `max(0.5, ${introDuration.toFixed(2)} - 2)`})
+        self.play(FadeOut(title), run_time=${pedagogicalScenes.length ? '0.5' : '1'})
+
         # Contenido sincronizado con la narración
 ${sceneBlock}
 `;

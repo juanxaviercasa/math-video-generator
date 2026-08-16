@@ -6,9 +6,6 @@ import { validateMathProblem, type MathValidation } from './math-validation.serv
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
 import { buildQuadraticStoryboard } from './pedagogy.service.js';
 import { getVideoFormatProfile, type VideoAspectRatio, type VideoQuality } from './video-format.service.js';
-import { buildPresentationPlan, repairPresentationPlan } from './presentation-engine.service.js';
-import { auditRenderedVideo } from './visual-qa.service.js';
-import { applyVisualRepairPlan, buildVisualRepairPlan } from './visual-repair.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -56,10 +53,6 @@ interface VideoGenerationProgress {
   error?: string;
   duration?: number;
   validation?: MathValidation;
-  presentationScore?: number;
-  presentationPlanVersion?: string;
-  visualQaPassed?: boolean;
-  visualQaWarnings?: string[];
 }
 
 export const videoProcessing = {
@@ -130,9 +123,6 @@ export const videoProcessing = {
       if (validation.supported && !validation.valid) {
         throw new Error(validation.warnings[0] || 'El problema matemático no superó la validación');
       }
-      if (!validation.supported && process.env.ALLOW_UNVERIFIED_MATH_VIDEO !== 'true') {
-        throw new Error(`La familia matemática "${validation.kind}" todavía no tiene un solver determinista habilitado. No se generará un video que pueda parecer correcto sin estar verificado.`);
-      }
 
       // 2. Generar descripción con OpenAI (opcional)
       console.log('🤖 Generando descripción...');
@@ -178,10 +168,6 @@ export const videoProcessing = {
           }
         }
 
-        const neuralProvider = (process.env.TTS_PROVIDER || 'edge').toLowerCase() === 'edge';
-        if (neuralProvider && audioSegments.length !== synchronizedScenes.length) {
-          throw new Error(`La voz neural no está disponible para todas las escenas (${audioSegments.length}/${synchronizedScenes.length}). Se cancela el render para no degradar silenciosamente a una voz local.`);
-        }
         if (audioSegments.length) {
           narrationAudioPath = await ffmpeg.concatenateAudio(
             audioSegments,
@@ -195,34 +181,14 @@ export const videoProcessing = {
         console.log('🔇 Narración deshabilitada por el usuario');
       }
 
-      let presentationPlan = buildPresentationPlan({
-        problem: content,
-        validation,
-        pedagogicalScenes,
-        aspectRatio,
-        quality,
-        density: layoutDensity,
-      });
-      if (!presentationPlan.passed) {
-        presentationPlan = repairPresentationPlan(presentationPlan, 3);
-      }
-      progress.presentationScore = presentationPlan.score.total;
-      progress.presentationPlanVersion = presentationPlan.engineVersion;
-      report();
-      if (!presentationPlan.passed) {
-        const criticalDiagnostics = presentationPlan.diagnostics.filter((diagnostic) => diagnostic.severity === 'error');
-        throw new Error(`La composición no superó las restricciones visuales después de reparar: ${criticalDiagnostics.map((diagnostic) => diagnostic.message).join('; ')}`);
-      }
-
-      // 3–4. Renderizar, auditar y reparar con un límite estricto de iteraciones.
-      console.log('📝 Generando animaciones con Visual QA + Auto-Repair...');
+      // 3. Renderizar con Manim
+      console.log('📝 Generando animaciones...');
       progress.progress = 30;
-      progress.message = 'Renderizando y auditando composición matemática...';
+      progress.message = 'Renderizando animaciones matemáticas...';
       report();
 
       const formatProfile = getVideoFormatProfile(aspectRatio, quality);
-      const maxRepairIterations = Math.max(0, Math.min(5, Number(process.env.MPE_MAX_REPAIR_ITERATIONS || 3)));
-      const baseManimScene = {
+      const manimScene = {
         title,
         content,
         steps: steps.slice(0, 5), // Máx 5 pasos por video
@@ -232,81 +198,46 @@ export const videoProcessing = {
         formatProfile,
         layoutDensity,
         narrationStyle,
-        debug: process.env.MPE_DEBUG === 'true',
       };
+
+      const videoPath = await manim.renderVideo(manimScene);
+      progress.progress = 70;
+      progress.message = 'Animación renderizada; preparando video final...';
+      report();
+
+      // 4. Procesar con FFmpeg
+      console.log('🎬 Procesando video...');
+      progress.progress = 75;
+      progress.message = 'Optimizando video...';
+      report();
+
       const exportProfile = getVideoFormatProfile(aspectRatio, quality);
-      const bitrate = quality === 'high' ? '10000k' : quality === 'medium' ? '5000k' : '2500k';
-      let bestProcessedPath = '';
-      let bestVisualQa: Awaited<ReturnType<typeof auditRenderedVideo>> | null = null;
-      let bestScore = -1;
-      let iteration = 0;
+      const bitrate =
+        quality === 'high' ? '10000k' : quality === 'medium' ? '5000k' : '2500k';
 
-      while (iteration <= maxRepairIterations) {
-        const iterationDir = iteration === 0 ? outputDir : path.join(outputDir, `qa-iteration-${iteration}`);
-        fs.mkdirSync(iterationDir, { recursive: true });
-        const manimScene = { ...baseManimScene, outputDir: iterationDir, debugIteration: iteration, presentationPlan };
-        const videoPath = await manim.renderVideo(manimScene);
-        const iterationVideoPath = path.join(iterationDir, `${id}-final.mp4`);
-        let iterationProcessedPath = await ffmpeg.processVideo({
-          inputPath: videoPath,
-          outputPath: iterationVideoPath,
-          width: exportProfile.width,
-          height: exportProfile.height,
-          bitrate,
-          fps: 30,
-        });
-        if (!fs.existsSync(iterationProcessedPath)) throw new Error('FFmpeg no produjo el archivo de video final');
+      const outputVideoPath = path.join(outputDir, `${id}-final.mp4`);
 
-        if (narrationAudioPath) {
-          const narratedVideoPath = path.join(iterationDir, `${id}-narrated.mp4`);
-          iterationProcessedPath = await ffmpeg.mergeAudioWithVideo({
-            videoPath: iterationProcessedPath,
-            audioPath: narrationAudioPath,
-            outputPath: narratedVideoPath,
-          });
-        }
+      let processedPath = await ffmpeg.processVideo({
+        inputPath: videoPath,
+        outputPath: outputVideoPath,
+        width: exportProfile.width,
+        height: exportProfile.height,
+        bitrate,
+        fps: 30,
+      });
 
-        const visualQa = await auditRenderedVideo(iterationProcessedPath, presentationPlan, iterationDir, {
-          debug: process.env.MPE_DEBUG === 'true',
-          maxRepairIterations,
-        });
-        const score = visualQa.score?.total ?? presentationPlan.score.total;
-        if (score > bestScore || !bestProcessedPath) {
-          bestScore = score;
-          bestProcessedPath = iterationProcessedPath;
-          bestVisualQa = visualQa;
-        }
-        progress.presentationScore = score;
-        progress.visualQaPassed = visualQa.passed;
-        progress.visualQaWarnings = visualQa.warnings;
-        progress.progress = Math.min(82, 45 + iteration * 12);
-        progress.message = visualQa.passed ? `QA visual aprobado en iteración ${iteration}.` : `QA detectó ${visualQa.issues?.length || 0} issues; preparando reparación ${iteration + 1}.`;
-        report();
-
-        if (visualQa.passed || iteration >= maxRepairIterations) break;
-        const repairPlan = buildVisualRepairPlan(visualQa.issues || [], iteration + 1);
-        if (!repairPlan.actions.length) break;
-        const repairedPlan = applyVisualRepairPlan(presentationPlan, repairPlan);
-        if (repairedPlan.score.total <= presentationPlan.score.total && repairedPlan.passed === presentationPlan.passed) break;
-        presentationPlan = repairedPlan;
-        iteration += 1;
+      if (!fs.existsSync(processedPath)) {
+        throw new Error('FFmpeg no produjo el archivo de video final');
       }
 
-      if (!bestProcessedPath || !bestVisualQa) throw new Error('El ciclo Visual QA no produjo un video candidato');
-      const processedPath = bestProcessedPath;
-      const visualQa = bestVisualQa;
-      progress.presentationScore = visualQa.score?.total ?? presentationPlan.score.total;
-      progress.visualQaPassed = visualQa.passed;
-      progress.visualQaWarnings = visualQa.warnings;
-      report();
-      if (!visualQa.passed) {
-        const issueSummary = (visualQa.issues || []).filter((issue) => issue.severity === 'error').map((issue) => `${issue.scene}/${issue.element}: ${issue.suggestedRepair}`).join('; ');
-        throw new Error(`El video no superó el QA visual: ${visualQa.errors.join('; ')}${issueSummary ? ` Issues: ${issueSummary}` : ''}`);
+      if (narrationAudioPath) {
+        const narratedVideoPath = path.join(outputDir, `${id}-narrated.mp4`);
+        processedPath = await ffmpeg.mergeAudioWithVideo({
+          videoPath: processedPath,
+          audioPath: narrationAudioPath,
+          outputPath: narratedVideoPath,
+        });
       }
-
-      progress.progress = 85;
-      progress.message = 'Video optimizado; generando miniatura...';
-      report();
 
       progress.progress = 85;
       progress.message = 'Video optimizado; generando miniatura...';

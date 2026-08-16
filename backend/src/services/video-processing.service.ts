@@ -157,6 +157,7 @@ export const videoProcessing = {
 
       const manimScene = {
         title,
+        content,
         steps: steps.slice(0, 5), // Máx 5 pasos por video
         outputDir,
       };

@@ -47,6 +47,7 @@ interface ManimScene {
   title: string;
   steps: string[];
   outputDir: string;
+  content?: string;
 }
 
 const escapeForPythonString = (value: string): string => JSON.stringify(value);
@@ -262,7 +263,13 @@ const normalizeMathUnicode = (value: string): string => value
 const latexMath = (value: string): string => {
   const trimmed = normalizeMathUnicode(normalizeForText(value.trim()));
   if (!trimmed) return 'x = 0';
-  return buildMathTextWithSpaces(trimmed);
+
+  const withVerticalFraction = trimmed.replace(
+    /\(\s*([^()]+?)\s*\)\s*\/\s*\(\s*([^()]+?)\s*\)/,
+    '\\frac{$1}{$2}'
+  );
+
+  return buildMathTextWithSpaces(withVerticalFraction);
 };
 
 function findGeneratedVideo(outputDir: string, safeName: string): string | null {
@@ -306,7 +313,7 @@ export const manim = {
    * Generar script Python de Manim para una animación matemática
    */
   generatePythonScript(scene: ManimScene, useLatex = latexCompilerAvailable()): string {
-    const { title, steps } = scene;
+    const { title, steps, content = '' } = scene;
 
     // Sanitizar nombre de archivo
     const safeName = title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
@@ -327,6 +334,31 @@ export const manim = {
       ? `Tex(${escapeForPythonString(latexText(safeFinal))}, font_size=48, color=GREEN)`
       : `Text(${escapeForPythonString(safeFinal)}, font_size=48, color=GREEN, font='DejaVu Serif')`;
 
+    const hasQuadraticGraph = /x\s*\^?\s*2/i.test(normalizeForText(content));
+    const graphBlock = hasQuadraticGraph ? `
+        # Grafica didactica de la parabola y sus raices
+        axes = Axes(
+            x_range=[-1, 6, 1],
+            y_range=[-4, 5, 1],
+            x_length=9,
+            y_length=5,
+            axis_config={"include_tip": True},
+        )
+        curve = axes.plot(lambda x: (x - 2) * (x - 3), x_range=[-0.5, 5.5], color=YELLOW)
+        x_label = axes.get_x_axis_label(MathTex("x"))
+        y_label = axes.get_y_axis_label(MathTex("y"))
+        root_2 = Dot(axes.c2p(2, 0), color=GREEN)
+        root_3 = Dot(axes.c2p(3, 0), color=GREEN)
+        root_2_label = MathTex("x=2", font_size=24).next_to(root_2, DOWN)
+        root_3_label = MathTex("x=3", font_size=24).next_to(root_3, DOWN)
+        graph_title = Text("Raices de la parabola", font_size=28, color=BLUE).to_edge(UP)
+        graph_group = VGroup(axes, curve, x_label, y_label, root_2, root_3, root_2_label, root_3_label, graph_title)
+        self.play(Create(axes), Create(curve), FadeIn(x_label), FadeIn(y_label), run_time=3)
+        self.play(FadeIn(root_2), FadeIn(root_3), Write(root_2_label), Write(root_3_label), FadeIn(graph_title), run_time=2)
+        self.wait(3)
+        self.play(FadeOut(graph_group))
+` : '';
+
     const pythonCode = `
 # -*- coding: utf-8 -*-
 from manim import *
@@ -346,10 +378,13 @@ ${steps
     const safeStep = normalizeForText((step || 'Paso').trim() || 'Paso');
     const mathFormula = extractMathFormula(safeStep);
     const isMath = isMathLike(safeStep) || /[=^]/.test(mathFormula);
+    const isQuadraticFormula = /(formula|fórmula).*x.*=/i.test(safeStep) && (safeStep.includes('/') || safeStep.includes('√') || safeStep.includes('\\\\sqrt'));
     const rendered = useLatex
-      ? isMath
-        ? `MathTex(${escapeForPythonString(latexMath(mathFormula))}, font_size=36, color=WHITE)`
-        : `Tex(${escapeForPythonString(latexText(safeStep))}, font_size=36, color=WHITE)`
+      ? isQuadraticFormula
+        ? `VGroup(Tex(${escapeForPythonString('\\text{Aplicamos la fórmula general:}')}, font_size=30, color=WHITE), MathTex(${escapeForPythonString('x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}')}, font_size=54, color=YELLOW)).arrange(DOWN, buff=0.45)`
+        : isMath
+          ? `MathTex(${escapeForPythonString(latexMath(mathFormula))}, font_size=36, color=WHITE)`
+          : `Tex(${escapeForPythonString(latexText(safeStep))}, font_size=36, color=WHITE)`
       : `Text(${escapeForPythonString(safeStep)}, font_size=36, color=WHITE, font='DejaVu Serif')`;
 
     return `
@@ -362,7 +397,7 @@ ${steps
 `;
   })
   .join('\n')}
-
+${graphBlock}
         # Final
         final = ${finalObject}
         self.play(Write(final))

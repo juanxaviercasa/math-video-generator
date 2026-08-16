@@ -1,9 +1,10 @@
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const escapeSingleQuotes = (value: string): string => value.replace(/'/g, "''");
 
@@ -13,10 +14,12 @@ const buildWindowsTtsCommand = (outputPath: string, text: string): string => {
   return `powershell -NoProfile -ExecutionPolicy Bypass -Command "$tts = New-Object System.Speech.Synthesis.SpeechSynthesizer; $tts.SetOutputToWaveFile('${safeOutput}'); $tts.Rate = -1; $tts.Volume = 100; $tts.Speak('${safeText}'); $tts.Dispose()"`;
 };
 
-const buildEsliteCommand = (outputPath: string, text: string): string => {
-  const safeText = text.replace(/"/g, '\\"').replace(/`/g, '\\`');
-  return `espeak "${safeText}" -w "${outputPath}"`;
-};
+const getEspeakArgs = (outputPath: string, text: string): string[] => [
+  '-v', process.env.TTS_VOICE || 'es-la',
+  '-s', process.env.TTS_SPEED || '145',
+  '-w', outputPath,
+  text,
+];
 
 export const tts = {
   async generateNarrationAudio(text: string, outputDir: string, fileName: string): Promise<string> {
@@ -25,26 +28,26 @@ export const tts = {
       return '';
     }
 
+    fs.mkdirSync(outputDir, { recursive: true });
     const outputPath = path.join(outputDir, `${fileName}-narration.wav`);
-    const commands: string[] = [];
 
     if (process.platform === 'win32') {
-      commands.push(buildWindowsTtsCommand(outputPath, normalized));
-    }
-
-    commands.push(buildEsliteCommand(outputPath, normalized));
-
-    for (const command of commands) {
       try {
-        await execAsync(command);
-        if (fs.existsSync(outputPath)) {
-          return outputPath;
-        }
+        await execAsync(buildWindowsTtsCommand(outputPath, normalized));
+        if (fs.existsSync(outputPath)) return outputPath;
       } catch (error) {
-        console.warn('⚠️  TTS fallback failed:', error instanceof Error ? error.message : error);
+        console.warn('⚠️ Windows TTS falló:', error instanceof Error ? error.message : error);
       }
     }
 
+    try {
+      await execFileAsync('espeak', getEspeakArgs(outputPath, normalized));
+      if (fs.existsSync(outputPath)) return outputPath;
+    } catch (error) {
+      console.warn('⚠️ espeak TTS falló:', error instanceof Error ? error.message : error);
+    }
+
+    console.warn('⚠️ No se pudo generar narración: instala espeak y configura TTS_VOICE si es necesario.');
     return '';
   },
 };

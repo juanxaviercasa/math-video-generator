@@ -4,6 +4,7 @@ import { openai } from './openai.service.js';
 import { tts } from './tts.service.js';
 import * as path from 'path';
 import * as os from 'os';
+import * as fs from 'fs';
 
 /**
  * Video Processing Service
@@ -19,7 +20,8 @@ interface VideoGenerationRequest {
   outputDir: string;
   enableNarration?: boolean;
   aiProvider?: 'openrouter' | 'gemini' | 'openai';
-  enableComfyUI?: boolean;
+    enableComfyUI?: boolean;
+  allowSimulation?: boolean;
 }
 
 interface VideoGenerationProgress {
@@ -29,6 +31,7 @@ interface VideoGenerationProgress {
   videoUrl?: string;
   thumbnailUrl?: string;
   error?: string;
+  duration?: number;
 }
 
 export const videoProcessing = {
@@ -36,7 +39,17 @@ export const videoProcessing = {
    * Procesar video completo
    */
   async generateVideo(request: VideoGenerationRequest): Promise<VideoGenerationProgress> {
-    const { id, title, content, quality = 'medium', outputDir, enableNarration = true, aiProvider = 'openrouter', enableComfyUI = false } = request;
+    const {
+      id,
+      title,
+      content,
+      quality = 'medium',
+      outputDir,
+      enableNarration = true,
+      aiProvider = 'openrouter',
+      enableComfyUI = false,
+      allowSimulation = process.env.ALLOW_SIMULATION === 'true',
+    } = request;
     let progress: VideoGenerationProgress = {
       status: 'processing',
       progress: 0,
@@ -52,14 +65,26 @@ export const videoProcessing = {
       const manimReady = await manim.isInstalled();
       const ffmpegReady = await ffmpeg.isInstalled();
 
-      if (!manimReady || !ffmpegReady) {
-        console.warn('⚠️ Dependencias no disponibles. Ejecutando modo simulado para mantener la app usable.');
+      const missingDependencies = [
+        !manimReady ? 'Manim' : null,
+        !ffmpegReady ? 'FFmpeg' : null,
+      ].filter(Boolean);
+
+      if (missingDependencies.length > 0) {
+        const message = `Faltan dependencias de render: ${missingDependencies.join(', ')}. Instálalas antes de generar un video real.`;
+        if (!allowSimulation) {
+          throw new Error(message);
+        }
+
+        console.warn(`⚠️ ${message} Ejecutando modo demo porque ALLOW_SIMULATION=true.`);
         progress.status = 'completed';
         progress.progress = 100;
-        progress.message = 'Generación simulada completada. Instala FFmpeg y Manim para render real del video.';
-        progress.videoUrl = undefined;
-        progress.thumbnailUrl = undefined;
+        progress.message = 'Modo demo completado; no se creó un video real.';
         return progress;
+      }
+
+      if (enableComfyUI) {
+        throw new Error('La integración con ComfyUI todavía no está implementada. Desactiva esta opción.');
       }
 
       // 2. Generar descripción con OpenAI (opcional)
@@ -90,10 +115,6 @@ export const videoProcessing = {
         console.log('🔇 Narración deshabilitada por el usuario');
       }
 
-      if (enableComfyUI) {
-        console.log('🎨 ComfyUI habilitado (para futuras mejoras visuales)');
-      }
-
       // 3. Renderizar con Manim
       console.log('📝 Generando animaciones...');
       progress.progress = 30;
@@ -114,7 +135,7 @@ export const videoProcessing = {
       progress.message = 'Optimizando video...';
 
       const resolution =
-        quality === 'high' ? '4k' : quality === 'medium' ? '1080' : '720';
+        quality === 'high' ? '4k' : quality === 'medium' ? '1080' : '480';
       const bitrate =
         quality === 'high' ? '10000k' : quality === 'medium' ? '5000k' : '2500k';
 
@@ -127,6 +148,10 @@ export const videoProcessing = {
         bitrate,
         fps: 30,
       });
+
+      if (!fs.existsSync(processedPath)) {
+        throw new Error('FFmpeg no produjo el archivo de video final');
+      }
 
       if (narrationAudioPath) {
         const narratedVideoPath = path.join(outputDir, `${id}-narrated.mp4`);
@@ -151,8 +176,12 @@ export const videoProcessing = {
 
       // 6. Obtener información del video
       const videoInfo = await ffmpeg.getVideoInfo(processedPath);
-      const duration = Math.round(parseFloat(videoInfo.format.duration));
+            const duration = Math.round(parseFloat(videoInfo.format?.duration));
+      if (!Number.isFinite(duration) || duration <= 0 || !fs.existsSync(processedPath) || !fs.existsSync(thumbnailPath)) {
+        throw new Error('Los artefactos generados no superaron la validación final');
+      }
 
+      progress.duration = duration;
       progress.status = 'completed';
       progress.progress = 100;
       progress.message = 'Video completado';

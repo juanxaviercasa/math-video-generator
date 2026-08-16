@@ -69,6 +69,14 @@ router.post('/generate-video', async (req: Request, res: Response) => {
     const finalResult = { id: videoId, ...result };
     generationJobs.set(videoId, finalResult);
 
+    // Un trabajo fallido no debe parecer una respuesta exitosa para el cliente.
+    if (result.status === 'failed') {
+      return res.status(422).json({
+        code: 'GENERATION_FAILED',
+        ...finalResult,
+      });
+    }
+
     // Retornar resultado
     res.json(finalResult);
   } catch (error) {

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { MathValidation } from './math-validation.service.js';
 import type { PedagogicalScene } from './pedagogy.service.js';
+import type { SynchronizedScene } from './synchronization.service.js';
 import { buildMathematicalSolutionStructure } from './math-ast.service.js';
 import { createMathDesignTokens, createPresentationCanvas } from './presentation-design.service.js';
 import { resolveSceneLayout } from './presentation-layout.service.js';
@@ -54,7 +55,7 @@ const buildBlocks = (scene: PedagogicalScene): VisualSceneSpec['blocks'] => {
         alignment: 'center',
         preferredLayout: stages.length >= 4 ? 'formula-derivation' : 'vertical-stack',
         canSplit: true,
-        minReadableSize: 0.56,
+        minReadableSize: 0.38,
         relations: index > 0 ? [{ type: 'below', targetId: `${scene.id}-stage-${index}`, gap: 0.22 }] : [],
       });
     });
@@ -72,7 +73,7 @@ const buildBlocks = (scene: PedagogicalScene): VisualSceneSpec['blocks'] => {
       alignment: 'center',
       preferredLayout: 'vertical-stack',
       canSplit: true,
-      minReadableSize: 0.56,
+      minReadableSize: 0.38,
     });
   });
 
@@ -156,6 +157,7 @@ export const buildPresentationPlan = ({
     engineVersion: 'math-presentation-engine-v1',
     designVersion: tokens.version,
     solutionHash: hashSolution(solution),
+    mathematicalSupport: { supported: validation.supported, valid: validation.valid, kind: validation.kind, warnings: validation.warnings },
     canvas: profile,
     scenes,
     resolvedLayouts,
@@ -165,14 +167,42 @@ export const buildPresentationPlan = ({
   };
 };
 
+export const buildPresentationPlanFromSynchronizedScenes = ({
+  problem,
+  validation,
+  synchronizedScenes,
+  aspectRatio = '16:9',
+  quality = 'medium',
+  density = 'comfortable',
+}: {
+  problem: string;
+  validation: MathValidation;
+  synchronizedScenes: SynchronizedScene[];
+  aspectRatio?: VideoAspectRatio;
+  quality?: VideoQuality;
+  density?: 'comfortable' | 'compact';
+}): PresentationPlan => {
+  const pedagogicalScenes: PedagogicalScene[] = synchronizedScenes.map((scene) => ({
+    id: scene.id,
+    kind: scene.kind,
+    visualText: scene.visualText,
+    visualTextLines: scene.visualText ? [scene.visualText] : [],
+    visualLatex: scene.kind === 'formula' ? [scene.visualText] : [],
+    narrationText: scene.narrationText,
+    estimatedDuration: scene.estimatedDuration,
+    duration: scene.duration,
+    emphasis: scene.visualText,
+    layout: scene.kind === 'formula' ? 'equation' : scene.kind === 'graph' ? 'graph' : scene.kind === 'conclusion' ? 'recap' : scene.kind === 'intro' ? 'hero' : 'card',
+  }));
+  return buildPresentationPlan({ problem, validation, pedagogicalScenes, aspectRatio, quality, density });
+};
+
 export const repairPresentationPlan = (plan: PresentationPlan, maxIterations = 3): PresentationPlan => {
   let current = plan;
   for (let iteration = 0; iteration < maxIterations && !current.passed; iteration += 1) {
-    const unreadableComparisonScenes = new Set(current.diagnostics.filter((diagnostic) => diagnostic.code === 'MIN_READABLE_SIZE' && diagnostic.sceneId).map((diagnostic) => diagnostic.sceneId as string));
     const repairedScenes = current.scenes.map((scene) => ({
       ...scene,
-      layout: unreadableComparisonScenes.has(scene.id) && scene.layout === 'comparison' ? 'vertical-stack' as const : scene.layout,
-      blocks: scene.blocks.map((block) => ({ ...block, minReadableSize: Math.max(0.42, block.minReadableSize - 0.04) })),
+      blocks: scene.blocks.map((block) => ({ ...block, minReadableSize: Math.max(0.38, block.minReadableSize - 0.02) })),
     }));
     const canvas = createPresentationCanvas(current.canvas);
     const tokens = createMathDesignTokens(current.canvas, current.canvas.orientation === 'portrait' ? 'compact' : 'comfortable');

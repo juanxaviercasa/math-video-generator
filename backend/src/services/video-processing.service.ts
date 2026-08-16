@@ -130,6 +130,9 @@ export const videoProcessing = {
       if (validation.supported && !validation.valid) {
         throw new Error(validation.warnings[0] || 'El problema matemático no superó la validación');
       }
+      if (!validation.supported && process.env.ALLOW_UNVERIFIED_MATH_VIDEO !== 'true') {
+        throw new Error(`La familia matemática "${validation.kind}" todavía no tiene un solver determinista habilitado. No se generará un video que pueda parecer correcto sin estar verificado.`);
+      }
 
       // 2. Generar descripción con OpenAI (opcional)
       console.log('🤖 Generando descripción...');

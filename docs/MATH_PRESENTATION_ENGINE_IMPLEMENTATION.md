@@ -28,7 +28,7 @@ Solution
 | `presentation-design.service.ts` | Tokens centralizados de color, tipografía, espaciado, escala mínima y canvas seguro. |
 | `presentation-layout.service.ts` | Medición conservadora, fitting progresivo y plantillas verticales, horizontales, comparación y grid. |
 | `presentation-constraint.service.ts` | Safe frame, colisiones, tamaño mínimo específico por bloque, containment, densidad y score configurable. |
-| `presentation-engine.service.ts` | Orquesta AST, storyboard, layout, constraints y auto-repair inicial; cambia comparación comprimida a pila vertical cuando la legibilidad falla. |
+| `presentation-engine.service.ts` | Orquesta AST, storyboard, layout, constraints y auto-repair inicial; conserva la composición de comparación cuando cabe y calibra mínimos sin forzar una pila vertical innecesaria. También propaga `mathematicalSupport`. |
 | `visual-qa.service.ts` | Metadata FFprobe, frames centrales por escena, brillo real, issues objetivos, geometría, jerarquía, densidad, score global, debug data y reviewer opcional. |
 | `visual-repair.service.ts` | Traduce issues a `RepairAction`, deduplica acciones y aplica cambios acotados sobre la `PresentationPlan`. |
 | `manim.service.ts` | Renderiza el plan existente y, cuando `MPE_DEBUG=true`, superpone safe area, bounding boxes, IDs, roles, escalas, score e iteración. |
@@ -88,7 +88,7 @@ El pipeline ahora ejecuta un ciclo controlado de render, análisis, reparación 
 | Distancia o margen inconsistente | Reubicación del ancla y reagrupación. |
 | Jerarquía invertida | Ocultamiento de bloques secundarios y preservación del objeto primario. |
 
-La fase inicial de reparación también detecta comparaciones con fórmula por debajo de legibilidad y las cambia a distribución vertical antes del render. Esto elevó el caso real de prueba de score 89 rechazado a score 95 aprobado.
+La reparación conserva primero la plantilla estable y solo cambia de composición cuando hay overflow o colisión reales. El mínimo específico de fórmula se calibró a la escala efectiva del renderer para no convertir una escena contenida en una fila vertical desbalanceada. La auditoría también exige que la reparación cambie el frame o una métrica relevante; reducir únicamente los issues del plan no se considera mejora suficiente.
 
 ## Modo DEBUG
 
@@ -112,13 +112,17 @@ El servicio elimina archivos parciales, verifica tamaño y decodificación con F
 
 ## Cobertura
 
-La suite contiene **42 tests aprobados**. Incluye AST determinista, storyboard, layout 16:9/1:1/9:16, fitting de fórmulas, overflow, colisiones, chart containment, scoring, issues accionables, auto-repair y fixtures para ecuaciones cortas y largas, sistemas, fracciones, raíces, matrices, derivadas, integrales, geometría, gráficas y múltiples pasos.
+La suite contiene **43 tests aprobados**. Incluye AST determinista, storyboard, fallback sincronizado sin matemática inventada, estado explícito de soporte matemático, layout 16:9/1:1/9:16, fitting de fórmulas, overflow, colisiones, chart containment, scoring, issues accionables, auto-repair y fixtures para ecuaciones cortas y largas, sistemas, fracciones, raíces, matrices, derivadas, integrales, geometría, gráficas y múltiples pasos.
 
 ## Validación real
 
 Se ejecutó un render real DEBUG en 16:9 con `mpe-debug-1786920058475`. Terminó en la iteración 0 con `presentationScore=95`, `visualQaPassed=true`, duración aproximada de 84 segundos y miniatura válida. La hoja de contacto y un frame nativo fueron inspeccionados visualmente. Las fórmulas de discriminante, sustitución, operación y resultado permanecen legibles; el overlay aparece sin clipping crítico.
 
 La prueba neural controlada mantuvo la configuración aprobada, pero el entorno actual no pudo conectarse a `speech.platform.bing.com` después de dos reintentos. El sistema devolvió ausencia de audio y no usó espeak, por lo que no se acepta como narrado un video con una voz distinta. La referencia narrada previa sigue siendo el artefacto de comparación hasta que Edge vuelva a estar disponible en el entorno de ejecución.
+
+## Auditoría de corpus
+
+El harness `backend/scripts/audit-20-math-corpus.ts` ejecutó 21 problemas de 10 categorías. Solo 2/21 tienen solver determinista actual; los demás se renderizan únicamente como fallback de composición para auditar layout, pero Visual QA marca `productionReady=false`. El informe completo está en `docs/MATH_PRESENTATION_ENGINE_VISUAL_AUDIT.md`.
 
 ## Limitaciones actuales
 

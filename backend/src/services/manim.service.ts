@@ -381,6 +381,7 @@ export const manim = {
     const introDuration = pedagogicalScenes.length
       ? 1.8
       : Math.max(3, synchronizedScenes[0]?.duration ?? synchronizedScenes[0]?.estimatedDuration ?? 4);
+    const titleWait = pedagogicalScenes.length || synchronizedScenes.length ? 0.2 : Math.max(0.5, introDuration - 2);
 
     const debugOverlayForScene = (sceneId: string, index: number): { enter: string; exit: string } => {
       if (!debug || !presentationPlan) return { enter: '', exit: '' };
@@ -576,10 +577,14 @@ export const manim = {
 
           if (syncScene.kind === 'conclusion') {
             return `
-        # Escena sincronizada: conclusión
-        final = Tex(r"\\textbf{Solucion comprobada}", font_size=42, color=GREEN)
-        self.play(Write(final), run_time=1)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 1))
+        # Escena sincronizada: conclusión neutral
+        panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        header_${i} = Text("Resumen del procedimiento", font_size=32, color=BLUE).move_to(UP * ${headerY})
+        final_${i} = Text("Revisa los pasos y comprueba el resultado", font_size=30, color=GREEN).move_to(DOWN * ${contentY})
+        content_group_${i} = VGroup(header_${i}, final_${i})
+        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
 `;
           }
 
@@ -592,12 +597,16 @@ export const manim = {
             : `Text(${escapeForPythonString(safeStep)}, font_size=36, color=WHITE, font='DejaVu Serif')`;
 
           return `
-        # Escena sincronizada: ${syncScene.id}
-        scene_${i} = ${rendered}
-        scene_${i}.to_edge(UP)
-        self.play(Write(scene_${i}), run_time=1.2)
+        # Escena sincronizada contenida: ${syncScene.id}
+        panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        header_${i} = Text("Paso ${i + 1}", font_size=32, color=BLUE).move_to(UP * ${headerY})
+        content_${i} = ${rendered}
+        content_${i}.scale(min(${contentWidth} / content_${i}.width, ${formatProfile.contentHeight.toFixed(2)} / content_${i}.height))
+        content_${i}.move_to(DOWN * ${contentY})
+        content_group_${i} = VGroup(header_${i}, content_${i})
+        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
-        self.play(FadeOut(scene_${i}), run_time=1)
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
 `;
         }).join('\n')
       : '';
@@ -637,6 +646,14 @@ ${graphBlock}
       : synchronizedScenes.length
         ? synchronizedBlock
         : legacyBlock;
+    const titleBlock = pedagogicalScenes.length || synchronizedScenes.length ? '' : `
+        title = ${titleObject}
+        title.to_edge(UP)
+        self.add(title)
+        self.play(Write(title), run_time=1)
+        self.wait(${titleWait.toFixed(2)})
+        self.play(FadeOut(title), run_time=1)
+`;
 
     const pythonCode = `
 # -*- coding: utf-8 -*-
@@ -647,14 +664,8 @@ class ${className}(Scene):
         # Math Presentation Engine: ${presentationPlan?.engineVersion || 'legacy'} | score=${presentationPlan?.score.total ?? 'n/a'}
         self.camera.frame_width = ${formatProfile.frameWidth}
         self.camera.frame_height = ${formatProfile.frameHeight}
-        # Título científico con estilo tipo revista
-        title = ${titleObject}
-        title.to_edge(UP)
-        self.add(title)
-        self.play(Write(title), run_time=${pedagogicalScenes.length ? '0.6' : '1'})
-        self.wait(${pedagogicalScenes.length ? '0.2' : `max(0.5, ${introDuration.toFixed(2)} - 2)`})
-        self.play(FadeOut(title), run_time=${pedagogicalScenes.length ? '0.5' : '1'})
-
+        # El storyboard contiene sus propios encabezados y paneles.
+${titleBlock}
         # Contenido sincronizado con la narración
 ${sceneBlock}
 `;

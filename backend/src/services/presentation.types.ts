@@ -106,10 +106,18 @@ export interface VisualScore {
   critical: boolean;
 }
 
+export interface MathematicalSupportStatus {
+  supported: boolean;
+  valid: boolean;
+  kind: string;
+  warnings: string[];
+}
+
 export interface PresentationPlan {
   engineVersion: string;
   designVersion: string;
   solutionHash: string;
+  mathematicalSupport: MathematicalSupportStatus;
   canvas: VideoFormatProfile;
   scenes: VisualSceneSpec[];
   resolvedLayouts: ResolvedSceneLayout[];
@@ -135,6 +143,8 @@ export interface VisualQAReport {
   score?: VisualScore;
   debugOverlays?: VisualDebugOverlaySpec[];
   repairIterations?: number;
+  mathematicalSupport?: MathematicalSupportStatus;
+  productionReady?: boolean;
   errors: string[];
   warnings: string[];
   passed: boolean;

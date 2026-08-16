@@ -215,7 +215,7 @@ export const auditRenderedVideo = async (
   const tokens = createMathDesignTokens(plan.canvas);
 
   if (!fs.existsSync(videoPath)) {
-    return { engineVersion: plan.engineVersion, sceneReports: [], aiReviews: [], issues: [toIssue('missing-video', 'error', 'video', 'plan', false, true, 'Render the video before running Visual QA.', 'The output video does not exist.')], score: plan.score, errors: [`No existe el video para QA: ${videoPath}`], warnings, passed: false };
+    return { engineVersion: plan.engineVersion, sceneReports: [], aiReviews: [], issues: [toIssue('missing-video', 'error', 'video', 'plan', false, true, 'Render the video before running Visual QA.', 'The output video does not exist.')], score: plan.score, mathematicalSupport: plan.mathematicalSupport, productionReady: false, errors: [`No existe el video para QA: ${videoPath}`], warnings, passed: false };
   }
 
   let metadata: any = null;
@@ -229,6 +229,12 @@ export const auditRenderedVideo = async (
   }
 
   const videoStream = metadata?.streams?.find((stream: any) => stream.codec_type === 'video');
+  const actualDuration = Number(metadata?.format?.duration);
+  const plannedDuration = plan.scenes.reduce((sum, scene) => sum + Number(scene.duration.seconds || 0), 0);
+  if (Number.isFinite(actualDuration) && plannedDuration > 0 && Math.abs(actualDuration - plannedDuration) > Math.max(1, plannedDuration * 0.1)) {
+    const drift = actualDuration - plannedDuration;
+    issues.push(toIssue('timing-drift', 'error', 'video', 'plan', Number(drift.toFixed(2)), '<= 10% planned duration drift', 'Align scene durations with rendered waits or audio segment durations before final export.', `La duración real (${actualDuration.toFixed(2)} s) difiere de la duración planificada (${plannedDuration.toFixed(2)} s).`));
+  }
   const expectedRatio = plan.canvas.width / plan.canvas.height;
   const actualRatio = videoStream?.width && videoStream?.height ? videoStream.width / videoStream.height : 0;
   if (!videoStream || videoStream.width !== plan.canvas.width || videoStream.height !== plan.canvas.height || Math.abs(actualRatio - expectedRatio) > 0.01) {
@@ -247,7 +253,8 @@ export const auditRenderedVideo = async (
     sceneIssues.push(...geometryIssues(scene, canvas.safeArea));
     issues.push(...sceneIssues);
     const duration = scene.duration.seconds || 4;
-    const timestamp = cursor + Math.min(duration / 2, Math.max(0.2, duration - 0.2));
+    const requestedTimestamp = cursor + Math.min(duration / 2, Math.max(0.2, duration - 0.2));
+    const timestamp = Number.isFinite(actualDuration) && actualDuration > 0 ? Math.min(requestedTimestamp, Math.max(0.2, actualDuration - 0.2)) : requestedTimestamp;
     const framePath = path.join(outputDir, 'qa-frames', `${layout.sceneId}.jpg`);
     try {
       await sampleFrame(videoPath, framePath, timestamp);
@@ -290,6 +297,10 @@ export const auditRenderedVideo = async (
   }
 
   const score = aggregateScores(sceneReports.map((report) => report.score));
+  const mathematicalReady = plan.mathematicalSupport.supported && plan.mathematicalSupport.valid;
+  if (!mathematicalReady) {
+    issues.push(toIssue('unsupported-mathematics', 'error', 'mathematical-solution', 'plan', plan.mathematicalSupport.kind, 'supported and valid solver structure', 'Implement or select a deterministic solver before distributing this video.', `El problema no tiene una solución matemática soportada y validada: ${plan.mathematicalSupport.kind}.`));
+  }
   return {
     engineVersion: plan.engineVersion,
     sceneReports,
@@ -298,9 +309,11 @@ export const auditRenderedVideo = async (
     score,
     debugOverlays: isDebugEnabled(config) ? debugOverlays : undefined,
     repairIterations: 0,
+    mathematicalSupport: plan.mathematicalSupport,
+    productionReady: mathematicalReady && errors.length === 0 && !issues.some((issue) => issue.severity === 'error') && plan.passed,
     errors,
     warnings,
-    passed: errors.length === 0 && !issues.some((issue) => issue.severity === 'error') && plan.passed,
+    passed: mathematicalReady && errors.length === 0 && !issues.some((issue) => issue.severity === 'error') && plan.passed,
   };
 };
 

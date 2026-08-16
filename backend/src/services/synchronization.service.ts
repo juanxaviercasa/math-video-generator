@@ -88,22 +88,11 @@ export const buildSynchronizedScenes = (problem: string, steps: string[]): Synch
     });
   });
 
-  if (/x\s*\^?\s*2/i.test(cleanProblem)) {
-    const narrationText = 'Ahora observamos la gráfica de la parábola. Las intersecciones con el eje horizontal son las raíces dos y tres.';
-    scenes.push({
-      id: 'graph',
-      kind: 'graph',
-      visualText: 'Raíces de la parábola',
-      narrationText,
-      estimatedDuration: estimateDuration(narrationText) + 2,
-    });
-  }
-
   scenes.push({
     id: 'conclusion',
     kind: 'conclusion',
-    visualText: 'Solución comprobada',
-    narrationText: 'Con esto terminamos. Las raíces de la ecuación son dos y tres, y la gráfica confirma nuestro resultado.',
+    visualText: 'Procedimiento terminado',
+    narrationText: 'Con esto terminamos. Revisa cada transformación y comprueba el resultado con los datos del problema.',
     estimatedDuration: 6,
   });
 

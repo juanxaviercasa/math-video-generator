@@ -1,12 +1,23 @@
 import { Router, type Request, type Response } from 'express';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma.js';
-import { getAuthCookieName, requireAuth, type AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { supabaseAuth } from '../lib/supabase.js';
+import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { loginSchema, registerSchema } from '../schemas/auth.schema.js';
+import { syncSupabaseProfile } from '../services/profile.service.js';
 
 const router = Router();
-const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+const ACCESS_COOKIE = 'mvg_access_token';
+const REFRESH_COOKIE = 'mvg_refresh_token';
+const ACCESS_MAX_AGE = 60 * 60 * 1000;
+const REFRESH_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+
+const cookieOptions = (maxAge: number) => ({
+  httpOnly: true,
+  sameSite: 'lax' as const,
+  secure: process.env.NODE_ENV === 'production',
+  maxAge,
+  path: '/',
+});
 
 const publicUser = (user: { id: string; email: string; name: string; plan: string }) => ({
   id: user.id,
@@ -15,22 +26,16 @@ const publicUser = (user: { id: string; email: string; name: string; plan: strin
   plan: user.plan,
 });
 
-const issueSession = (res: Response, userId: string) => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error('JWT_SECRET no está configurado');
 
-  const token = jwt.sign({}, secret, {
-    subject: userId,
-    expiresIn: '7d',
-  });
+const issueSession = (res: Response, session: { access_token: string; refresh_token: string; expires_in?: number }) => {
+  const accessMaxAge = Math.max(60, session.expires_in || 3600) * 1000;
+  res.cookie(ACCESS_COOKIE, session.access_token, cookieOptions(accessMaxAge));
+  res.cookie(REFRESH_COOKIE, session.refresh_token, cookieOptions(REFRESH_MAX_AGE));
+};
 
-  res.cookie(getAuthCookieName(), token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: COOKIE_MAX_AGE,
-    path: '/',
-  });
+const clearSession = (res: Response) => {
+  res.clearCookie(ACCESS_COOKIE, cookieOptions(0));
+  res.clearCookie(REFRESH_COOKIE, cookieOptions(0));
 };
 
 router.post('/register', async (req: Request, res: Response) => {
@@ -43,24 +48,34 @@ router.post('/register', async (req: Request, res: Response) => {
     });
   }
 
-  try {
-    const { email, password, name } = parsed.data;
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return res.status(409).json({ code: 'EMAIL_EXISTS', error: 'El correo ya está registrado' });
-    }
+  const { email, password, name } = parsed.data;
+  const { data, error } = await supabaseAuth.auth.signUp({
+    email,
+    password,
+    options: { data: { name } },
+  });
 
-    const passwordHash = await bcrypt.hash(password, 12);
-    const user = await prisma.user.create({
-      data: { email, password: passwordHash, name },
+  if (error) {
+    const duplicate = /already registered|already exists/i.test(error.message);
+    return res.status(duplicate ? 409 : 400).json({
+      code: duplicate ? 'EMAIL_EXISTS' : 'AUTH_SIGNUP_FAILED',
+      error: duplicate ? 'El correo ya está registrado' : error.message,
     });
-
-    issueSession(res, user.id);
-    return res.status(201).json({ user: publicUser(user) });
-  } catch (error) {
-    console.error('[Auth] Register failed:', error);
-    return res.status(500).json({ code: 'REGISTER_FAILED', error: 'No se pudo crear la cuenta' });
   }
+
+  if (!data.user) return res.status(502).json({ code: 'AUTH_USER_MISSING', error: 'Supabase Auth no creó el usuario' });
+  const user = await syncSupabaseProfile(data.user);
+
+  if (!data.session) {
+    return res.status(202).json({
+      user: publicUser(user),
+      requiresEmailConfirmation: true,
+      message: 'Revisa tu correo para confirmar la cuenta antes de iniciar sesión.',
+    });
+  }
+
+  issueSession(res, data.session);
+  return res.status(201).json({ user: publicUser(user) });
 });
 
 router.post('/login', async (req: Request, res: Response) => {
@@ -73,35 +88,25 @@ router.post('/login', async (req: Request, res: Response) => {
     });
   }
 
-  try {
-    const { email, password } = parsed.data;
-    const user = await prisma.user.findUnique({ where: { email } });
-    const valid = user ? await bcrypt.compare(password, user.password) : false;
-
-    if (!user || !valid) {
-      return res.status(401).json({ code: 'INVALID_CREDENTIALS', error: 'Correo o contraseña incorrectos' });
-    }
-
-    issueSession(res, user.id);
-    return res.json({ user: publicUser(user) });
-  } catch (error) {
-    console.error('[Auth] Login failed:', error);
-    return res.status(500).json({ code: 'LOGIN_FAILED', error: 'No se pudo iniciar sesión' });
+  const { email, password } = parsed.data;
+  const { data, error } = await supabaseAuth.auth.signInWithPassword({ email, password });
+  if (error || !data.user || !data.session) {
+    return res.status(401).json({ code: 'INVALID_CREDENTIALS', error: 'Correo o contraseña incorrectos' });
   }
+
+  const user = await syncSupabaseProfile(data.user);
+  issueSession(res, data.session);
+  return res.json({ user: publicUser(user) });
 });
 
 router.get('/me', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   return res.json({ user: req.user });
 });
 
-router.post('/logout', (req: Request, res: Response) => {
-  res.clearCookie(getAuthCookieName(), {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-  });
+router.post('/logout', (_req: Request, res: Response) => {
+  clearSession(res);
   return res.json({ success: true });
 });
 
+export { ACCESS_COOKIE, REFRESH_COOKIE };
 export const authRoutes = router;

@@ -95,6 +95,47 @@ const latexEscape = (value: string): string => {
     'Ù': 'U',
     'Ü': 'U',
     'Ñ': 'N',
+    // Símbolos matemáticos Unicode frecuentes en pasos pedagógicos. Se
+    // convierten a ASCII en texto libre para mantener compatibilidad con
+    // pdfLaTeX incluso cuando el modelo devuelve Unicode.
+    'Δ': 'Delta',
+    'δ': 'delta',
+    'α': 'alpha',
+    'β': 'beta',
+    'γ': 'gamma',
+    'θ': 'theta',
+    'λ': 'lambda',
+    'μ': 'mu',
+    'π': 'pi',
+    'σ': 'sigma',
+    'ω': 'omega',
+    '∞': 'infinito',
+    '±': '+/-',
+    '√': 'sqrt',
+    '≤': '<=',
+    '≥': '>=',
+    '≠': '!=',
+    '→': '->',
+    '²': '2',
+    '³': '3',
+    '⁰': '0',
+    '¹': '1',
+    '⁴': '4',
+    '⁵': '5',
+    '⁶': '6',
+    '⁷': '7',
+    '⁸': '8',
+    '⁹': '9',
+    '₀': '0',
+    '₁': '1',
+    '₂': '2',
+    '₃': '3',
+    '₄': '4',
+    '₅': '5',
+    '₆': '6',
+    '₇': '7',
+    '₈': '8',
+    '₉': '9',
   };
 
   return Array.from(value)
@@ -190,8 +231,32 @@ const latexText = (value: string): string => {
   return escaped ? `\\textbf{${escaped}}` : '\\textbf{Tema}';
 };
 
+const normalizeMathUnicode = (value: string): string => value
+  .replace(/Δ/g, '\\Delta')
+  .replace(/δ/g, '\\delta')
+  .replace(/α/g, '\\alpha')
+  .replace(/β/g, '\\beta')
+  .replace(/γ/g, '\\gamma')
+  .replace(/θ/g, '\\theta')
+  .replace(/λ/g, '\\lambda')
+  .replace(/μ/g, '\\mu')
+  .replace(/π/g, '\\pi')
+  .replace(/σ/g, '\\sigma')
+  .replace(/ω/g, '\\omega')
+  .replace(/∞/g, '\\infty')
+  .replace(/±/g, '\\pm')
+  .replace(/≤/g, '\\leq')
+  .replace(/≥/g, '\\geq')
+  .replace(/≠/g, '\\neq')
+  .replace(/→/g, '\\to')
+  .replace(/√\s*(\\[A-Za-z]+|[A-Za-z0-9]+)/g, '\\sqrt{$1}')
+  .replace(/[₀₁₂₃₄₅₆₇₈₉]/g, (char) => `_${'₀₁₂₃₄₅₆₇₈₉'.indexOf(char)}`)
+  .replace(/²/g, '^2')
+  .replace(/³/g, '^3')
+  .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, (char) => `_${'⁰¹²³⁴⁵⁶⁷⁸⁹'.indexOf(char)}`);
+
 const latexMath = (value: string): string => {
-  const trimmed = normalizeForText(value.trim());
+  const trimmed = normalizeMathUnicode(normalizeForText(value.trim()));
   if (!trimmed) return 'x = 0';
   return buildMathTextWithSpaces(trimmed);
 };
@@ -333,7 +398,7 @@ ${steps
       const manimCommand = this.getCommand();
       const mediaDir = path.resolve(scene.outputDir);
       const { stdout, stderr } = await execAsync(
-        `"${manimCommand}" --media_dir "${mediaDir}" -pql -o ${safeName}.mp4 "${scriptPath}" ${className}`,
+        `"${manimCommand}" --media_dir "${mediaDir}" -ql -o ${safeName}.mp4 "${scriptPath}" ${className}`,
         { cwd: scene.outputDir, maxBuffer: 1024 * 1024 * 10, env: buildProcessEnv() }
       );
 

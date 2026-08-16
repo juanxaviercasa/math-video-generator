@@ -180,7 +180,7 @@ export const ffmpeg = {
   async getVideoInfo(videoPath: string) {
     try {
       const ffprobeCommand = this.getProbeCommand();
-      const cmd = `"${ffprobeCommand}" -v error -show_format -show_streams -print_section -of json "${videoPath}"`;
+      const cmd = `"${ffprobeCommand}" -v error -show_format -show_streams -of json "${videoPath}"`;
 
       const { stdout } = await execAsync(cmd);
       return JSON.parse(stdout);

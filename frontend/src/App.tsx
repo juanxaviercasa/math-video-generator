@@ -2,6 +2,7 @@ import React from 'react'
 import { useEffect, useState } from 'react'
 import { AuthPanel } from './components/AuthPanel'
 import { VideoGenerator } from './components/VideoGenerator'
+import { VideoLibrary } from './components/VideoLibrary'
 import { auth, User } from './services/auth'
 import { useVideoStore } from './store/video.store'
 
@@ -9,6 +10,7 @@ function App() {
   const videos = useVideoStore((state) => state.videos)
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [libraryRefresh, setLibraryRefresh] = useState(0)
 
   useEffect(() => {
     auth
@@ -48,7 +50,7 @@ function App() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Panel de generación */}
           <div className="lg:col-span-1">
-            <VideoGenerator />
+            <VideoGenerator onGenerated={() => setLibraryRefresh((value) => value + 1)} />
           </div>
 
           {/* Panel de videos */}
@@ -136,6 +138,10 @@ function App() {
           </div>
         </div>
 
+        <div className="mt-8">
+          <VideoLibrary user={user} refreshKey={libraryRefresh} />
+        </div>
+
         {/* Feature cards */}
         <div className="mt-20 grid md:grid-cols-4 gap-4">
           {[
@@ -162,7 +168,7 @@ function App() {
             🚀 Math Video Generator v0.1.0 Beta
             {' | '}
             <a
-              href="https://github.com/duckmartians/math-video-generator"
+              href="https://github.com/juanxaviercasa/math-video-generator"
               className="text-blue-400 hover:text-blue-300"
             >
               GitHub

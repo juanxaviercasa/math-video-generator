@@ -2,7 +2,11 @@ import { useState } from 'react'
 import { api, PreviewResponse } from '../services/api'
 import { useVideoStore } from '../store/video.store'
 
-export function VideoGenerator() {
+type VideoGeneratorProps = {
+  onGenerated?: () => void
+}
+
+export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('medium')
@@ -62,6 +66,7 @@ export function VideoGenerator() {
         progress: 0,
         createdAt: new Date().toISOString(),
       })
+      onGenerated?.()
 
       const response = await api.generateVideo({
         id: videoId,

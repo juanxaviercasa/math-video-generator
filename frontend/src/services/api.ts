@@ -42,7 +42,26 @@ export interface PreviewResponse {
   requiresReview: boolean
 }
 
+export interface LibraryVideo {
+  id: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  progress: number
+  message: string
+  videoUrl?: string
+  thumbnailUrl?: string
+  duration?: number
+  createdAt: string
+  updatedAt: string
+}
+
 export const api = {
+  async listVideos(): Promise<LibraryVideo[]> {
+    const response = await axios.get<{ videos: LibraryVideo[] }>(`${API_URL}/videos`, {
+      withCredentials: true,
+    })
+    return response.data.videos
+  },
+
   async preview(data: Omit<VideoRequest, 'id'>): Promise<PreviewResponse> {
     const response = await axios.post<PreviewResponse>(`${API_URL}/preview`, data, {
       withCredentials: true,

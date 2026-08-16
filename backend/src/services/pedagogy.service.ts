@@ -1,9 +1,16 @@
 import type { MathValidation } from './math-validation.service.js';
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
 
+export interface VisualStage {
+  label: string;
+  latex: string;
+  detail?: string;
+}
+
 export interface PedagogicalScene extends SynchronizedScene {
   visualLatex?: string[];
   visualTextLines?: string[];
+  visualStages?: VisualStage[];
   emphasis?: string;
   layout: 'hero' | 'card' | 'split' | 'equation' | 'graph' | 'recap';
 }
@@ -66,6 +73,11 @@ export const buildQuadraticStoryboard = (
   const delta = b * b - 4 * a * c;
   const sqrtDelta = Math.sqrt(Math.max(delta, 0));
   const denominator = 2 * a;
+  const discriminantFormula = '\\Delta = b^2 - 4ac';
+  const discriminantSubstitution = `\\Delta = (${formatValue(b)})^2 - 4(${formatValue(a)})(${formatValue(c)})`;
+  const discriminantOperation = `\\Delta = ${formatValue(b * b)} - ${formatValue(4 * a * c)}`;
+  const formulaSubstitution = `x = \\frac{-(${formatValue(b)}) \\pm \\sqrt{${formatValue(delta)}}}{2(${formatValue(a)})}`;
+  const formulaSimplified = `x = \\frac{${formatValue(-b)} \\pm ${formatValue(sqrtDelta)}}{${formatValue(denominator)}}`;
   const x1 = denominator === 0 ? 0 : (-b + sqrtDelta) / denominator;
   const x2 = denominator === 0 ? 0 : (-b - sqrtDelta) / denominator;
 
@@ -78,12 +90,14 @@ export const buildQuadraticStoryboard = (
     emphasis: string,
     estimatedDuration: number,
     visualTextLines: string[] = [],
+    visualStages: VisualStage[] = [],
   ): PedagogicalScene => ({
     id,
     kind,
     visualText: visualTextLines.join(' · ') || emphasis,
     visualLatex,
     visualTextLines,
+    visualStages,
     narrationText,
     emphasis,
     estimatedDuration,
@@ -130,6 +144,12 @@ export const buildQuadraticStoryboard = (
       'Discriminante = ' + formatValue(delta),
       9,
       ['Paso 1 · elevar', 'Paso 2 · multiplicar', 'Paso 3 · restar'],
+      [
+        { label: 'Fórmula base', latex: discriminantFormula },
+        { label: 'Reemplazamos', latex: discriminantSubstitution },
+        { label: 'Operamos', latex: discriminantOperation },
+        { label: 'Resultado', latex: `\\Delta = ${formatValue(delta)}` },
+      ],
     ),
     make(
       'formula-symbolic',
@@ -139,24 +159,36 @@ export const buildQuadraticStoryboard = (
       'equation',
       'Fórmula general',
       7,
+      [],
+      [{ label: 'Fórmula general', latex: 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}', detail: 'La estructura que vamos a completar' }],
     ),
     make(
       'formula-substitution',
       'formula',
       `${lead}Ahora reemplazamos cada símbolo. El signo menos delante de B se convierte en menos, entre paréntesis, ${numberToSpanish(b)}; la raíz contiene ${numberToSpanish(delta)} y el denominador es dos por ${numberToSpanish(a)}.`,
-      [`x = \\frac{-(${formatValue(b)}) \\pm \\sqrt{${formatValue(delta)}}}{2(${formatValue(a)})}`],
+      [formulaSubstitution],
       'equation',
       'Reemplazo en la fórmula',
       8,
+      [],
+      [
+        { label: 'Fórmula de partida', latex: 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}' },
+        { label: 'Sustituimos a, b y Δ', latex: formulaSubstitution },
+      ],
     ),
     make(
       'formula-simplify',
       'calculation',
       `${lead}Ya casi terminamos. Simplificamos la expresión antes de separar las dos soluciones: la raíz de ${numberToSpanish(delta)} es ${numberToSpanish(sqrtDelta)} y el denominador vale ${numberToSpanish(denominator)}.`,
-      [`x = \\frac{${formatValue(-b)} \\pm ${formatValue(sqrtDelta)}}{${formatValue(denominator)}}`],
+      [formulaSimplified],
       'equation',
       'Simplificación',
       8,
+      [],
+      [
+        { label: 'Después de sustituir', latex: formulaSubstitution },
+        { label: 'Simplificamos', latex: formulaSimplified },
+      ],
     ),
     make(
       'solution-branches',
@@ -167,6 +199,11 @@ export const buildQuadraticStoryboard = (
       'Dos soluciones',
       10,
       ['Camino +', 'Camino −'],
+      [
+        { label: 'Expresión simplificada', latex: formulaSimplified },
+        { label: 'Camino +', latex: `x_1 = \\frac{${formatValue(-b)} + ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x1)}` },
+        { label: 'Camino −', latex: `x_2 = \\frac{${formatValue(-b)} - ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x2)}` },
+      ],
     ),
     make(
       'graph',

@@ -51,7 +51,7 @@ interface ManimScene {
   outputDir: string;
   content?: string;
   synchronizedScenes?: SynchronizedScene[];
-  pedagogicalScenes?: Array<SynchronizedScene & { visualLatex?: string[]; visualTextLines?: string[]; emphasis?: string; layout?: string }>;
+  pedagogicalScenes?: Array<SynchronizedScene & { visualLatex?: string[]; visualTextLines?: string[]; visualStages?: Array<{ label: string; latex: string; detail?: string }>; emphasis?: string; layout?: string }>;
   formatProfile?: VideoFormatProfile;
   layoutDensity?: 'comfortable' | 'compact';
   narrationStyle?: 'warm_teacher' | 'neutral_teacher';
@@ -402,10 +402,34 @@ export const manim = {
                 : '1';
           const compactY = contentY;
           const contentHeight = pedScene.layout === 'equation'
-            ? Math.min(formatProfile.orientation === 'portrait' ? 5.2 : 3.2, formatProfile.contentHeight).toFixed(2)
+            ? Math.min(formatProfile.orientation === 'portrait' ? 4.5 : 2.35, formatProfile.contentHeight).toFixed(2)
             : pedScene.layout === 'hero'
               ? Math.min(3.7, formatProfile.contentHeight).toFixed(2)
               : Math.min(4.0, formatProfile.contentHeight).toFixed(2);
+          const visualStages = pedScene.visualStages || [];
+
+          if (pedScene.layout === 'equation' && visualStages.length > 0) {
+            const stageFormulaSize = visualStages.length >= 4 ? 28 : 34;
+            const stageLabelSize = visualStages.length >= 4 ? 15 : 17;
+            const stageObjects = visualStages.map((stage, stageIndex) => {
+              const label = `Text(${escapeForPythonString(stage.label)}, font_size=${stageLabelSize}, color=${stageIndex === visualStages.length - 1 ? 'YELLOW' : 'GREY_B'})`;
+              const formula = `MathTex(${escapeForPythonString(stage.latex)}, font_size=${stageFormulaSize}, color=${stageIndex === visualStages.length - 1 ? 'YELLOW' : 'WHITE'})`;
+              const detail = stage.detail ? `, Text(${escapeForPythonString(stage.detail)}, font_size=13, color=GREY_B)` : '';
+              return `VGroup(${label}, ${formula}${detail}).arrange(DOWN, buff=0.10)`;
+            });
+            const stageContentY = formatProfile.orientation === 'portrait' ? 0.50 : 0.42;
+            const stagedContent = `VGroup(${stageObjects.join(', ')}).arrange(DOWN, buff=${visualStages.length >= 4 ? '0.18' : '0.30'}).scale(min(${contentWidth} / VGroup(${stageObjects.join(', ')}).width, ${contentHeight} / VGroup(${stageObjects.join(', ')}).height)).move_to(DOWN * ${stageContentY.toFixed(2)})`;
+            return `
+        # Storyboard pedagógico: micro-pasos de ${pedScene.id}
+        panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * ${headerY})
+        content_${i} = ${stagedContent}
+        content_group_${i} = VGroup(header_${i}, content_${i})
+        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
+`;
+          }
 
           if (pedScene.layout === 'graph') {
             return `

@@ -168,15 +168,18 @@ export const videoProcessing = {
           }
         }
 
-        if (audioSegments.length) {
-          narrationAudioPath = await ffmpeg.concatenateAudio(
-            audioSegments,
-            path.join(outputDir, `${id}-narration.wav`)
-          );
-          console.log(`✓ Audio sincronizado generado: ${narrationAudioPath}`);
-        } else {
-          console.log('⚠️ No se pudo generar audio; continuando sin narración');
+        const neuralProvider = (process.env.TTS_PROVIDER || 'edge').toLowerCase() === 'edge';
+        if (neuralProvider && audioSegments.length !== synchronizedScenes.length) {
+          throw new Error(`La voz neural no está disponible para todas las escenas (${audioSegments.length}/${synchronizedScenes.length}). Se cancela el render para no entregar un video silencioso o con una voz distinta.`);
         }
+        if (!audioSegments.length) {
+          throw new Error('La narración fue solicitada, pero no se generó ningún segmento de audio válido.');
+        }
+        narrationAudioPath = await ffmpeg.concatenateAudio(
+          audioSegments,
+          path.join(outputDir, `${id}-narration.wav`)
+        );
+        console.log(`✓ Audio sincronizado generado: ${narrationAudioPath}`);
       } else {
         console.log('🔇 Narración deshabilitada por el usuario');
       }

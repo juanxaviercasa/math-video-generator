@@ -1,0 +1,23 @@
+# Remotion editorial pilot
+
+Este directorio contiene un piloto aislado de Remotion 4 para probar la capa editorial del generador sin sustituir Manim ni el pipeline de producción.
+
+## Qué demuestra
+
+La composición `QuadraticEditorial` recibe props validadas con Zod y presenta una microlección de ecuación cuadrática con hook, rail de progreso, fórmula de referencia persistente, sustitución, pausa de predicción, tarjetas de explicación y una comprobación gráfica. KaTeX se usa únicamente para el render de fórmulas dentro de la composición Remotion.
+
+## Ejecución
+
+```bash
+cd tools/remotion-pilot
+npm install
+npm run type-check
+npm run dev
+npm run render
+```
+
+El render se genera en `out/quadratic-editorial.mp4`. El piloto actual es visual y editorial: no reemplaza el audio neural, el solver, Manim ni FFmpeg. La próxima integración deberá leer un `LessonTimeline` exportado por el backend en lugar de mantener etapas manuales en `defaultProps`.
+
+## Límites deliberados
+
+El piloto no se activa desde `video-processing.service.ts`, no cambia `NARRATION_TIMELINE`, no modifica la ruta estable y no convierte Remotion en fuente de verdad matemática. Antes de conectar el render editorial al pipeline se debe medir la sincronización con audio, la equivalencia tipográfica con MathTex, el rendimiento, la licencia de componentes y la calidad en 16:9, 1:1 y 9:16.

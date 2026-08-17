@@ -1,0 +1,24 @@
+{
+  "name": "@math-video-generator/remotion-pilot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "remotion studio src/registerRoot.tsx",
+    "render": "remotion render src/registerRoot.tsx QuadraticEditorial out/quadratic-editorial.mp4",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.512",
+    "@remotion/player": "4.0.512",
+    "katex": "0.16.25",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "remotion": "4.0.512",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/react": "18.2.0",
+    "@types/react-dom": "18.2.0",
+    "typescript": "5.9.3"
+  }
+}

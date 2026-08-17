@@ -4,6 +4,8 @@ import { openai } from './openai.service.js';
 import { tts } from './tts.service.js';
 import { validateMathProblem, type MathValidation } from './math-validation.service.js';
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
+import { buildLessonTimeline, validateLessonTimeline } from './timeline.service.js';
+import type { LessonTimeline } from './timeline.types.js';
 import { buildQuadraticStoryboard } from './pedagogy.service.js';
 import { getVideoFormatProfile, type VideoAspectRatio, type VideoQuality } from './video-format.service.js';
 import * as path from 'path';
@@ -149,6 +151,7 @@ export const videoProcessing = {
         ? pedagogicalScenes
         : synchronization.buildSynchronizedScenes(content, steps);
       let narrationAudioPath = '';
+      let lessonTimeline: LessonTimeline | undefined;
       if (enableNarration) {
         console.log(`🎙️ Generando narración sincronizada con ${aiProvider}...`);
         const audioSegments: string[] = [];
@@ -166,6 +169,13 @@ export const videoProcessing = {
           if (Number.isFinite(audioDuration) && audioDuration > 0) {
             scene.duration = Math.max(2, audioDuration);
           }
+        }
+
+        const timelineScenes = pedagogicalScenes.length ? pedagogicalScenes : synchronizedScenes;
+        lessonTimeline = buildLessonTimeline({ problem: content, scenes: timelineScenes, narrationStyle });
+        const timelineReport = validateLessonTimeline(lessonTimeline);
+        if (!timelineReport.passed) {
+          throw new Error(`La línea de tiempo pedagógica es inválida: ${timelineReport.issues.map((issue) => issue.message).join(' | ')}`);
         }
 
         const neuralProvider = (process.env.TTS_PROVIDER || 'edge').toLowerCase() === 'edge';
@@ -201,6 +211,8 @@ export const videoProcessing = {
         formatProfile,
         layoutDensity,
         narrationStyle,
+        lessonTimeline,
+        narrationTimeline: process.env.NARRATION_TIMELINE === 'true',
       };
 
       const videoPath = await manim.renderVideo(manimScene);

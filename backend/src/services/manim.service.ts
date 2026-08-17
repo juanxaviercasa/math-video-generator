@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { SynchronizedScene } from './synchronization.service.js';
+import type { LessonTimeline } from './timeline.types.js';
 import { getVideoFormatProfile, type VideoFormatProfile } from './video-format.service.js';
 
 const execAsync = promisify(exec);
@@ -55,6 +56,8 @@ interface ManimScene {
   formatProfile?: VideoFormatProfile;
   layoutDensity?: 'comfortable' | 'compact';
   narrationStyle?: 'warm_teacher' | 'neutral_teacher';
+  lessonTimeline?: LessonTimeline;
+  narrationTimeline?: boolean;
 }
 
 const escapeForPythonString = (value: string): string => JSON.stringify(value);
@@ -320,7 +323,8 @@ export const manim = {
    * Generar script Python de Manim para una animación matemática
    */
   generatePythonScript(scene: ManimScene, useLatex = latexCompilerAvailable()): string {
-    const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [] } = scene;
+    const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [], lessonTimeline, narrationTimeline = false } = scene;
+    const timelineEnabled = narrationTimeline && Boolean(lessonTimeline) && pedagogicalScenes.length > 0;
     const formatProfile = scene.formatProfile || getVideoFormatProfile('16:9', 'medium');
     const panelWidth = formatProfile.panelWidth.toFixed(2);
     const panelHeight = formatProfile.panelHeight.toFixed(2);
@@ -377,7 +381,7 @@ export const manim = {
     const introDuration = pedagogicalScenes.length
       ? 1.8
       : Math.max(3, synchronizedScenes[0]?.duration ?? synchronizedScenes[0]?.estimatedDuration ?? 4);
-    const pedagogicalBlock = pedagogicalScenes.length
+    const legacyPedagogicalBlock = pedagogicalScenes.length
       ? pedagogicalScenes.map((pedScene, i) => {
           const duration = Math.max(4, pedScene.duration ?? pedScene.estimatedDuration);
           const emphasis = pedScene.emphasis || pedScene.visualText || 'Paso matemático';
@@ -511,6 +515,70 @@ export const manim = {
 `;
         }).join('\n')
       : '';
+
+    const activeTimeline = timelineEnabled ? lessonTimeline : undefined;
+    const timelinePedagogicalBlock = timelineEnabled && activeTimeline
+      ? pedagogicalScenes.map((pedScene, i) => {
+          const duration = Math.max(4, pedScene.duration ?? pedScene.estimatedDuration);
+          const emphasis = pedScene.emphasis || pedScene.visualText || 'Paso matemático';
+          const timelineContentHeight = pedScene.layout === 'equation'
+            ? Math.min(formatProfile.orientation === 'portrait' ? 4.5 : 2.35, formatProfile.contentHeight).toFixed(2)
+            : Math.min(4.0, formatProfile.contentHeight).toFixed(2);
+          const segmentEvents = activeTimeline.events.filter((event) => event.segmentId === `segment-${pedScene.id}`);
+          const eventGroups = segmentEvents.map((event, eventIndex) => {
+            const stage = pedScene.visualStages?.[eventIndex];
+            const label = event.label || stage?.label || (eventIndex === 0 ? emphasis : 'Siguiente transformación');
+            const value = stage?.latex || event.to || pedScene.visualText || 'Paso matemático';
+            const mathValue = stage?.latex || isMathLike(value) || /[=^\\/]/.test(value);
+            const rawFormula = stage?.latex || value;
+            const rendered = useLatex && mathValue
+              ? `MathTex(${escapeForPythonString(rawFormula)}, font_size=${stage ? 46 : 50}, color=${eventIndex === segmentEvents.length - 1 ? 'YELLOW' : 'WHITE'})`
+              : `Text(${escapeForPythonString(value)}, font_size=34, color=${eventIndex === segmentEvents.length - 1 ? 'YELLOW' : 'WHITE'})`;
+            return {
+              event,
+              code: `VGroup(Text(${escapeForPythonString(label)}, font_size=19, color=GREY_B), ${rendered}).arrange(DOWN, buff=0.20).scale(min(1.18, ${contentWidth} / VGroup(Text(${escapeForPythonString(label)}, font_size=19, color=GREY_B), ${rendered}).arrange(DOWN, buff=0.20).width, ${timelineContentHeight} / VGroup(Text(${escapeForPythonString(label)}, font_size=19, color=GREY_B), ${rendered}).arrange(DOWN, buff=0.20).height)).move_to(DOWN * ${contentY})`,
+            };
+          });
+          if (pedScene.layout === 'graph') {
+            return `
+        # Timeline pedagógico: gráfica de verificación ${pedScene.id}
+        panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        axes_${i} = Axes(x_range=[-1, 6, 1], y_range=[-4, 5, 1], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).shift(DOWN * 0.2)
+        curve_${i} = axes_${i}.plot(lambda x: (x - 2) * (x - 3), x_range=[-0.5, 5.5], color=YELLOW)
+        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x"))
+        y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
+        root_2_${i} = Dot(axes_${i}.c2p(2, 0), color=GREEN)
+        root_3_${i} = Dot(axes_${i}.c2p(3, 0), color=GREEN)
+        root_2_label_${i} = MathTex("x=2", font_size=26).next_to(root_2_${i}, DOWN)
+        root_3_label_${i} = MathTex("x=3", font_size=26).next_to(root_3_${i}, DOWN)
+        graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP)
+        graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, root_3_${i}, root_2_label_${i}, root_3_label_${i}, graph_title_${i})
+        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
+        self.play(FadeIn(root_2_${i}), FadeIn(root_3_${i}), Write(root_2_label_${i}), Write(root_3_label_${i}), FadeIn(graph_title_${i}), run_time=2)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 5.5))
+        self.play(FadeOut(graph_group_${i}), run_time=1)
+`;
+          }
+          const eventCode = eventGroups.map((group, eventIndex) => {
+            const variable = `timeline_${i}_${eventIndex}`;
+            const previous = eventIndex > 0 ? `timeline_${i}_${eventIndex - 1}` : undefined;
+            const transition = previous ? `FadeOut(${previous}), FadeIn(${variable})` : `FadeIn(${variable})`;
+            return `        ${variable} = ${group.code}\n        self.play(${transition}, run_time=${group.event.duration.toFixed(2)})\n        self.wait(${group.event.holdAfter.toFixed(2)})`;
+          }).join('\n');
+          const occupied = eventGroups.reduce((sum, group) => sum + group.event.duration + group.event.holdAfter, 0);
+          const lastVariable = eventGroups.length ? `timeline_${i}_${eventGroups.length - 1}` : 'None';
+          return `
+        # Timeline pedagógico: microeventos de ${pedScene.id}
+        panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
+        header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * ${headerY})
+        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.6)
+${eventCode}
+        self.wait(max(0.2, ${Math.max(0.2, duration - occupied - 1.2).toFixed(2)}))
+        self.play(FadeOut(${lastVariable}), FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.6)
+`;
+        }).join('\n')
+      : '';
+    const pedagogicalBlock = timelineEnabled ? timelinePedagogicalBlock : legacyPedagogicalBlock;
 
     const synchronizedBlock = !pedagogicalScenes.length && synchronizedScenes.length
       ? synchronizedScenes.slice(1).map((syncScene, i) => {

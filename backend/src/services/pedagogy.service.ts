@@ -24,12 +24,20 @@ export interface PedagogicalCheckpoint {
   pauseSeconds: number;
 }
 
+export interface QuadraticGraphSpec {
+  a: number;
+  b: number;
+  c: number;
+  roots: [number, number];
+}
+
 export interface PedagogicalScene extends SynchronizedScene {
   visualLatex?: string[];
   visualTextLines?: string[];
   visualStages?: VisualStage[];
   formulaAnchor?: PedagogicalFormulaAnchor;
   checkpoints?: PedagogicalCheckpoint[];
+  graphSpec?: QuadraticGraphSpec;
   emphasis?: string;
   layout: 'hero' | 'card' | 'split' | 'equation' | 'graph' | 'recap';
 }
@@ -43,7 +51,7 @@ const numberToSpanish = (value: number): string => {
 
   const units = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve'];
   const twenties = ['veinte', 'veintiuno', 'veintidós', 'veintitrés', 'veinticuatro', 'veinticinco', 'veintiséis', 'veintisiete', 'veintiocho', 'veintinueve'];
-  const tens = ['', '', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+  const tens = ['', '', '', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
   const hundreds = ['', 'ciento', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
 
   if (value < 0) return `menos ${numberToSpanish(-value)}`;
@@ -94,7 +102,8 @@ export const buildQuadraticStoryboard = (
   const denominator = 2 * a;
   const discriminantFormula = '\\Delta = b^2 - 4ac';
   const discriminantSubstitution = `\\Delta = (${formatValue(b)})^2 - 4(${formatValue(a)})(${formatValue(c)})`;
-  const discriminantOperation = `\\Delta = ${formatValue(b * b)} - ${formatValue(4 * a * c)}`;
+  const productTerm = 4 * a * c;
+  const discriminantOperation = `\\Delta = ${formatValue(b * b)} ${productTerm < 0 ? '+' : '-'} ${formatValue(Math.abs(productTerm))}`;
   const formulaSubstitution = `x = \\frac{-(${formatValue(b)}) \\pm \\sqrt{${formatValue(delta)}}}{2(${formatValue(a)})}`;
   const formulaSimplified = `x = \\frac{${formatValue(-b)} \\pm ${formatValue(sqrtDelta)}}{${formatValue(denominator)}}`;
   const x1 = denominator === 0 ? 0 : (-b + sqrtDelta) / denominator;
@@ -110,7 +119,7 @@ export const buildQuadraticStoryboard = (
     estimatedDuration: number,
     visualTextLines: string[] = [],
     visualStages: VisualStage[] = [],
-    options: Pick<PedagogicalScene, 'formulaAnchor' | 'checkpoints'> = {},
+    options: Pick<PedagogicalScene, 'formulaAnchor' | 'checkpoints' | 'graphSpec'> = {},
   ): PedagogicalScene => ({
     id,
     kind,
@@ -120,6 +129,7 @@ export const buildQuadraticStoryboard = (
     visualStages,
     formulaAnchor: options.formulaAnchor,
     checkpoints: options.checkpoints,
+    graphSpec: options.graphSpec,
     narrationText,
     emphasis,
     estimatedDuration,
@@ -160,7 +170,7 @@ export const buildQuadraticStoryboard = (
     make(
       'discriminant-calculate',
       'calculation',
-      `${lead}Fíjate en cada operación: ${numberToSpanish(b)} al cuadrado es ${numberToSpanish(b * b)}; cuatro por ${numberToSpanish(a)} por ${numberToSpanish(c)} es ${numberToSpanish(4 * a * c)}; y la resta nos da un discriminante de ${numberToSpanish(delta)}.`,
+      `${lead}Fíjate en cada operación: ${numberToSpanish(b)} al cuadrado es ${numberToSpanish(b * b)}; cuatro por ${numberToSpanish(a)} por ${numberToSpanish(c)} da como resultado ${numberToSpanish(4 * a * c)}; y la resta nos da un discriminante de ${numberToSpanish(delta)}.`,
       [`\\Delta = (${formatValue(b)})^2 - 4(${formatValue(a)})(${formatValue(c)})`, `\\Delta = ${formatValue(b * b)} - ${formatValue(4 * a * c)}`, `\\Delta = ${formatValue(delta)}`],
       'equation',
       'Discriminante = ' + formatValue(delta),
@@ -225,7 +235,7 @@ export const buildQuadraticStoryboard = (
     make(
       'solution-branches',
       'step',
-      `${lead}La expresión más o menos produce dos caminos. En el primero sumamos; en el segundo restamos. Así obtenemos x uno igual a ${numberToSpanish(x1)} y x dos igual a ${numberToSpanish(x2)}.`,
+      `${lead}La expresión más o menos produce dos caminos. En el primero sumamos; en el segundo restamos. Así obtenemos x uno igual a ${numberToSpanish(Number(formatValue(x1)))} y x dos igual a ${numberToSpanish(Number(formatValue(x2)))}.`,
       [`x_1 = \\frac{${formatValue(-b)} + ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x1)}`, `x_2 = \\frac{${formatValue(-b)} - ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x2)}`],
       'split',
       'Dos soluciones',
@@ -243,21 +253,24 @@ export const buildQuadraticStoryboard = (
     make(
       'graph',
       'graph',
-      `${lead}Finalmente, la gráfica confirma la respuesta: la parábola corta el eje horizontal en ${numberToSpanish(x2)} y ${numberToSpanish(x1)}.`,
+      `${lead}Finalmente, la gráfica confirma la respuesta: la parábola corta el eje horizontal en ${numberToSpanish(Number(formatValue(x2)))} y ${numberToSpanish(Number(formatValue(x1)))}.`,
       ['y = ax² + bx + c', `raíces: ${formatValue(x2)} y ${formatValue(x1)}`],
       'graph',
       'Comprobación gráfica',
       10,
+      [],
+      [],
+      { graphSpec: { a, b, c, roots: [x2, x1] } },
     ),
     make(
       'recap',
       'conclusion',
       `${warm ? 'Excelente. ' : ''}Recapitulamos: identificamos a, b y c; sustituimos sus valores; calculamos el discriminante; aplicamos la fórmula y comprobamos las dos raíces en la gráfica.`,
-      [`x_1 = ${formatValue(x1)}`, `x_2 = ${formatValue(x2)}`],
+      [`\\begin{aligned}x_1 &= ${formatValue(x1)} \\\\ x_2 &= ${formatValue(x2)}\\end{aligned}`],
       'recap',
       'Solución comprobada',
       8,
-      ['Identificar', 'Sustituir', 'Calcular', 'Comprobar'],
+      ['Soluciones comprobadas'],
     ),
   ];
 };

@@ -56,5 +56,6 @@ test('uses timeline micro-events only when explicitly enabled', () => {
   assert.match(script, /Fórmula base/);
   assert.match(script, /reference_0 = MathTex/);
   assert.match(script, /checkpoint_0 = Text/);
-  assert.match(script, /FadeOut\(timeline_0_0\), FadeIn\(timeline_0_1\)/);
+  assert.match(script, /FadeOut\(timeline_0_0\), run_time=/);
+  assert.match(script, /FadeIn\(timeline_0_1\), run_time=/);
 });

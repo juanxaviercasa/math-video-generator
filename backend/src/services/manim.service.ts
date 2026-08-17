@@ -58,6 +58,7 @@ interface ManimScene {
     visualStages?: Array<{ label: string; latex: string; detail?: string; role?: string; semanticStep?: string; formulaAnchorId?: string }>;
     formulaAnchor?: { latex: string; label?: string; persistence: 'segment' | 'lesson'; position: 'top' | 'side' };
     checkpoints?: Array<{ kind: 'predict' | 'practice' | 'reflect'; prompt: string; pauseSeconds: number }>;
+    graphSpec?: { a: number; b: number; c: number; roots: [number, number] };
     emphasis?: string;
     layout?: string;
   }>;
@@ -558,21 +559,34 @@ export const manim = {
             };
           });
           if (pedScene.layout === 'graph') {
+            const graphSpec = pedScene.graphSpec ?? { a: 1, b: -5, c: 6, roots: [2, 3] as [number, number] };
+            const [rootA, rootB] = graphSpec.roots;
+            const vertexX = graphSpec.a === 0 ? 0 : -graphSpec.b / (2 * graphSpec.a);
+            const sampleLeft = Math.min(rootA, rootB, vertexX) - 1;
+            const sampleRight = Math.max(rootA, rootB, vertexX) + 1;
+            const evaluate = (x: number) => graphSpec.a * x * x + graphSpec.b * x + graphSpec.c;
+            const sampleValues = [evaluate(sampleLeft), evaluate(sampleRight), evaluate(vertexX), 0];
+            const graphYMin = Math.floor(Math.min(...sampleValues) - 2);
+            const graphYMax = Math.ceil(Math.max(...sampleValues) + 2);
+            const graphYStep = Math.max(1, Math.ceil((graphYMax - graphYMin) / 8));
+            const graphXStep = Math.max(1, Math.ceil((sampleRight - sampleLeft) / 8));
+            const curveStart = (sampleLeft - 0.3).toFixed(2);
+            const curveEnd = (sampleRight + 0.3).toFixed(2);
             return `
         # Timeline pedagógico: gráfica de verificación ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
-        axes_${i} = Axes(x_range=[-1, 6, 1], y_range=[-4, 5, 1], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).shift(DOWN * 0.2)
-        curve_${i} = axes_${i}.plot(lambda x: (x - 2) * (x - 3), x_range=[-0.5, 5.5], color=YELLOW)
+        axes_${i} = Axes(x_range=[${sampleLeft.toFixed(2)}, ${sampleRight.toFixed(2)}, ${graphXStep}], y_range=[${graphYMin}, ${graphYMax}, ${graphYStep}], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).shift(DOWN * 0.2)
+        curve_${i} = axes_${i}.plot(lambda x: ${graphSpec.a} * x**2 + ${graphSpec.b} * x + ${graphSpec.c}, x_range=[${curveStart}, ${curveEnd}], color=YELLOW)
         x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x"))
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
-        root_2_${i} = Dot(axes_${i}.c2p(2, 0), color=GREEN)
-        root_3_${i} = Dot(axes_${i}.c2p(3, 0), color=GREEN)
-        root_2_label_${i} = MathTex("x=2", font_size=26).next_to(root_2_${i}, DOWN)
-        root_3_label_${i} = MathTex("x=3", font_size=26).next_to(root_3_${i}, DOWN)
+        root_a_${i} = Dot(axes_${i}.c2p(${rootA.toFixed(3)}, 0), color=GREEN)
+        root_b_${i} = Dot(axes_${i}.c2p(${rootB.toFixed(3)}, 0), color=GREEN)
+        root_a_label_${i} = MathTex("x=${rootA.toFixed(3)}", font_size=24).next_to(root_a_${i}, DOWN)
+        root_b_label_${i} = MathTex("x=${rootB.toFixed(3)}", font_size=24).next_to(root_b_${i}, DOWN)
         graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP)
-        graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, root_3_${i}, root_2_label_${i}, root_3_label_${i}, graph_title_${i})
+        graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_a_${i}, root_b_${i}, root_a_label_${i}, root_b_label_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
-        self.play(FadeIn(root_2_${i}), FadeIn(root_3_${i}), Write(root_2_label_${i}), Write(root_3_label_${i}), FadeIn(graph_title_${i}), run_time=2)
+        self.play(FadeIn(root_a_${i}), FadeIn(root_b_${i}), Write(root_a_label_${i}), Write(root_b_label_${i}), FadeIn(graph_title_${i}), run_time=2)
         self.wait(max(0.5, ${duration.toFixed(2)} - 5.5))
         self.play(FadeOut(graph_group_${i}), run_time=1)
 `;
@@ -591,10 +605,13 @@ export const manim = {
           const eventCode = eventGroups.map((group, eventIndex) => {
             const variable = `timeline_${i}_${eventIndex}`;
             const previous = eventIndex > 0 ? `timeline_${i}_${eventIndex - 1}` : undefined;
-            const transition = previous ? `FadeOut(${previous}), FadeIn(${variable})` : `FadeIn(${variable})`;
+            const transitionDuration = Math.max(0.18, group.event.duration / 2);
+            const transition = previous
+              ? `self.play(FadeOut(${previous}), run_time=${transitionDuration.toFixed(2)})\n        self.play(FadeIn(${variable}), run_time=${transitionDuration.toFixed(2)})`
+              : `self.play(FadeIn(${variable}), run_time=${group.event.duration.toFixed(2)})`;
             const checkpointAfterEvent = checkpoint && eventIndex === 0 ? checkpointCode : '';
             const holdAfter = Math.max(0.2, group.event.holdAfter - (checkpoint && eventIndex === 0 ? Number(checkpoint.pauseSeconds) : 0));
-            return `        ${variable} = ${group.code}\n        self.play(${transition}, run_time=${group.event.duration.toFixed(2)})\n        self.wait(${holdAfter.toFixed(2)})${checkpointAfterEvent}`;
+            return `        ${variable} = ${group.code}\n        ${transition}\n        self.wait(${holdAfter.toFixed(2)})${checkpointAfterEvent}`;
           }).join('\n');
           const occupied = eventGroups.reduce((sum, group) => sum + group.event.duration + group.event.holdAfter, 0);
           const lastVariable = eventGroups.length ? `timeline_${i}_${eventGroups.length - 1}` : 'None';
@@ -711,11 +728,12 @@ class ${className}(Scene):
     def construct(self):
         self.camera.frame_width = ${formatProfile.frameWidth}
         self.camera.frame_height = ${formatProfile.frameHeight}
-        # Título científico con estilo tipo revista
+        # Apertura segura: la ruta experimental evita comenzar sobre fondo negro.
+${timelineEnabled ? `        opening_panel = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)\n        opening_panel.set_z_index(-10)\n        self.add(opening_panel)\n` : ''}        # Título científico con estilo tipo revista
         title = ${titleObject}
         title.to_edge(UP)
-        self.add(title)
-        self.play(Write(title), run_time=${pedagogicalScenes.length ? '0.6' : '1'})
+${timelineEnabled ? `        title.scale(min(0.82, ${contentWidth} / title.width, 0.58 / title.height))\n` : ''}        self.add(title)
+        self.play(${timelineEnabled ? 'FadeIn(title)' : 'Write(title)'}, run_time=${pedagogicalScenes.length ? '0.6' : '1'})
         self.wait(${pedagogicalScenes.length ? '0.2' : `max(0.5, ${introDuration.toFixed(2)} - 2)`})
         self.play(FadeOut(title), run_time=${pedagogicalScenes.length ? '0.5' : '1'})
 

@@ -36,6 +36,10 @@ test('builds a complete quadratic teaching storyboard', () => {
   assert.doesNotMatch(neutralScenes.find((scene) => scene.id === 'hook')?.narrationText ?? '', /Muy bien/);
 
   const discriminant = scenes.find((scene) => scene.id === 'discriminant-calculate');
+  const negativeScenes = buildQuadraticStoryboard('3x^2 + 2x - 8 = 0', validateMathProblem('3x^2 + 2x - 8 = 0'));
+  const negativeDiscriminant = negativeScenes.find((scene) => scene.id === 'discriminant-calculate');
+  assert.match(negativeDiscriminant?.narrationText ?? '', /menos noventa y seis/);
+  assert.doesNotMatch(negativeDiscriminant?.narrationText ?? '', /definet|undefined/i);
   assert.deepEqual(discriminant?.visualStages?.map((stage) => stage.label), ['Fórmula base', 'Reemplazamos', 'Operamos', 'Resultado']);
   assert.match(discriminant?.visualStages?.[1]?.latex ?? '', /\(-5\)\^2/);
 
@@ -43,6 +47,11 @@ test('builds a complete quadratic teaching storyboard', () => {
   assert.deepEqual(substitution?.visualStages?.map((stage) => stage.label), ['Fórmula de partida', 'Sustituimos a, b y Δ']);
 
   const branches = scenes.find((scene) => scene.id === 'solution-branches');
+  const negativeBranches = negativeScenes.find((scene) => scene.id === 'solution-branches');
+  assert.match(negativeBranches?.narrationText ?? '', /uno punto tres tres/);
+  assert.doesNotMatch(negativeBranches?.narrationText ?? '', /tres tres tres tres tres tres/);
   assert.equal(branches?.visualLatex?.length, 2);
-  assert.equal(scenes.find((scene) => scene.id === 'graph')?.layout, 'graph');
+  const graph = scenes.find((scene) => scene.id === 'graph');
+  assert.equal(graph?.layout, 'graph');
+  assert.deepEqual(graph?.graphSpec, { a: 1, b: -5, c: 6, roots: [2, 3] });
 });

@@ -1,6 +1,6 @@
 # Remotion editorial pilot
 
-Este directorio contiene un piloto aislado de Remotion 4 para probar la capa editorial del generador sin sustituir Manim ni el pipeline de producción.
+Este directorio contiene un piloto aislado de Remotion 4 para probar la capa editorial del generador sin sustituir Manim ni el pipeline de producción. La composición actual puede tratarse como una **presentación animada**: siete diapositivas, cada una con una duración, una idea central y microeventos derivados de un `TimelineLike`.
 
 ## Qué demuestra
 
@@ -16,7 +16,15 @@ npm run dev
 npm run render
 ```
 
-El render se genera en `out/quadratic-editorial.mp4`. El piloto actual es visual y editorial: no reemplaza el audio neural, el solver, Manim ni FFmpeg. La próxima integración deberá leer un `LessonTimeline` exportado por el backend en lugar de mantener etapas manuales en `defaultProps`.
+Para generar la presentación animada derivada del demo timeline:
+
+```bash
+npx remotion render src/registerRoot.tsx AnimatedQuadraticDeck out/animated-quadratic-16x9.mp4
+npx remotion render src/registerRoot.tsx AnimatedQuadraticDeckSquare out/animated-quadratic-1x1.mp4
+npx remotion render src/registerRoot.tsx AnimatedQuadraticDeckPortrait out/animated-quadratic-9x16.mp4
+```
+
+El render editorial corto se genera en `out/quadratic-editorial.mp4`; la presentación animada se genera en los archivos `animated-quadratic-*`. El piloto actual es visual y editorial: no reemplaza el audio neural, el solver, Manim ni FFmpeg. La próxima integración deberá leer un `LessonTimeline` exportado por el backend en lugar de mantener el `demoTimeline` dentro del piloto. La demo narrada actual concatena segmentos generados con la voz neural aprobada y sirve para validar el concepto; todavía no activa `video-processing.service.ts`.
 
 ## Límites deliberados
 

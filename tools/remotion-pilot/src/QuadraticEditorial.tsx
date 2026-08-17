@@ -11,6 +11,7 @@ const stageSchema = z.object({
   referenceLatex: z.string().optional(),
   detail: z.string(),
   accent: z.string(),
+  durationFrames: z.number().optional(),
 });
 
 export const quadraticEditorialSchema = z.object({
@@ -75,17 +76,18 @@ const ProgressRail: React.FC<{ stages: Stage[]; activeIndex: number }> = ({ stag
   );
 };
 
-const StageCard: React.FC<{ stage: Stage; index: number; frame: number; activeIndex: number }> = ({ stage, index, frame, activeIndex }) => {
-  const start = index * 84;
+const StageCard: React.FC<{ stage: Stage; index: number; startFrame: number; frame: number; activeIndex: number }> = ({ stage, index, startFrame, frame, activeIndex }) => {
+  const start = startFrame;
+  const duration = stage.durationFrames ?? 84;
   const local = frame - start;
   const { width, height } = useVideoConfig();
   const portrait = height > width * 1.2;
   const compact = width < 900 || portrait;
   const enter = spring({ frame: Math.max(0, local), fps: 30, config: { damping: 18, stiffness: 120, mass: 0.7 } });
-  const opacity = interpolate(local, [0, 12, 78, 90], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
+  const opacity = interpolate(local, [0, 12, Math.max(13, duration - 12), duration], [0, 1, 1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const y = interpolate(enter, [0, 1], [28, 0], { easing: Easing.out(Easing.cubic) });
-  const showPrediction = stage.id === 'substitution' && local >= 42 && local < 74;
-  const graphProgress = stage.id === 'verify' ? interpolate(local, [20, 75], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 0;
+  const showPrediction = stage.id === 'substitute' && local >= Math.round(duration * 0.48) && local < Math.round(duration * 0.82);
+  const graphProgress = stage.id === 'verify' ? interpolate(local, [Math.round(duration * 0.22), Math.round(duration * 0.82)], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 0;
   const isCurrent = activeIndex === index;
 
   return (
@@ -128,7 +130,8 @@ export const QuadraticEditorial: React.FC<QuadraticEditorialProps> = ({ title, p
   const { width, height, durationInFrames } = useVideoConfig();
   const portrait = height > width * 1.2;
   const compact = width < 900 || portrait;
-  const activeIndex = Math.min(stages.length - 1, Math.floor(frame / 84));
+  const starts = stages.map((_, index) => stages.slice(0, index).reduce((sum, stage) => sum + (stage.durationFrames ?? 84), 0));
+  const activeIndex = Math.max(0, starts.findIndex((start, index) => frame < start + (stages[index].durationFrames ?? 84)) === -1 ? stages.length - 1 : starts.findIndex((start, index) => frame < start + (stages[index].durationFrames ?? 84)));
   const titleOpacity = interpolate(frame, [0, 18], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
   const progress = interpolate(frame, [0, durationInFrames - 1], [0, 100], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
@@ -143,7 +146,7 @@ export const QuadraticEditorial: React.FC<QuadraticEditorialProps> = ({ title, p
         <div style={{ color: '#93c5fd', fontSize: portrait ? 13 : compact ? 16 : 20, fontWeight: 700, border: '1px solid rgba(147,197,253,0.4)', borderRadius: 999, padding: '10px 17px' }}>{problem}</div>
       </div>
       <ProgressRail stages={stages} activeIndex={activeIndex} />
-      {stages.map((stage, index) => <StageCard key={stage.id} stage={stage} index={index} frame={frame} activeIndex={activeIndex} />)}
+      {stages.map((stage, index) => <StageCard key={stage.id} stage={stage} index={index} startFrame={starts[index]} frame={frame} activeIndex={activeIndex} />)}
       <div style={{ position: 'absolute', left: compact ? 56 : 92, right: compact ? 42 : 74, bottom: compact ? 18 : 26, height: 5, borderRadius: 999, background: 'rgba(148,163,184,0.2)' }}>
         <div style={{ width: `${progress}%`, height: '100%', background: 'linear-gradient(90deg, #f7c948, #fb7185)', borderRadius: 999 }} />
       </div>

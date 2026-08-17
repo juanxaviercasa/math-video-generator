@@ -1,0 +1,47 @@
+[
+  {
+    "file": "derivando-que-es-matematica.jsonl",
+    "n": 100,
+    "avg_votes": 25.89,
+    "max_votes": 883,
+    "questions": 16,
+    "creator_or_thread_replies": 79,
+    "creator_hearts": 0,
+    "claridad": 7,
+    "afecto_confianza": 22,
+    "utilidad_estudio": 8,
+    "pregunta_solicitud": 16,
+    "motivacion_matematica": 49,
+    "critica_confusion": 6
+  },
+  {
+    "file": "julioprofe-sistemas-igualacion.jsonl",
+    "n": 44,
+    "avg_votes": 1.41,
+    "max_votes": 16,
+    "questions": 7,
+    "creator_or_thread_replies": 5,
+    "creator_hearts": 22,
+    "claridad": 8,
+    "afecto_confianza": 27,
+    "utilidad_estudio": 10,
+    "pregunta_solicitud": 7,
+    "motivacion_matematica": 2,
+    "critica_confusion": 3
+  },
+  {
+    "file": "profe-alex-que-es-funcion.jsonl",
+    "n": 100,
+    "avg_votes": 35.75,
+    "max_votes": 814,
+    "questions": 11,
+    "creator_or_thread_replies": 80,
+    "creator_hearts": 12,
+    "claridad": 14,
+    "afecto_confianza": 42,
+    "utilidad_estudio": 30,
+    "pregunta_solicitud": 12,
+    "motivacion_matematica": 9,
+    "critica_confusion": 11
+  }
+]

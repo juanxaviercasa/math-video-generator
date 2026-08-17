@@ -12,7 +12,7 @@ Al activarla de forma explícita, la generación cuadrática construye una líne
 
 ## Componentes
 
-`timeline.types.ts` define `NarrationSegment`, `VisualEvent`, `LessonTimeline`, `TimelineIssue`, `TimelineValidationReport` y la entrada de escenas con `visualStages`, `visualLatex` y `visualTextLines`. La versión pedagógica añade `lessonMode`, `formulaAnchors`, `checkpoints`, `formulaAnchorId` y `semanticStep`; todos son opcionales para conservar compatibilidad con la ruta estable.
+`timeline.types.ts` define `NarrationSegment`, `VisualEvent`, `LessonTimeline`, `TimelineIssue`, `TimelineValidationReport` y la entrada de escenas con `visualStages`, `visualLatex` y `visualTextLines`. La versión pedagógica añade `lessonMode`, `PedagogicalContract`, `PedagogicalStep`, `formulaAnchors`, `checkpoints`, `formulaAnchorId` y `semanticStep`; todos son opcionales para conservar compatibilidad con la ruta estable.
 
 `timeline.service.ts` construye los segmentos usando la duración real de cada escena cuando está disponible. Para escenas con etapas visuales, genera un evento por etapa. Cada evento contiene acción, etiqueta, target, valor anterior, valor siguiente, offset, duración, permanencia y rol pedagógico.
 
@@ -24,7 +24,7 @@ El validador rechaza segmentos vacíos, duraciones no positivas, eventos fuera d
 
 ## Validación
 
-La suite pasó con **52 tests**. Además de construcción de segmentos, duración real, expansión de visualStages, orden de eventos, permanencia, eventos fuera de tiempo y solapamientos, se cubren anchors de fórmula, checkpoints, referencias inexistentes, regresiones de oralización y gráficas cuadráticas derivadas del problema.
+La suite pasó con **54 tests**. Además de construcción de segmentos, duración real, expansión de visualStages, orden de eventos, permanencia, eventos fuera de tiempo y solapamientos, se cubren anchors de fórmula, checkpoints, referencias inexistentes, regresiones de oralización, gráficas cuadráticas derivadas del problema y cobertura obligatoria del contrato pedagógico.
 
 El render experimental narrado más reciente se generó en:
 
@@ -45,6 +45,18 @@ El piloto cuadrático con `3x^2 + 2x - 8 = 0` se renderizó con voz neural `es-M
 | 9:16 | 720×1280 | AAC, 30 fps | Aprobado |
 
 La transcripción comprobó “menos noventa y seis” y “uno punto tres tres tres”. La auditoría visual comprobó fórmula persistente, coeficientes `a`, `b`, `c`, checkpoint, ramas secuenciales, recap y gráfica con raíces `x=-2` y `x=1.333`. La ruta estable también fue renderizada con `NARRATION_TIMELINE=false` y conservó la composición baseline.
+
+## Demo integrada de los tres subpasos
+
+Subcero se materializa en un `PedagogicalContract` cuadrático con hook, criterio de éxito y pasos requeridos: `hook`, `identify`, `substitute`, `compute`, `simplify`, `solve`, `verify` e `interpret`. Subuno propaga ese contrato desde `buildQuadraticStoryboard` hasta `buildLessonTimeline`, asigna `pedagogicalStep` a cada evento y detiene el pipeline si falta una etapa obligatoria. Subdos se verificó mediante el pipeline real con voz neural, render Manim, FFmpeg y miniaturas.
+
+| Formato | Artefacto integrado | Resultado |
+|---|---|---|
+| 16:9 | `/tmp/mvg-integrated-demo-16x9/timeline-pilot-16x9-narrated.mp4` | Completado; auditoría audiovisual detallada |
+| 1:1 | `/tmp/mvg-integrated-demo-1x1/timeline-pilot-1x1-narrated.mp4` | Completado; ffprobe y contacto nativo |
+| 9:16 | `/tmp/mvg-integrated-demo-9x16/timeline-pilot-9x16-narrated.mp4` | Completado; ffprobe y contacto nativo |
+
+La auditoría 16:9 transcribió correctamente “menos noventa y seis”, mostró sincronización entre hook, coeficientes, sustitución, discriminante, fórmula general, simplificación, raíces y comprobación, y no detectó pantallas negras mientras hablaba la voz. Los contactos nativos sociales conservaron safe area y fracciones sin clipping visible; la legibilidad reducida de algunos textos de cálculo queda como riesgo para la siguiente iteración y no se oculta con una aprobación automática.
 
 ## Hallazgos visuales
 

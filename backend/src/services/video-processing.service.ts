@@ -172,7 +172,13 @@ export const videoProcessing = {
         }
 
         const timelineScenes = pedagogicalScenes.length ? pedagogicalScenes : synchronizedScenes;
-        lessonTimeline = buildLessonTimeline({ problem: content, scenes: timelineScenes, narrationStyle });
+        lessonTimeline = buildLessonTimeline({
+          problem: content,
+          scenes: timelineScenes,
+          narrationStyle,
+          lessonMode: 'tutorial',
+          pedagogicalContract: pedagogicalScenes[0]?.pedagogicalContract,
+        });
         const timelineReport = validateLessonTimeline(lessonTimeline);
         if (!timelineReport.passed) {
           throw new Error(`La línea de tiempo pedagógica es inválida: ${timelineReport.issues.map((issue) => issue.message).join(' | ')}`);

@@ -1,6 +1,6 @@
 import type { MathValidation } from './math-validation.service.js';
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
-import type { CheckpointKind, FormulaPersistence, PedagogicalRole } from './timeline.types.js';
+import type { CheckpointKind, FormulaPersistence, PedagogicalContract, PedagogicalRole, PedagogicalStep } from './timeline.types.js';
 
 export interface VisualStage {
   label: string;
@@ -38,6 +38,8 @@ export interface PedagogicalScene extends SynchronizedScene {
   formulaAnchor?: PedagogicalFormulaAnchor;
   checkpoints?: PedagogicalCheckpoint[];
   graphSpec?: QuadraticGraphSpec;
+  pedagogicalStep?: PedagogicalStep;
+  pedagogicalContract?: PedagogicalContract;
   emphasis?: string;
   layout: 'hero' | 'card' | 'split' | 'equation' | 'graph' | 'recap';
 }
@@ -108,6 +110,23 @@ export const buildQuadraticStoryboard = (
   const formulaSimplified = `x = \\frac{${formatValue(-b)} \\pm ${formatValue(sqrtDelta)}}{${formatValue(denominator)}}`;
   const x1 = denominator === 0 ? 0 : (-b + sqrtDelta) / denominator;
   const x2 = denominator === 0 ? 0 : (-b - sqrtDelta) / denominator;
+  const pedagogicalContract: PedagogicalContract = {
+    requiredSteps: ['hook', 'identify', 'substitute', 'compute', 'simplify', 'solve', 'verify', 'interpret'],
+    hook: 'Aprender a identificar coeficientes, sustituir sin perder signos y comprobar las dos raíces.',
+    successCriterion: 'Las dos raíces se sustituyen de vuelta en la ecuación original y coinciden con cero.',
+  };
+  const pedagogicalSteps: Record<string, PedagogicalStep> = {
+    hook: 'hook',
+    coefficients: 'identify',
+    'discriminant-setup': 'substitute',
+    'discriminant-calculate': 'compute',
+    'formula-symbolic': 'context',
+    'formula-substitution': 'substitute',
+    'formula-simplify': 'simplify',
+    'solution-branches': 'solve',
+    graph: 'verify',
+    recap: 'interpret',
+  };
 
   const make = (
     id: string,
@@ -130,6 +149,8 @@ export const buildQuadraticStoryboard = (
     formulaAnchor: options.formulaAnchor,
     checkpoints: options.checkpoints,
     graphSpec: options.graphSpec,
+    pedagogicalStep: pedagogicalSteps[id] ?? 'context',
+    pedagogicalContract,
     narrationText,
     emphasis,
     estimatedDuration,

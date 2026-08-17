@@ -9,6 +9,8 @@ import type {
   TimelineSceneInput,
   TimelineValidationReport,
   TimelineIssue,
+  PedagogicalContract,
+  PedagogicalStep,
   VisualEvent,
 } from './timeline.types.js';
 
@@ -26,6 +28,15 @@ const actionForScene = (scene: TimelineSceneInput, index: number): VisualEvent['
   if (index === 0 || scene.kind === 'intro') return 'show';
   if (scene.kind === 'conclusion') return 'hold';
   return 'transform';
+};
+
+const pedagogicalStepForScene = (scene: TimelineSceneInput, index: number): PedagogicalStep => {
+  if (scene.pedagogicalStep) return scene.pedagogicalStep;
+  if (index === 0 || scene.kind === 'intro') return 'hook';
+  if (scene.kind === 'conclusion') return 'interpret';
+  if (scene.kind === 'calculation') return 'compute';
+  if (scene.kind === 'formula') return 'substitute';
+  return 'context';
 };
 
 const durationForScene = (scene: TimelineSceneInput): number => {
@@ -46,6 +57,7 @@ const formulaAnchorsForScenes = (scenes: TimelineSceneInput[]): FormulaAnchor[] 
 
 const sceneStageItems = (scene: TimelineSceneInput, index: number) => {
   const fallbackRole = roleForScene(scene, index, 1);
+  const fallbackStep = pedagogicalStepForScene(scene, index);
   const anchorId = scene.formulaAnchor ? `anchor-${scene.id}` : undefined;
   if (scene.visualStages?.length) {
     return scene.visualStages.map((stage) => ({
@@ -54,6 +66,7 @@ const sceneStageItems = (scene: TimelineSceneInput, index: number) => {
       label: stage.label,
       role: stage.role ?? fallbackRole,
       semanticStep: stage.semanticStep ?? stage.label,
+      pedagogicalStep: stage.pedagogicalStep ?? scene.pedagogicalStep ?? fallbackStep,
       formulaAnchorId: stage.formulaAnchorId ?? anchorId,
     }));
   }
@@ -64,6 +77,7 @@ const sceneStageItems = (scene: TimelineSceneInput, index: number) => {
       label: scene.visualTextLines?.[stageIndex] || (stageIndex === 0 ? scene.visualText : 'Siguiente transformación'),
       role: fallbackRole,
       semanticStep: scene.visualTextLines?.[stageIndex] || (stageIndex === 0 ? scene.visualText : 'Siguiente transformación'),
+      pedagogicalStep: scene.pedagogicalStep ?? fallbackStep,
       formulaAnchorId: anchorId,
     }));
   }
@@ -73,11 +87,12 @@ const sceneStageItems = (scene: TimelineSceneInput, index: number) => {
     label: scene.visualText,
     role: fallbackRole,
     semanticStep: scene.visualText,
+    pedagogicalStep: scene.pedagogicalStep ?? fallbackStep,
     formulaAnchorId: anchorId,
   }];
 };
 
-export const buildLessonTimeline = ({ problem, scenes, narrationStyle = 'warm_teacher', lessonMode = 'tutorial' }: TimelineBuildInput): LessonTimeline => {
+export const buildLessonTimeline = ({ problem, scenes, narrationStyle = 'warm_teacher', lessonMode = 'tutorial', pedagogicalContract }: TimelineBuildInput): LessonTimeline => {
   const segments: NarrationSegment[] = scenes.map((scene) => ({
     id: `segment-${scene.id}`,
     sceneId: scene.id,
@@ -110,6 +125,7 @@ export const buildLessonTimeline = ({ problem, scenes, narrationStyle = 'warm_te
       pedagogicalRole: stage.role,
       label: stage.label,
       semanticStep: stage.semanticStep,
+      pedagogicalStep: stage.pedagogicalStep,
       formulaAnchorId: stage.formulaAnchorId,
     }));
   });
@@ -133,6 +149,7 @@ export const buildLessonTimeline = ({ problem, scenes, narrationStyle = 'warm_te
     problem,
     narrationStyle,
     lessonMode,
+    pedagogicalContract,
     segments,
     events,
     formulaAnchors: formulaAnchorsForScenes(scenes),
@@ -145,6 +162,8 @@ export const validateLessonTimeline = (timeline: LessonTimeline): TimelineValida
   const segmentIds = new Set(timeline.segments.map((segment) => segment.id));
   const eventIds = new Set<string>();
   const anchorIds = new Set((timeline.formulaAnchors ?? []).map((anchor) => anchor.id));
+  const requiredSteps = timeline.pedagogicalContract?.requiredSteps ?? [];
+  const observedSteps = new Set(timeline.events.map((event) => event.pedagogicalStep).filter(Boolean));
   let totalDuration = 0;
 
   for (const segment of timeline.segments) {
@@ -176,6 +195,12 @@ export const validateLessonTimeline = (timeline: LessonTimeline): TimelineValida
     }
     if (!event.semanticStep?.trim()) {
       issues.push({ type: 'missing-semantic-step', severity: 'warning', eventId: event.id, message: 'El evento no declara el paso semántico que representa.' });
+    }
+  }
+
+  for (const requiredStep of requiredSteps) {
+    if (!observedSteps.has(requiredStep)) {
+      issues.push({ type: 'missing-required-step', severity: 'error', message: `La lección no contiene el paso pedagógico requerido: ${requiredStep}.` });
     }
   }
 

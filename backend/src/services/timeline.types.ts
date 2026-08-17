@@ -1,8 +1,15 @@
 import type { SynchronizedScene } from './synchronization.service.js';
 
 export type VisualEventAction = 'show' | 'highlight' | 'transform' | 'write' | 'replace' | 'plot' | 'hold' | 'hide';
-export type LessonMode = 'tutorial' | 'intuition' | 'challenge' | 'practice';
+export type LessonMode = 'tutorial' | 'intuition' | 'challenge' | 'practice' | 'context';
+export type PedagogicalStep = 'hook' | 'context' | 'identify' | 'substitute' | 'compute' | 'simplify' | 'solve' | 'verify' | 'interpret';
 export type PedagogicalRole = 'context' | 'data' | 'operation' | 'result' | 'verification' | 'reflection';
+
+export interface PedagogicalContract {
+  requiredSteps: PedagogicalStep[];
+  hook?: string;
+  successCriterion?: string;
+}
 export type FormulaPersistence = 'segment' | 'lesson';
 export type CheckpointKind = 'predict' | 'practice' | 'reflect';
 
@@ -46,6 +53,7 @@ export interface VisualEvent {
   pedagogicalRole: PedagogicalRole;
   label?: string;
   semanticStep?: string;
+  pedagogicalStep?: PedagogicalStep;
   formulaAnchorId?: string;
 }
 
@@ -55,6 +63,7 @@ export interface LessonTimeline {
   problem: string;
   narrationStyle: 'warm_teacher' | 'neutral_teacher';
   lessonMode?: LessonMode;
+  pedagogicalContract?: PedagogicalContract;
   segments: NarrationSegment[];
   events: VisualEvent[];
   formulaAnchors?: FormulaAnchor[];
@@ -71,7 +80,8 @@ export interface TimelineIssue {
     | 'non-monotonic'
     | 'missing-anchor'
     | 'invalid-checkpoint'
-    | 'missing-semantic-step';
+    | 'missing-semantic-step'
+    | 'missing-required-step';
   severity: 'error' | 'warning';
   segmentId?: string;
   eventId?: string;
@@ -97,6 +107,7 @@ export interface TimelineSceneInput {
   duration?: number;
   lessonMode?: LessonMode;
   objective?: string;
+  pedagogicalStep?: PedagogicalStep;
   formulaAnchor?: Omit<FormulaAnchor, 'id'>;
   checkpoints?: Omit<PedagogicalCheckpoint, 'id' | 'revealAfterEventId'>[];
   visualStages?: Array<{
@@ -105,6 +116,7 @@ export interface TimelineSceneInput {
     detail?: string;
     role?: PedagogicalRole;
     semanticStep?: string;
+    pedagogicalStep?: PedagogicalStep;
     formulaAnchorId?: string;
   }>;
   visualLatex?: string[];
@@ -116,6 +128,7 @@ export interface TimelineBuildInput {
   scenes: TimelineSceneInput[];
   narrationStyle?: 'warm_teacher' | 'neutral_teacher';
   lessonMode?: LessonMode;
+  pedagogicalContract?: PedagogicalContract;
 }
 
 export type TimelineScene = SynchronizedScene & TimelineSceneInput;

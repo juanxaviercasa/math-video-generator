@@ -50,3 +50,17 @@ El piloto 16:9 v6 también quedó aprobado después de corregir la apertura, la 
 ## No-regresión del renderer estable
 
 Con `NARRATION_TIMELINE=false` se generó `/tmp/mvg-stable-regression-v1/timeline-pilot-16x9-narrated.mp4`. El artefacto terminó con H.264, AAC, 1280×720, 30 fps y 141 s. La miniatura conserva la composición baseline: panel completo, fórmula principal, fórmula general y ruta de solución sin clipping. La ruta estable no utiliza anchors, checkpoints ni la gráfica dinámica del piloto experimental.
+
+## Demo integrada subcero + subuno + subdos — 17 de agosto de 2026
+
+Se ejecutó el runner oficial con `NARRATION_TIMELINE=true`, `TTS_PROVIDER=edge`, voz `es-MX-DaliaNeural`, velocidad `-8%` y fallback local desactivado. El problema fue `3x^2 + 2x - 8 = 0`. El pipeline completó audio, render Manim, merge FFmpeg y miniatura en los tres formatos.
+
+| Formato | Resolución | Duración | Video | Audio |
+|---|---:|---:|---|---|
+| 16:9 | 1280×720 | 146 s | H.264 | AAC mono 24 kHz |
+| 1:1 | 720×720 | 146 s | H.264 | AAC mono 24 kHz |
+| 9:16 | 720×1280 | 146 s | H.264 | AAC mono 24 kHz |
+
+La demo 16:9 se generó en `/tmp/mvg-integrated-demo-16x9/timeline-pilot-16x9-narrated.mp4`, la cuadrada en `/tmp/mvg-integrated-demo-1x1/timeline-pilot-1x1-narrated.mp4` y la vertical en `/tmp/mvg-integrated-demo-9x16/timeline-pilot-9x16-narrated.mp4`. La validación matemática terminó con `x₁ = 1.3333`, `x₂ = -2`, discriminante `100` y advertencias vacías.
+
+El primer intento social falló por un bug del runner al separar `1:1` con `IFS=:` y por una respuesta transitoria vacía del TTS; no se entregó ese artefacto. La ejecución corregida de 1:1 y la de 9:16 terminaron con voz neural y sin fallback. La inspección nativa de 16:9 y 1:1 muestra panel seguro desde el inicio, fracciones LaTeX, fórmula de referencia y separación por escenas, sin desbordes laterales ni transiciones superpuestas en los contactos. En contactos reducidos algunos textos de cálculo parecen pequeños o tenues; esta observación no sustituye la revisión a resolución nativa y queda como riesgo de legibilidad para la siguiente iteración. El contacto vertical conserva safe area, títulos, fracciones y paneles sin clipping visible. La auditoría audiovisual detallada se completó en 16:9 con transcripción; para 9:16 se conservaron como evidencia local `ffprobe`, contacto nativo y artefacto terminado, sin ejecutar una segunda inspección automática.

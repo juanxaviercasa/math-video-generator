@@ -134,3 +134,41 @@ test('rejects overlapping events in the same segment', () => {
   assert.equal(report.passed, false);
   assert.ok(report.issues.some((issue) => issue.type === 'overlap'));
 });
+
+
+test('validates the pedagogical contract required steps', () => {
+  const lessonTimeline = timeline.buildLessonTimeline({
+    problem: '3x^2 + 2x - 8 = 0',
+    pedagogicalContract: {
+      requiredSteps: ['hook', 'identify', 'substitute', 'compute', 'simplify', 'solve', 'verify', 'interpret'],
+      hook: 'Aprender a sustituir sin perder signos.',
+      successCriterion: 'Comprobar ambas raíces.',
+    },
+    scenes: [
+      { ...scenes[0], pedagogicalStep: 'hook' },
+      { ...scenes[1], pedagogicalStep: 'identify' },
+      { id: 'substitute', kind: 'formula' as const, visualText: 'Sustitución', narrationText: 'Reemplazamos.', estimatedDuration: 3, pedagogicalStep: 'substitute' },
+      { id: 'compute', kind: 'calculation' as const, visualText: 'Cálculo', narrationText: 'Calculamos.', estimatedDuration: 3, pedagogicalStep: 'compute' },
+      { id: 'simplify', kind: 'calculation' as const, visualText: 'Simplificación', narrationText: 'Simplificamos.', estimatedDuration: 3, pedagogicalStep: 'simplify' },
+      { id: 'solve', kind: 'step' as const, visualText: 'Raíces', narrationText: 'Resolvemos.', estimatedDuration: 3, pedagogicalStep: 'solve' },
+      { id: 'verify', kind: 'graph' as const, visualText: 'Comprobación', narrationText: 'Comprobamos.', estimatedDuration: 3, pedagogicalStep: 'verify' },
+      { ...scenes[2], pedagogicalStep: 'interpret' },
+    ],
+  });
+
+  const report = timeline.validateLessonTimeline(lessonTimeline);
+  assert.equal(report.passed, true);
+  assert.deepEqual([...new Set(lessonTimeline.events.map((event) => event.pedagogicalStep))], ['hook', 'identify', 'substitute', 'compute', 'simplify', 'solve', 'verify', 'interpret']);
+});
+
+test('rejects a pedagogical contract with a missing required step', () => {
+  const lessonTimeline = timeline.buildLessonTimeline({
+    problem: 'x = 1',
+    pedagogicalContract: { requiredSteps: ['hook', 'verify'] },
+    scenes: [{ ...scenes[0], pedagogicalStep: 'hook' }],
+  });
+
+  const report = timeline.validateLessonTimeline(lessonTimeline);
+  assert.equal(report.passed, false);
+  assert.ok(report.issues.some((issue) => issue.type === 'missing-required-step' && issue.message.includes('verify')));
+});

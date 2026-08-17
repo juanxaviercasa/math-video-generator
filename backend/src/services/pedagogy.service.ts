@@ -1,16 +1,35 @@
 import type { MathValidation } from './math-validation.service.js';
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
+import type { CheckpointKind, FormulaPersistence, PedagogicalRole } from './timeline.types.js';
 
 export interface VisualStage {
   label: string;
   latex: string;
   detail?: string;
+  role?: PedagogicalRole;
+  semanticStep?: string;
+  formulaAnchorId?: string;
+}
+
+export interface PedagogicalFormulaAnchor {
+  latex: string;
+  label?: string;
+  persistence: FormulaPersistence;
+  position: 'top' | 'side';
+}
+
+export interface PedagogicalCheckpoint {
+  kind: CheckpointKind;
+  prompt: string;
+  pauseSeconds: number;
 }
 
 export interface PedagogicalScene extends SynchronizedScene {
   visualLatex?: string[];
   visualTextLines?: string[];
   visualStages?: VisualStage[];
+  formulaAnchor?: PedagogicalFormulaAnchor;
+  checkpoints?: PedagogicalCheckpoint[];
   emphasis?: string;
   layout: 'hero' | 'card' | 'split' | 'equation' | 'graph' | 'recap';
 }
@@ -91,6 +110,7 @@ export const buildQuadraticStoryboard = (
     estimatedDuration: number,
     visualTextLines: string[] = [],
     visualStages: VisualStage[] = [],
+    options: Pick<PedagogicalScene, 'formulaAnchor' | 'checkpoints'> = {},
   ): PedagogicalScene => ({
     id,
     kind,
@@ -98,6 +118,8 @@ export const buildQuadraticStoryboard = (
     visualLatex,
     visualTextLines,
     visualStages,
+    formulaAnchor: options.formulaAnchor,
+    checkpoints: options.checkpoints,
     narrationText,
     emphasis,
     estimatedDuration,
@@ -145,11 +167,14 @@ export const buildQuadraticStoryboard = (
       9,
       ['Paso 1 · elevar', 'Paso 2 · multiplicar', 'Paso 3 · restar'],
       [
-        { label: 'Fórmula base', latex: discriminantFormula },
-        { label: 'Reemplazamos', latex: discriminantSubstitution },
-        { label: 'Operamos', latex: discriminantOperation },
-        { label: 'Resultado', latex: `\\Delta = ${formatValue(delta)}` },
+        { label: 'Fórmula base', latex: discriminantFormula, role: 'operation', semanticStep: 'Mostrar la fórmula del discriminante' },
+        { label: 'Reemplazamos', latex: discriminantSubstitution, role: 'operation', semanticStep: 'Sustituir b, a y c en la fórmula' },
+        { label: 'Operamos', latex: discriminantOperation, role: 'operation', semanticStep: 'Calcular las operaciones del discriminante' },
+        { label: 'Resultado', latex: `\\Delta = ${formatValue(delta)}`, role: 'result', semanticStep: 'Conservar el valor del discriminante' },
       ],
+      {
+        formulaAnchor: { latex: discriminantFormula, label: 'Referencia', persistence: 'segment', position: 'top' },
+      },
     ),
     make(
       'formula-symbolic',
@@ -172,9 +197,13 @@ export const buildQuadraticStoryboard = (
       8,
       [],
       [
-        { label: 'Fórmula de partida', latex: 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}' },
-        { label: 'Sustituimos a, b y Δ', latex: formulaSubstitution },
+        { label: 'Fórmula de partida', latex: 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}', role: 'context', semanticStep: 'Mantener visible la fórmula de referencia' },
+        { label: 'Sustituimos a, b y Δ', latex: formulaSubstitution, role: 'operation', semanticStep: 'Reemplazar cada símbolo por su valor' },
       ],
+      {
+        formulaAnchor: { latex: 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}', label: 'Fórmula de referencia', persistence: 'segment', position: 'top' },
+        checkpoints: [{ kind: 'predict', prompt: 'Pausa: ¿qué valores deben reemplazar a, b y Δ?', pauseSeconds: 1.4 }],
+      },
     ),
     make(
       'formula-simplify',
@@ -186,9 +215,12 @@ export const buildQuadraticStoryboard = (
       8,
       [],
       [
-        { label: 'Después de sustituir', latex: formulaSubstitution },
-        { label: 'Simplificamos', latex: formulaSimplified },
+        { label: 'Después de sustituir', latex: formulaSubstitution, role: 'context', semanticStep: 'Conservar la sustitución completa' },
+        { label: 'Simplificamos', latex: formulaSimplified, role: 'operation', semanticStep: 'Simplificar raíz y denominador' },
       ],
+      {
+        formulaAnchor: { latex: formulaSubstitution, label: 'Sustitución de referencia', persistence: 'segment', position: 'top' },
+      },
     ),
     make(
       'solution-branches',
@@ -200,10 +232,13 @@ export const buildQuadraticStoryboard = (
       10,
       ['Camino +', 'Camino −'],
       [
-        { label: 'Expresión simplificada', latex: formulaSimplified },
-        { label: 'Camino +', latex: `x_1 = \\frac{${formatValue(-b)} + ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x1)}` },
-        { label: 'Camino −', latex: `x_2 = \\frac{${formatValue(-b)} - ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x2)}` },
+        { label: 'Expresión simplificada', latex: formulaSimplified, role: 'context', semanticStep: 'Conservar la expresión simplificada' },
+        { label: 'Camino +', latex: `x_1 = \\frac{${formatValue(-b)} + ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x1)}`, role: 'result', semanticStep: 'Resolver la primera rama' },
+        { label: 'Camino −', latex: `x_2 = \\frac{${formatValue(-b)} - ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x2)}`, role: 'result', semanticStep: 'Resolver la segunda rama' },
       ],
+      {
+        formulaAnchor: { latex: formulaSimplified, label: 'Expresión de referencia', persistence: 'segment', position: 'top' },
+      },
     ),
     make(
       'graph',

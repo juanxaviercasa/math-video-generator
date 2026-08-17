@@ -43,6 +43,55 @@ test('expands visual stages into ordered labeled micro-events', () => {
   assert.equal(timeline.validateLessonTimeline(lessonTimeline).passed, true);
 });
 
+test('builds persistent formula anchors and checkpoint timing', () => {
+  const lessonTimeline = timeline.buildLessonTimeline({
+    problem: '3x^2 + 2x - 8 = 0',
+    lessonMode: 'tutorial',
+    scenes: [{
+      ...scenes[1],
+      duration: 8,
+      id: 'formula-substitution',
+      kind: 'formula',
+      formulaAnchor: {
+        latex: 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}',
+        label: 'Fórmula de referencia',
+        persistence: 'segment',
+        position: 'top',
+      },
+      checkpoints: [{ kind: 'predict', prompt: '¿Qué valores reemplazamos?', pauseSeconds: 1.4 }],
+      visualStages: [
+        { label: 'Fórmula de partida', latex: 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}', role: 'context', semanticStep: 'Mantener la referencia' },
+        { label: 'Sustituimos', latex: 'x = \\frac{-(2) \\pm \\sqrt{100}}{2(3)}', role: 'operation', semanticStep: 'Reemplazar los valores' },
+      ],
+    }],
+  });
+
+  const report = timeline.validateLessonTimeline(lessonTimeline);
+  assert.equal(report.passed, true);
+  assert.equal(lessonTimeline.lessonMode, 'tutorial');
+  assert.equal(lessonTimeline.formulaAnchors?.[0]?.latex, 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}');
+  assert.equal(lessonTimeline.events[0]?.formulaAnchorId, 'anchor-formula-substitution');
+  assert.equal(lessonTimeline.events[1]?.semanticStep, 'Reemplazar los valores');
+  assert.equal(lessonTimeline.checkpoints?.[0]?.kind, 'predict');
+  assert.ok((lessonTimeline.events[0]?.holdAfter ?? 0) > 2.0);
+  assert.ok((lessonTimeline.events[1]?.startOffset ?? 0) > (lessonTimeline.events[0]?.startOffset ?? 0));
+});
+
+test('rejects events that reference an unknown formula anchor', () => {
+  const lessonTimeline: LessonTimeline = {
+    id: 'invalid-anchor',
+    version: 'timeline-v2',
+    problem: 'x = 1',
+    narrationStyle: 'warm_teacher',
+    segments: [{ id: 'segment-1', sceneId: 'scene-1', text: 'Un paso.', durationSeconds: 2 }],
+    events: [{ id: 'event-1', segmentId: 'segment-1', action: 'show', targetId: 'scene-1', startOffset: 0, duration: 0.5, holdAfter: 0.5, pedagogicalRole: 'operation', formulaAnchorId: 'missing-anchor', semanticStep: 'Sustituir' }],
+  };
+
+  const report = timeline.validateLessonTimeline(lessonTimeline);
+  assert.equal(report.passed, false);
+  assert.ok(report.issues.some((issue) => issue.type === 'missing-anchor'));
+});
+
 test('uses real scene duration when it is available', () => {
   const lessonTimeline = timeline.buildLessonTimeline({
     problem: 'x^2 - 5x + 6 = 0',

@@ -17,6 +17,13 @@ const pedagogicalScenes = [{
     { label: 'Fórmula base', latex: '\\Delta = b^2 - 4ac' },
     { label: 'Resultado', latex: '\\Delta = 1' },
   ],
+  formulaAnchor: {
+    latex: '\\Delta = b^2 - 4ac',
+    label: 'Referencia',
+    persistence: 'segment' as const,
+    position: 'top' as const,
+  },
+  checkpoints: [{ kind: 'predict' as const, prompt: '¿Qué valor obtenemos?', pauseSeconds: 1.2 }],
 }];
 
 test('keeps the stable renderer when narration timeline is disabled', () => {
@@ -47,5 +54,7 @@ test('uses timeline micro-events only when explicitly enabled', () => {
 
   assert.match(script, /Timeline pedagógico: microeventos/);
   assert.match(script, /Fórmula base/);
+  assert.match(script, /reference_0 = MathTex/);
+  assert.match(script, /checkpoint_0 = Text/);
   assert.match(script, /FadeOut\(timeline_0_0\), FadeIn\(timeline_0_1\)/);
 });

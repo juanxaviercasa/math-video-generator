@@ -52,7 +52,15 @@ interface ManimScene {
   outputDir: string;
   content?: string;
   synchronizedScenes?: SynchronizedScene[];
-  pedagogicalScenes?: Array<SynchronizedScene & { visualLatex?: string[]; visualTextLines?: string[]; visualStages?: Array<{ label: string; latex: string; detail?: string }>; emphasis?: string; layout?: string }>;
+  pedagogicalScenes?: Array<SynchronizedScene & {
+    visualLatex?: string[];
+    visualTextLines?: string[];
+    visualStages?: Array<{ label: string; latex: string; detail?: string; role?: string; semanticStep?: string; formulaAnchorId?: string }>;
+    formulaAnchor?: { latex: string; label?: string; persistence: 'segment' | 'lesson'; position: 'top' | 'side' };
+    checkpoints?: Array<{ kind: 'predict' | 'practice' | 'reflect'; prompt: string; pauseSeconds: number }>;
+    emphasis?: string;
+    layout?: string;
+  }>;
   formatProfile?: VideoFormatProfile;
   layoutDensity?: 'comfortable' | 'compact';
   narrationStyle?: 'warm_teacher' | 'neutral_teacher';
@@ -525,6 +533,16 @@ export const manim = {
             ? Math.min(formatProfile.orientation === 'portrait' ? 4.5 : 2.35, formatProfile.contentHeight).toFixed(2)
             : Math.min(4.0, formatProfile.contentHeight).toFixed(2);
           const segmentEvents = activeTimeline.events.filter((event) => event.segmentId === `segment-${pedScene.id}`);
+          const formulaAnchor = pedScene.formulaAnchor;
+          const anchorY = Math.max(Number(contentY) + 1.1, Number(headerY) - 0.75).toFixed(2);
+          const referenceAnchorCode = formulaAnchor?.latex
+            ? `
+        reference_${i} = MathTex(${escapeForPythonString(formulaAnchor.latex)}, font_size=30, color=GREY_B)
+        reference_${i}.scale(min(0.78, ${contentWidth} / reference_${i}.width, 0.62 / reference_${i}.height))
+        reference_${i}.move_to(UP * ${anchorY})
+        self.play(FadeIn(reference_${i}), run_time=0.45)
+`
+            : '';
           const eventGroups = segmentEvents.map((event, eventIndex) => {
             const stage = pedScene.visualStages?.[eventIndex];
             const label = event.label || stage?.label || (eventIndex === 0 ? emphasis : 'Siguiente transformación');
@@ -559,11 +577,24 @@ export const manim = {
         self.play(FadeOut(graph_group_${i}), run_time=1)
 `;
           }
+          const checkpoint = pedScene.checkpoints?.[0];
+          const checkpointCode = checkpoint
+            ? `
+        checkpoint_${i} = Text(${escapeForPythonString(checkpoint.prompt)}, font_size=24, color=YELLOW)
+        checkpoint_${i}.scale(min(0.82, ${contentWidth} / checkpoint_${i}.width, 0.5 / checkpoint_${i}.height))
+        checkpoint_${i}.to_edge(DOWN, buff=0.42)
+        self.play(FadeIn(checkpoint_${i}), run_time=0.35)
+        self.wait(${Math.max(0.5, Number(checkpoint.pauseSeconds)).toFixed(2)})
+        self.play(FadeOut(checkpoint_${i}), run_time=0.35)
+`
+            : '';
           const eventCode = eventGroups.map((group, eventIndex) => {
             const variable = `timeline_${i}_${eventIndex}`;
             const previous = eventIndex > 0 ? `timeline_${i}_${eventIndex - 1}` : undefined;
             const transition = previous ? `FadeOut(${previous}), FadeIn(${variable})` : `FadeIn(${variable})`;
-            return `        ${variable} = ${group.code}\n        self.play(${transition}, run_time=${group.event.duration.toFixed(2)})\n        self.wait(${group.event.holdAfter.toFixed(2)})`;
+            const checkpointAfterEvent = checkpoint && eventIndex === 0 ? checkpointCode : '';
+            const holdAfter = Math.max(0.2, group.event.holdAfter - (checkpoint && eventIndex === 0 ? Number(checkpoint.pauseSeconds) : 0));
+            return `        ${variable} = ${group.code}\n        self.play(${transition}, run_time=${group.event.duration.toFixed(2)})\n        self.wait(${holdAfter.toFixed(2)})${checkpointAfterEvent}`;
           }).join('\n');
           const occupied = eventGroups.reduce((sum, group) => sum + group.event.duration + group.event.holdAfter, 0);
           const lastVariable = eventGroups.length ? `timeline_${i}_${eventGroups.length - 1}` : 'None';
@@ -572,9 +603,9 @@ export const manim = {
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * ${headerY})
         self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.6)
-${eventCode}
+${referenceAnchorCode}${eventCode}
         self.wait(max(0.2, ${Math.max(0.2, duration - occupied - 1.2).toFixed(2)}))
-        self.play(FadeOut(${lastVariable}), FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.6)
+        self.play(FadeOut(${lastVariable}), ${formulaAnchor?.latex ? `FadeOut(reference_${i}), ` : ''}FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.6)
 `;
         }).join('\n')
       : '';

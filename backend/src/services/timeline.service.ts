@@ -1,13 +1,16 @@
 import type {
+  FormulaAnchor,
+  LessonMode,
   LessonTimeline,
   NarrationSegment,
+  PedagogicalCheckpoint,
   PedagogicalRole,
   TimelineBuildInput,
+  TimelineSceneInput,
   TimelineValidationReport,
   TimelineIssue,
   VisualEvent,
 } from './timeline.types.js';
-import type { TimelineSceneInput } from './timeline.types.js';
 
 const clamp = (value: number, minimum: number, maximum: number): number => Math.min(maximum, Math.max(minimum, value));
 
@@ -30,50 +33,110 @@ const durationForScene = (scene: TimelineSceneInput): number => {
   return Number.isFinite(duration) && duration > 0 ? duration : 3;
 };
 
-export const buildLessonTimeline = ({ problem, scenes, narrationStyle = 'warm_teacher' }: TimelineBuildInput): LessonTimeline => {
+const formulaAnchorsForScenes = (scenes: TimelineSceneInput[]): FormulaAnchor[] => scenes.flatMap((scene) => {
+  if (!scene.formulaAnchor?.latex?.trim()) return [];
+  return [{
+    id: `anchor-${scene.id}`,
+    latex: scene.formulaAnchor.latex.trim(),
+    label: scene.formulaAnchor.label,
+    persistence: scene.formulaAnchor.persistence,
+    position: scene.formulaAnchor.position,
+  }];
+});
+
+const sceneStageItems = (scene: TimelineSceneInput, index: number) => {
+  const fallbackRole = roleForScene(scene, index, 1);
+  const anchorId = scene.formulaAnchor ? `anchor-${scene.id}` : undefined;
+  if (scene.visualStages?.length) {
+    return scene.visualStages.map((stage) => ({
+      targetId: `${scene.id}-${stage.label}`,
+      value: stage.latex,
+      label: stage.label,
+      role: stage.role ?? fallbackRole,
+      semanticStep: stage.semanticStep ?? stage.label,
+      formulaAnchorId: stage.formulaAnchorId ?? anchorId,
+    }));
+  }
+  if (scene.visualLatex?.length) {
+    return scene.visualLatex.map((value, stageIndex) => ({
+      targetId: `${scene.id}-formula-${stageIndex + 1}`,
+      value,
+      label: scene.visualTextLines?.[stageIndex] || (stageIndex === 0 ? scene.visualText : 'Siguiente transformación'),
+      role: fallbackRole,
+      semanticStep: scene.visualTextLines?.[stageIndex] || (stageIndex === 0 ? scene.visualText : 'Siguiente transformación'),
+      formulaAnchorId: anchorId,
+    }));
+  }
+  return [{
+    targetId: scene.id,
+    value: scene.visualText,
+    label: scene.visualText,
+    role: fallbackRole,
+    semanticStep: scene.visualText,
+    formulaAnchorId: anchorId,
+  }];
+};
+
+export const buildLessonTimeline = ({ problem, scenes, narrationStyle = 'warm_teacher', lessonMode = 'tutorial' }: TimelineBuildInput): LessonTimeline => {
   const segments: NarrationSegment[] = scenes.map((scene) => ({
     id: `segment-${scene.id}`,
     sceneId: scene.id,
     text: scene.narrationText.trim(),
     durationSeconds: durationForScene(scene),
+    lessonMode: scene.lessonMode ?? lessonMode,
+    objective: scene.objective,
   }));
 
-  const events: VisualEvent[] = scenes.flatMap((scene, index) => {
+  const eventBatches = scenes.map((scene, index) => {
     const segmentId = `segment-${scene.id}`;
     const segmentDuration = segments[index].durationSeconds;
-    const role = roleForScene(scene, index, scenes.length);
-    const stageItems = scene.visualStages?.length
-      ? scene.visualStages.map((stage) => ({ targetId: `${scene.id}-${stage.label}`, value: stage.latex, label: stage.label }))
-      : scene.visualLatex?.length
-        ? scene.visualLatex.map((value, stageIndex) => ({ targetId: `${scene.id}-formula-${stageIndex + 1}`, value, label: scene.visualTextLines?.[stageIndex] || (stageIndex === 0 ? scene.visualText : 'Siguiente transformación') }))
-        : [{ targetId: scene.id, value: scene.visualText, label: scene.visualText }];
-    const holdAfter = role === 'verification' ? 1.4 : role === 'operation' ? 0.7 : 0.6;
+    const sceneItems = sceneStageItems(scene, index);
+    const holdAfter = roleForScene(scene, index, scenes.length) === 'verification' ? 1.4 : 0.7;
+    const checkpointPauseBudget = (scene.checkpoints ?? []).reduce((sum, checkpoint) => sum + clamp(Number(checkpoint.pauseSeconds), 0.5, 8), 0);
     const transitionBudget = 1.2;
-    const availableDuration = Math.max(stageItems.length * 0.35, segmentDuration - transitionBudget - holdAfter * stageItems.length);
-    const eventDuration = Math.max(0.35, availableDuration / stageItems.length);
+    const availableDuration = Math.max(sceneItems.length * 0.35, segmentDuration - transitionBudget - holdAfter * sceneItems.length - checkpointPauseBudget);
+    const eventDuration = Math.max(0.35, availableDuration / sceneItems.length);
 
-    return stageItems.map((stage, stageIndex) => ({
+    return sceneItems.map((stage, stageIndex): VisualEvent => ({
       id: `event-${scene.id}-${stageIndex + 1}`,
       segmentId,
       action: stageIndex === 0 ? actionForScene(scene, index) : 'transform',
       targetId: stage.targetId,
-      from: stageIndex > 0 ? stageItems[stageIndex - 1].value : index > 0 ? scenes[index - 1].visualText : undefined,
+      from: stageIndex > 0 ? sceneItems[stageIndex - 1].value : index > 0 ? scenes[index - 1].visualText : undefined,
       to: stage.value,
-      startOffset: Number((stageIndex * (eventDuration + holdAfter)).toFixed(3)),
+      startOffset: Number((stageIndex * (eventDuration + holdAfter) + (stageIndex > 0 ? checkpointPauseBudget : 0)).toFixed(3)),
       duration: Number(eventDuration.toFixed(3)),
-      holdAfter,
-      pedagogicalRole: role,
+      holdAfter: holdAfter + (stageIndex === 0 ? checkpointPauseBudget : 0),
+      pedagogicalRole: stage.role,
       label: stage.label,
+      semanticStep: stage.semanticStep,
+      formulaAnchorId: stage.formulaAnchorId,
     }));
   });
 
+  const events = eventBatches.flat();
+  const checkpoints: PedagogicalCheckpoint[] = scenes.flatMap((scene, sceneIndex) => (scene.checkpoints ?? []).map((checkpoint, checkpointIndex) => {
+    const sceneEvents = eventBatches[sceneIndex] ?? [];
+    const lastEvent = sceneEvents[sceneEvents.length - 1];
+    return {
+      id: `checkpoint-${scene.id}-${checkpointIndex + 1}`,
+      kind: checkpoint.kind,
+      prompt: checkpoint.prompt.trim(),
+      pauseSeconds: clamp(Number(checkpoint.pauseSeconds), 0.5, 8),
+      revealAfterEventId: lastEvent?.id,
+    };
+  }));
+
   return {
     id: `lesson-timeline-${scenes.map((scene) => scene.id).join('-')}`,
-    version: 'timeline-v1',
+    version: 'timeline-v2',
     problem,
     narrationStyle,
+    lessonMode,
     segments,
     events,
+    formulaAnchors: formulaAnchorsForScenes(scenes),
+    checkpoints,
   };
 };
 
@@ -81,12 +144,19 @@ export const validateLessonTimeline = (timeline: LessonTimeline): TimelineValida
   const issues: TimelineIssue[] = [];
   const segmentIds = new Set(timeline.segments.map((segment) => segment.id));
   const eventIds = new Set<string>();
+  const anchorIds = new Set((timeline.formulaAnchors ?? []).map((anchor) => anchor.id));
   let totalDuration = 0;
 
   for (const segment of timeline.segments) {
     if (!segment.text.trim()) issues.push({ type: 'empty-segment', severity: 'error', segmentId: segment.id, message: 'El segmento de narración está vacío.' });
     if (!Number.isFinite(segment.durationSeconds) || segment.durationSeconds <= 0) issues.push({ type: 'empty-segment', severity: 'error', segmentId: segment.id, message: 'El segmento debe tener una duración positiva.' });
     totalDuration += Math.max(0, segment.durationSeconds);
+  }
+
+  for (const anchor of timeline.formulaAnchors ?? []) {
+    if (!anchor.id.trim() || !anchor.latex.trim()) {
+      issues.push({ type: 'missing-anchor', severity: 'error', anchorId: anchor.id, message: 'El ancla de fórmula debe tener identificador y LaTeX.' });
+    }
   }
 
   for (const event of timeline.events) {
@@ -100,6 +170,21 @@ export const validateLessonTimeline = (timeline: LessonTimeline): TimelineValida
     if (!segment) continue;
     if (event.startOffset < 0 || event.duration <= 0 || event.startOffset + event.duration + event.holdAfter > segment.durationSeconds + 0.05) {
       issues.push({ type: 'outside-segment', severity: 'error', eventId: event.id, segmentId: event.segmentId, message: 'El evento visual queda fuera de la duración real del segmento.' });
+    }
+    if (event.formulaAnchorId && !anchorIds.has(event.formulaAnchorId)) {
+      issues.push({ type: 'missing-anchor', severity: 'error', eventId: event.id, anchorId: event.formulaAnchorId, message: 'El evento referencia un ancla de fórmula inexistente.' });
+    }
+    if (!event.semanticStep?.trim()) {
+      issues.push({ type: 'missing-semantic-step', severity: 'warning', eventId: event.id, message: 'El evento no declara el paso semántico que representa.' });
+    }
+  }
+
+  for (const checkpoint of timeline.checkpoints ?? []) {
+    if (!checkpoint.prompt.trim() || !Number.isFinite(checkpoint.pauseSeconds) || checkpoint.pauseSeconds <= 0) {
+      issues.push({ type: 'invalid-checkpoint', severity: 'error', checkpointId: checkpoint.id, message: 'El checkpoint debe tener una pregunta y una pausa positiva.' });
+    }
+    if (checkpoint.revealAfterEventId && !eventIds.has(checkpoint.revealAfterEventId)) {
+      issues.push({ type: 'invalid-checkpoint', severity: 'error', checkpointId: checkpoint.id, message: 'El checkpoint referencia un evento de revelación inexistente.' });
     }
   }
 

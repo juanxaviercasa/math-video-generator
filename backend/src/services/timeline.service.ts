@@ -1,6 +1,5 @@
 import type {
   FormulaAnchor,
-  LessonMode,
   LessonTimeline,
   NarrationSegment,
   PedagogicalCheckpoint,
@@ -9,7 +8,6 @@ import type {
   TimelineSceneInput,
   TimelineValidationReport,
   TimelineIssue,
-  PedagogicalContract,
   PedagogicalStep,
   VisualEvent,
 } from './timeline.types.js';

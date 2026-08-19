@@ -64,9 +64,11 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
     }
 
     setLoading(true)
+    const requestToken = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const videoId = `video_${requestToken.replace(/-/g, '')}`
+    const idempotencyKey = `web-${requestToken}`
 
     try {
-      const videoId = `video_${Date.now()}`
 
       // Agregar a lista
       addVideo({
@@ -81,6 +83,7 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
 
       const response = await api.generateVideo({
         id: videoId,
+        idempotencyKey,
         title,
         content,
         quality,
@@ -104,6 +107,10 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
         progress: response.progress || 0,
         videoUrl: response.videoUrl,
         thumbnailUrl: response.thumbnailUrl,
+        error: response.error,
+        errorCode: response.errorCode,
+        attempts: response.attempts,
+        heartbeatAt: response.heartbeatAt,
       })
 
       if (finalStatus === 'failed') {
@@ -119,6 +126,11 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
               progress: status.progress,
               videoUrl: status.videoUrl,
               thumbnailUrl: status.thumbnailUrl,
+              message: status.message,
+              error: status.error,
+              errorCode: status.errorCode,
+              attempts: status.attempts,
+              heartbeatAt: status.heartbeatAt,
             })
 
             if (status.status === 'completed' || status.status === 'failed') {
@@ -150,7 +162,9 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
       setSteps([])
       setPreview(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido')
+      const message = err instanceof Error ? err.message : 'Error desconocido'
+      useVideoStore.getState().updateVideo(videoId, { status: 'failed', progress: 100, error: message, errorCode: 'CLIENT_GENERATION_FAILED', message })
+      setError(message)
     } finally {
       setLoading(false)
     }

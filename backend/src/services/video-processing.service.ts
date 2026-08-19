@@ -232,12 +232,15 @@ export const videoProcessing = {
 
       const manimVideoPath = await manim.renderVideo(manimScene);
       const remotionEnabled = process.env.REMOTION_ENABLED === 'true';
-      if (remotionEnabled && !lessonTimeline) {
+      const remotionTimeline = lessonTimeline;
+      if (remotionEnabled && !remotionTimeline) {
         throw new Error('REMOTION_ENABLED=true requiere enableNarration=true para conservar un único timeline audiovisual.');
       }
-      const videoPath = remotionEnabled
-        ? await renderRemotionDeck({ id, timeline: lessonTimeline!, format: aspectRatio, outputDir })
-        : manimVideoPath;
+      let videoPath = manimVideoPath;
+      if (remotionEnabled) {
+        if (!remotionTimeline) throw new Error('No existe LessonTimeline para el renderer Remotion.');
+        videoPath = await renderRemotionDeck({ id, timeline: remotionTimeline, format: aspectRatio, outputDir });
+      }
       progress.progress = 70;
       progress.message = 'Animación renderizada; preparando video final...';
       report();

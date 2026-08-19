@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import { videoProcessing } from '../services/video-processing.service.js';
 import { generationJobs } from '../services/job.service.js';
 import { optionalAuth, requireAuth, type AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { validateMathProblem } from '../services/math-validation.service.js';
@@ -12,6 +11,7 @@ router.use(optionalAuth);
 
 router.post('/generate-video', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   let createdVideoId: string | undefined;
+  let requestIdempotencyKey: string | undefined;
   try {
     const parsed = videoGenerationSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -26,6 +26,7 @@ router.post('/generate-video', requireAuth, async (req: AuthenticatedRequest, re
     if (!req.user) return res.status(401).json({ code: 'UNAUTHENTICATED', error: 'Debes iniciar sesión' });
     const input = parsed.data;
     const idempotencyKey = input.idempotencyKey || req.header('Idempotency-Key') || randomUUID();
+    requestIdempotencyKey = idempotencyKey;
     const existing = await generationJobs.findByIdempotencyKey(idempotencyKey, req.user.id);
     if (existing) return res.status(200).json(existing);
 
@@ -47,6 +48,10 @@ router.post('/generate-video', requireAuth, async (req: AuthenticatedRequest, re
     return res.status(202).json(initialStatus);
   } catch (error) {
     console.error('API Error:', error);
+    if ((error as { code?: string })?.code === 'P2002' && req.user && requestIdempotencyKey) {
+      const existing = await generationJobs.findByIdempotencyKey(requestIdempotencyKey, req.user.id);
+      if (existing) return res.status(200).json(existing);
+    }
     const errorMessage = error instanceof Error ? error.message : String(error);
     const requestedId = createdVideoId || (typeof req.body?.id === 'string' ? req.body.id : undefined);
     if (requestedId) generationJobs.fail(requestedId, errorMessage, 'QUEUE_ENQUEUE_FAILED');

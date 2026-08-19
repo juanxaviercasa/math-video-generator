@@ -1,6 +1,32 @@
 import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+
+export class ApiError extends Error {
+  code?: string
+  requestId?: string
+  fields?: Record<string, string[]>
+  status?: number
+
+  constructor(message: string, details: { code?: string; requestId?: string; fields?: Record<string, string[]>; status?: number } = {}) {
+    super(message)
+    this.name = 'ApiError'
+    Object.assign(this, details)
+  }
+}
+
+const normalizeApiError = (error: unknown): ApiError => {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as { error?: string; code?: string; requestId?: string; fields?: Record<string, string[]> } | undefined
+    return new ApiError(data?.error || error.message || 'Error de comunicación con el servidor', {
+      code: data?.code || 'HTTP_REQUEST_FAILED',
+      requestId: data?.requestId || error.response?.headers?.['x-request-id'],
+      fields: data?.fields,
+      status: error.response?.status,
+    })
+  }
+  return error instanceof ApiError ? error : new ApiError(error instanceof Error ? error.message : 'Error desconocido')
+}
 const API_ORIGIN = new URL(API_URL, window.location.origin).origin
 
 const resolveAssetUrl = (value?: string) => {
@@ -96,10 +122,16 @@ export const api = {
   },
 
   async preview(data: Omit<VideoRequest, 'id'>): Promise<PreviewResponse> {
-    const response = await axios.post<PreviewResponse>(`${API_URL}/preview`, data, {
-      withCredentials: true,
-    })
-    return response.data
+    try {
+      const response = await axios.post<PreviewResponse>(`${API_URL}/preview`, data, {
+        withCredentials: true,
+      })
+      return response.data
+    } catch (error) {
+      const normalized = normalizeApiError(error)
+      console.error('Preview API Error:', normalized)
+      throw normalized
+    }
   },
 
   async generateVideo(data: VideoRequest): Promise<VideoResponse> {
@@ -115,8 +147,9 @@ export const api = {
       )
       return normalizeVideo(response.data)
     } catch (error) {
-      console.error('API Error:', error)
-      throw error
+      const normalized = normalizeApiError(error)
+      console.error('API Error:', normalized)
+      throw normalized
     }
   },
 
@@ -127,8 +160,9 @@ export const api = {
       })
       return normalizeVideo(response.data)
     } catch (error) {
-      console.error('API Error:', error)
-      throw error
+      const normalized = normalizeApiError(error)
+      console.error('API Error:', normalized)
+      throw normalized
     }
   },
 }

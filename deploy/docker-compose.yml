@@ -38,10 +38,20 @@ services:
     container_name: math-video-backend
     environment:
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/math_video_generator
+      DIRECT_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/math_video_generator
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:-replace-with-a-32-character-secret}
+      SUPABASE_URL: ${SUPABASE_URL:-https://placeholder.supabase.co}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-placeholder}
+      APP_URL: ${APP_URL:-http://localhost:3000}
       BACKEND_PORT: 3001
+      MEDIA_ROOT: /var/lib/math-video-generator/media
+      VIDEO_QUEUE_NAME: math-video-generation
+      VIDEO_WORKER_CONCURRENCY: ${VIDEO_WORKER_CONCURRENCY:-1}
+      TTS_PROVIDER: ${TTS_PROVIDER:-edge}
+      TTS_NEURAL_VOICE: ${TTS_NEURAL_VOICE:-es-MX-DaliaNeural}
+      TTS_ALLOW_LOCAL_FALLBACK: ${TTS_ALLOW_LOCAL_FALLBACK:-false}
     ports:
       - "3001:3001"
     depends_on:
@@ -50,20 +60,52 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./backend/dist:/app/dist:ro
+      - media_data:/var/lib/math-video-generator/media
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    container_name: math-video-worker
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/math_video_generator
+      DIRECT_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/math_video_generator
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:-replace-with-a-32-character-secret}
+      SUPABASE_URL: ${SUPABASE_URL:-https://placeholder.supabase.co}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-placeholder}
+      MEDIA_ROOT: /var/lib/math-video-generator/media
+      VIDEO_QUEUE_NAME: math-video-generation
+      VIDEO_WORKER_CONCURRENCY: ${VIDEO_WORKER_CONCURRENCY:-1}
+      TTS_PROVIDER: ${TTS_PROVIDER:-edge}
+      TTS_NEURAL_VOICE: ${TTS_NEURAL_VOICE:-es-MX-DaliaNeural}
+      TTS_ALLOW_LOCAL_FALLBACK: ${TTS_ALLOW_LOCAL_FALLBACK:-false}
+    depends_on:
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - media_data:/var/lib/math-video-generator/media
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/worker.js"]
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001/api}
     container_name: math-video-frontend
     ports:
       - "3000:80"
-    environment:
-      REACT_APP_API_URL: http://backend:3001/api
     depends_on:
       - backend
 
 volumes:
   postgres_data:
   redis_data:
+  media_data:

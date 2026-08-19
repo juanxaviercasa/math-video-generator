@@ -5,7 +5,9 @@ import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import { videoRoutes } from './routes/video.routes.js'
 import { authRoutes } from './routes/auth.routes.js'
-import * as os from 'node:os'
+import { mediaRoutes } from './routes/media.routes.js'
+import { prisma } from './lib/prisma.js'
+import { videoQueue } from './services/job.service.js'
 
 dotenv.config()
 
@@ -45,9 +47,20 @@ app.use(
 app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ limit: '1mb', extended: true }))
 
-// Health check
+// Health checks: liveness is cheap; readiness verifies dependencies.
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
+app.get('/readyz', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`
+    await videoQueue.instance.client.ping()
+    return res.json({ status: 'ready', timestamp: new Date().toISOString() })
+  } catch (error) {
+    console.error('[Readiness] Dependency check failed:', error)
+    return res.status(503).json({ status: 'not_ready', error: 'Dependencias no disponibles' })
+  }
 })
 
 // API Routes
@@ -55,8 +68,8 @@ app.get('/api', (req, res) => {
   res.json({ message: 'Math Video Generator API v0.1.0' })
 })
 
-// Generated media: only files under the temporary output directory are exposed.
-app.use('/media', express.static(os.tmpdir(), { index: false, fallthrough: false }))
+// Generated media is private and authorization-scoped by video ownership.
+app.use('/api/media', mediaRoutes)
 
 // Authentication routes
 app.use('/api/auth', authLimiter, authRoutes)
@@ -79,7 +92,24 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' })
 })
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`)
   console.log(`📚 API docs: http://localhost:${PORT}/api-docs`)
 })
+
+const shutdown = async (signal: string) => {
+  console.log(`[Shutdown] Received ${signal}; draining HTTP, Redis and Prisma.`)
+  server.close(async () => {
+    try {
+      await videoQueue.instance.close()
+      await prisma.$disconnect()
+      process.exit(0)
+    } catch (error) {
+      console.error('[Shutdown] Failed:', error)
+      process.exit(1)
+    }
+  })
+}
+
+process.once('SIGTERM', () => void shutdown('SIGTERM'))
+process.once('SIGINT', () => void shutdown('SIGINT'))

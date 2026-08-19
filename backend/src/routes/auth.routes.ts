@@ -101,8 +101,28 @@ router.get('/me', requireAuth, (req: AuthenticatedRequest, res: Response) => {
   return res.json({ user: req.user });
 });
 
-router.post('/logout', (_req: Request, res: Response) => {
-  clearSession(res);
+const readCookie = (req: Request, name: string): string | undefined => {
+  const header = req.headers.cookie || '';
+  const part = header.split(';').map((value) => value.trim()).find((value) => value.startsWith(`${name}=`));
+  return part ? decodeURIComponent(part.slice(name.length + 1)) : undefined;
+};
+
+router.post('/logout', async (req: Request, res: Response) => {
+  const accessToken = req.headers.authorization?.startsWith('Bearer ')
+    ? req.headers.authorization.slice(7)
+    : readCookie(req, ACCESS_COOKIE);
+  const refreshToken = readCookie(req, REFRESH_COOKIE);
+
+  try {
+    if (accessToken && refreshToken) {
+      const session = await supabaseAuth.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      if (session.data.session) await supabaseAuth.auth.signOut();
+    }
+  } catch (error) {
+    console.warn('[Auth] Supabase signout failed; clearing local session cookies anyway:', error);
+  } finally {
+    clearSession(res);
+  }
   return res.json({ success: true });
 });
 

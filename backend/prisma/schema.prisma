@@ -31,17 +31,28 @@ model Video {
   description String?
   content     String    // Math problem / script
   
-  status      String    @default("pending") // pending, processing, completed, failed
-  progress    Int       @default(0) // 0-100
+  status        String    @default("pending") // pending, processing, completed, failed
+  progress      Int       @default(0) // 0-100
+  message       String    @default("Video en cola...")
+  errorCode     String?
+  lastError     String?
+  attempts      Int       @default(0)
+  heartbeatAt   DateTime?
+  workerId      String?
+  idempotencyKey String?  @unique
+  outputDir     String?
+  requestJson   String?
+  startedAt     DateTime?
+  completedAt   DateTime?
   
-  videoUrl    String?
-  thumbnailUrl String?
+  videoUrl      String?
+  thumbnailUrl  String?
   
-  duration    Int?      // seconds
-  fileSize    Int?      // bytes
+  duration      Int?      // seconds
+  fileSize      Int?      // bytes
   
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   
   @@map("videos")
 }

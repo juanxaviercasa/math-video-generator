@@ -51,6 +51,16 @@ test('rejects unknown fields instead of silently accepting them', () => {
   assert.equal(result.success, false);
 });
 
+test('accepts a safe idempotency key', () => {
+  const result = videoGenerationSchema.parse({
+    title: 'Idempotencia',
+    content: 'x^2 - 5x + 6 = 0',
+    idempotencyKey: 'lesson-2026-08-19:quadratic-01',
+  });
+
+  assert.equal(result.idempotencyKey, 'lesson-2026-08-19:quadratic-01');
+});
+
 test('rejects unsafe identifiers', () => {
   const result = videoGenerationSchema.safeParse({
     id: '../video',

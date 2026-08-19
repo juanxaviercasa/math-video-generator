@@ -12,15 +12,17 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 
+const mediaRoot = () => path.resolve(process.env.MEDIA_ROOT || path.join(os.tmpdir(), 'math-video-generator'));
+
 const toMediaUrl = (filePath: string): string => {
-  const relativePath = path.relative(os.tmpdir(), filePath);
+  const absolutePath = path.resolve(filePath);
+  const relativePath = path.relative(mediaRoot(), absolutePath);
   if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
     throw new Error('El archivo generado está fuera del directorio multimedia permitido');
   }
-  return `/media/${relativePath
-    .split(path.sep)
-    .map((segment) => encodeURIComponent(segment))
-    .join('/')}`;
+  const [jobDirectory, ...fileParts] = relativePath.split(path.sep);
+  if (!jobDirectory || fileParts.length === 0) throw new Error('No se pudo determinar el artefacto generado');
+  return `/api/media/${encodeURIComponent(jobDirectory.replace(/^mvg-/, ''))}/${fileParts.map((segment) => encodeURIComponent(segment)).join('/')}`;
 };
 
 /**
@@ -124,6 +126,9 @@ export const videoProcessing = {
 
       if (validation.supported && !validation.valid) {
         throw new Error(validation.warnings[0] || 'El problema matemático no superó la validación');
+      }
+      if (!validation.supported && process.env.ALLOW_UNVERIFIED_MATH_VIDEO !== 'true') {
+        throw new Error('MATH_UNSUPPORTED: El problema requiere un solver determinista antes de publicarse. Usa preview/revisión manual o activa el flag solo en un entorno de QA.');
       }
 
       // 2. Generar descripción con OpenAI (opcional)
@@ -283,11 +288,16 @@ export const videoProcessing = {
       progress.message = 'Validando artefactos finales...';
       report();
 
-      // 6. Obtener información del video
+      // 6. Validar metadatos audiovisuales del artefacto final
       const videoInfo = await ffmpeg.getVideoInfo(processedPath);
-            const duration = Math.round(parseFloat(videoInfo.format?.duration));
-      if (!Number.isFinite(duration) || duration <= 0 || !fs.existsSync(processedPath) || !fs.existsSync(thumbnailPath)) {
-        throw new Error('Los artefactos generados no superaron la validación final');
+      const videoStream = videoInfo.streams?.find((stream: any) => stream.codec_type === 'video');
+      const audioStream = videoInfo.streams?.find((stream: any) => stream.codec_type === 'audio');
+      const duration = Math.round(Number.parseFloat(videoInfo.format?.duration));
+      const expectedVideo = getVideoFormatProfile(aspectRatio, quality);
+      const hasExpectedDimensions = videoStream?.width === expectedVideo.width && videoStream?.height === expectedVideo.height;
+      const hasAudioWhenRequested = !enableNarration || Boolean(audioStream);
+      if (!Number.isFinite(duration) || duration <= 0 || !videoStream || !hasExpectedDimensions || !hasAudioWhenRequested || !fs.existsSync(processedPath) || !fs.existsSync(thumbnailPath)) {
+        throw new Error('Los artefactos generados no superaron la validación audiovisual final');
       }
 
       progress.duration = duration;

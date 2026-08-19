@@ -34,4 +34,7 @@ export const prisma = {
   async $disconnect() {
     if (client) await client.$disconnect();
   },
+  async $queryRaw(strings: TemplateStringsArray, ...values: unknown[]) {
+    return getClient().$queryRaw(strings, ...values);
+  },
 };

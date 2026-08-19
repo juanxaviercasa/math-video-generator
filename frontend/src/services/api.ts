@@ -1,6 +1,19 @@
 import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+const API_ORIGIN = new URL(API_URL, window.location.origin).origin
+
+const resolveAssetUrl = (value?: string) => {
+  if (!value) return value
+  if (/^https?:\/\//i.test(value)) return value
+  return `${API_ORIGIN}${value.startsWith('/') ? value : `/${value}`}`
+}
+
+const normalizeVideo = <T extends { videoUrl?: string; thumbnailUrl?: string }>(video: T): T => ({
+  ...video,
+  videoUrl: resolveAssetUrl(video.videoUrl),
+  thumbnailUrl: resolveAssetUrl(video.thumbnailUrl),
+})
 
 export interface MathValidation {
   supported: boolean
@@ -15,6 +28,7 @@ export interface MathValidation {
 
 interface VideoRequest {
   id?: string
+  idempotencyKey?: string
   title: string
   content: string
   quality?: 'low' | 'medium' | 'high'
@@ -70,7 +84,7 @@ export const api = {
     const response = await axios.get<{ videos: LibraryVideo[] }>(`${API_URL}/videos`, {
       withCredentials: true,
     })
-    return response.data.videos
+    return response.data.videos.map(normalizeVideo)
   },
 
   async preview(data: Omit<VideoRequest, 'id'>): Promise<PreviewResponse> {
@@ -87,10 +101,11 @@ export const api = {
         {
           ...data,
           id: data.id || `video_${Date.now()}`,
+          idempotencyKey: data.idempotencyKey,
         },
         { withCredentials: true },
       )
-      return response.data
+      return normalizeVideo(response.data)
     } catch (error) {
       console.error('API Error:', error)
       throw error
@@ -102,7 +117,7 @@ export const api = {
       const response = await axios.get(`${API_URL}/generate-video/status/${id}`, {
         withCredentials: true,
       })
-      return response.data
+      return normalizeVideo(response.data)
     } catch (error) {
       console.error('API Error:', error)
       throw error

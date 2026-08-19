@@ -9,6 +9,13 @@ export const videoGenerationSchema = z
       .max(80, 'El identificador es demasiado largo')
       .regex(/^[a-zA-Z0-9_-]+$/, 'El identificador contiene caracteres no permitidos')
       .optional(),
+    idempotencyKey: z
+      .string()
+      .trim()
+      .min(8, 'La clave de idempotencia es demasiado corta')
+      .max(160, 'La clave de idempotencia es demasiado larga')
+      .regex(/^[a-zA-Z0-9._:-]+$/, 'La clave de idempotencia contiene caracteres no permitidos')
+      .optional(),
     title: z
       .string()
       .trim()

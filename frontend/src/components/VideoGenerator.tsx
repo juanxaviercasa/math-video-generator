@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, PreviewResponse } from '../services/api'
 import { useVideoStore } from '../store/video.store'
 import { InteractiveMathEditor } from './InteractiveMathEditor'
@@ -25,6 +25,12 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
   const [error, setError] = useState('')
 
   const addVideo = useVideoStore((state) => state.addVideo)
+  const pollingTimers = useRef(new Map<string, number>())
+
+  useEffect(() => () => {
+    pollingTimers.current.forEach((timer) => window.clearTimeout(timer))
+    pollingTimers.current.clear()
+  }, [])
 
   const handlePreview = async () => {
     setError('')
@@ -105,10 +111,7 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
       }
 
       if (finalStatus === 'processing' || finalStatus === 'pending') {
-        let polling = true
-        const interval = window.setInterval(async () => {
-          if (!polling) return
-
+        const poll = async (attempt = 0): Promise<void> => {
           try {
             const status = await api.getVideoStatus(currentId)
             useVideoStore.getState().updateVideo(currentId, {
@@ -119,19 +122,27 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
             })
 
             if (status.status === 'completed' || status.status === 'failed') {
-              polling = false
-              window.clearInterval(interval)
+              pollingTimers.current.delete(currentId)
+              if (status.status === 'failed') setError(status.error || status.message || 'La generación falló')
+              return
             }
+
+            const delay = Math.min(10000, 1500 * Math.pow(1.35, Math.min(attempt, 8)))
+            const timer = window.setTimeout(() => void poll(attempt + 1), delay)
+            pollingTimers.current.set(currentId, timer)
           } catch (pollError) {
-            polling = false
-            window.clearInterval(interval)
-            useVideoStore.getState().updateVideo(currentId, {
-              status: 'failed',
-              progress: 100,
-            })
-            setError('No se pudo consultar el estado del video. Intenta actualizar la página.')
+            if (attempt >= 5) {
+              pollingTimers.current.delete(currentId)
+              useVideoStore.getState().updateVideo(currentId, { status: 'failed', progress: 100 })
+              setError('No se pudo consultar el estado del video. Puedes actualizar la biblioteca para reanudar la consulta.')
+              return
+            }
+            const retryDelay = Math.min(15000, 3000 * (attempt + 1))
+            const timer = window.setTimeout(() => void poll(attempt + 1), retryDelay)
+            pollingTimers.current.set(currentId, timer)
           }
-        }, 1500)
+        }
+        void poll()
       }
 
       setTitle('')

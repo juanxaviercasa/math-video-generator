@@ -69,9 +69,16 @@ El worker limpia directorios de jobs fallidos antiguos según `FAILED_ARTIFACT_R
 
 ## QA audiovisual ejecutable
 
-El script `./scripts/media-qa.sh` valida existencia de stream de video y audio, duración positiva y dimensiones exactas. El render genérico Remotion fue comprobado en `1280x720` y `720x1280`; ambos artefactos superaron el QA con duración de aproximadamente 61.46 segundos, H.264 y AAC. En una generación real con narración neural se debe ejecutar el mismo gate sobre el MP4 final, porque una composición que visualmente se ve correcta no garantiza que el audio exista o que sus tiempos sean utilizables.
+El script `./scripts/media-qa.sh` valida existencia de stream de video y audio, duración positiva y dimensiones exactas. El render genérico Remotion fue comprobado en `1280x720` y `720x1280`; ambos artefactos superaron el QA con duración de aproximadamente 61.46 segundos, H.264 y AAC. También se verificó `LessonTimelineEditorialAudioSmoke` con un clip local generado por `es-MX-DaliaNeural`; el resultado incorporó AAC y superó el mismo gate.
+ En una generación real con narración neural se debe ejecutar el mismo gate sobre el MP4 final, porque una composición que visualmente se ve correcta no garantiza que el audio exista o que sus tiempos sean utilizables.
 
 ```bash
+cd tools/remotion-pilot
+mkdir -p public
+edge-tts --voice es-MX-DaliaNeural --text 'Vamos a resolver esta ecuación paso a paso, sin saltarnos ningún detalle.' --write-media public/audio-smoke.mp3
+npx remotion render src/registerRoot.tsx LessonTimelineEditorialAudioSmoke out/lesson-timeline-editorial-audio-smoke.mp4 --codec=h264 --log=error
+cd ../..
+./scripts/media-qa.sh tools/remotion-pilot/out/lesson-timeline-editorial-audio-smoke.mp4 1280 720
 ./scripts/media-qa.sh tools/remotion-pilot/out/lesson-timeline-editorial.mp4 1280 720
 ./scripts/media-qa.sh tools/remotion-pilot/out/lesson-timeline-editorial-portrait.mp4 720 1280
 ```

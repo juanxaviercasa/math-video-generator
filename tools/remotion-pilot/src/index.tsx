@@ -6,6 +6,11 @@ import { demoTimeline, deckToEditorialStages, timelineToAnimatedDeck } from './t
 import { TimelineEditorial, animatedDeckSchema } from './TimelineEditorial';
 
 const demoDeck = timelineToAnimatedDeck(demoTimeline, '16:9');
+const audioSmokeDeck = {
+  ...demoDeck,
+  id: `${demoDeck.id}-audio-smoke`,
+  slides: demoDeck.slides.map((slide, index) => index === 0 ? { ...slide, audioSrc: 'audio-smoke.mp3' } : slide),
+};
 const defaultProps = {
   title: 'La ecuación cuadrática como una presentación animada',
   problem: demoDeck.problem,
@@ -39,6 +44,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition id="LessonTimelineEditorial" {...timelineCompositionProps} width={1280} height={720} />
       <Composition id="LessonTimelineEditorialSquare" {...timelineCompositionProps} width={720} height={720} />
       <Composition id="LessonTimelineEditorialPortrait" {...timelineCompositionProps} width={720} height={1280} />
+      <Composition id="LessonTimelineEditorialAudioSmoke" {...timelineCompositionProps} defaultProps={{ deck: audioSmokeDeck }} width={1280} height={720} />
     </>
   );
 };

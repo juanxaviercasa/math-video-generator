@@ -2,6 +2,7 @@ import 'dotenv/config';
 import os from 'node:os';
 import path from 'node:path';
 import { videoProcessing } from './services/video-processing.service.js';
+import { cleanupFailedArtifacts } from './services/artifact-cleanup.service.js';
 import { generationJobs, videoQueue } from './services/job.service.js';
 
 const workerId = `${os.hostname()}-${process.pid}`;
@@ -10,6 +11,13 @@ const concurrency = Math.max(1, Number(process.env.VIDEO_WORKER_CONCURRENCY || 1
 const run = async () => {
   const recovered = await generationJobs.recoverStaleJobs();
   if (recovered > 0) console.log(`[Worker ${workerId}] Reencolados ${recovered} jobs detenidos.`);
+  const removedArtifacts = await cleanupFailedArtifacts();
+  if (removedArtifacts > 0) console.log(`[Worker ${workerId}] Limpiados ${removedArtifacts} directorios fallidos.`);
+
+  const cleanupInterval = setInterval(() => {
+    void cleanupFailedArtifacts().catch((error) => console.warn(`[Worker ${workerId}] Cleanup failed:`, error));
+  }, Number(process.env.ARTIFACT_CLEANUP_INTERVAL_MS || 3_600_000));
+  cleanupInterval.unref();
 
   const queue = videoQueue.instance;
   queue.process(concurrency, async (job) => {
@@ -59,8 +67,13 @@ const run = async () => {
   });
 
   queue.on('failed', (job, error) => {
-    if (job) generationJobs.fail(job.data.videoId, error.message);
-    console.error(`[Worker ${workerId}] Job falló:`, error.message);
+    if (job) {
+      const maxAttempts = Number(job.opts.attempts || 1);
+      const exhausted = job.attemptsMade >= maxAttempts;
+      if (exhausted) generationJobs.fail(job.data.videoId, error.message, 'WORKER_RETRIES_EXHAUSTED');
+      else generationJobs.update(job.data.videoId, { status: 'pending', message: `Reintentando (${job.attemptsMade}/${maxAttempts})...`, error: error.message, errorCode: 'WORKER_RETRY_PENDING' });
+    }
+    console.error(`[Worker ${workerId}] Job falló (reintento ${job?.attemptsMade ?? 0}):`, error.message);
   });
 
   queue.on('error', (error) => console.error(`[Worker ${workerId}] Redis error:`, error));
@@ -69,6 +82,7 @@ const run = async () => {
   const shutdown = async (signal: string) => {
     console.log(`[Worker ${workerId}] Received ${signal}; closing queue.`);
     try {
+      clearInterval(cleanupInterval);
       await queue.close();
       process.exit(0);
     } catch (error) {

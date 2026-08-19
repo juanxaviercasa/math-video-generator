@@ -3,6 +3,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
+import { randomUUID } from 'node:crypto'
 import { videoRoutes } from './routes/video.routes.js'
 import { authRoutes } from './routes/auth.routes.js'
 import { mediaRoutes } from './routes/media.routes.js'
@@ -13,6 +14,13 @@ dotenv.config()
 
 const app: Express = express()
 const PORT = process.env.BACKEND_PORT || 3001
+
+app.use((req, res, next) => {
+  const requestId = req.header('x-request-id') || randomUUID()
+  res.setHeader('x-request-id', requestId)
+  res.locals.requestId = requestId
+  next()
+})
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -47,6 +55,16 @@ app.use(
 app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ limit: '1mb', extended: true }))
 
+const csrfOriginGuard = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const mutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)
+  const origin = req.header('origin')
+  if (mutating && origin && origin !== allowedOrigin) {
+    return res.status(403).json({ code: 'CSRF_ORIGIN_REJECTED', error: 'Origen no autorizado' })
+  }
+  return next()
+}
+app.use(csrfOriginGuard)
+
 // Health checks: liveness is cheap; readiness verifies dependencies.
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
@@ -58,7 +76,7 @@ app.get('/readyz', async (_req, res) => {
     await videoQueue.instance.client.ping()
     return res.json({ status: 'ready', timestamp: new Date().toISOString() })
   } catch (error) {
-    console.error('[Readiness] Dependency check failed:', error)
+    console.error('[Readiness] Dependency check failed:', { requestId: res.locals.requestId, error })
     return res.status(503).json({ status: 'not_ready', error: 'Dependencias no disponibles' })
   }
 })
@@ -83,8 +101,8 @@ app.use('/api', videoRoutes)
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err.stack)
-  res.status(500).json({ error: 'Internal Server Error' })
+  console.error('[HTTP Error]', { requestId: res.locals.requestId, method: req.method, path: req.path, error: err?.stack || err })
+  res.status(500).json({ code: 'INTERNAL_SERVER_ERROR', error: 'Internal Server Error', requestId: res.locals.requestId })
 })
 
 // 404 handler

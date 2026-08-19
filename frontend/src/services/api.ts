@@ -49,6 +49,10 @@ interface VideoResponse {
   videoUrl?: string
   thumbnailUrl?: string
   error?: string
+  errorCode?: string
+  attempts?: number
+  heartbeatAt?: string
+  workerId?: string
   validation?: MathValidation
 }
 
@@ -77,6 +81,10 @@ export interface LibraryVideo {
   duration?: number
   createdAt: string
   updatedAt: string
+  error?: string
+  errorCode?: string
+  attempts?: number
+  heartbeatAt?: string
 }
 
 export const api = {

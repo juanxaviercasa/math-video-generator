@@ -49,6 +49,7 @@ type JobPatch = Partial<Omit<GenerationJob, 'id' | 'createdAt'>>;
 
 const jobs = new Map<string, GenerationJob>();
 const metadata = new Map<string, JobMetadata>();
+const persistenceChains = new Map<string, Promise<void>>();
 let queue: Bull.Queue<{ videoId: string }> | undefined;
 
 const now = () => new Date().toISOString();
@@ -132,8 +133,16 @@ const persist = async (job: GenerationJob, details?: JobMetadata): Promise<void>
 };
 
 const safePersist = (job: GenerationJob): void => {
-  void persist(job).catch((error) => {
-    console.error(`[Jobs] No se pudo persistir ${job.id}:`, error);
+  const previous = persistenceChains.get(job.id) || Promise.resolve();
+  const next = previous
+    .catch(() => undefined)
+    .then(() => persist(job))
+    .catch((error) => {
+      console.error(`[Jobs] No se pudo persistir ${job.id}:`, error);
+    });
+  persistenceChains.set(job.id, next);
+  void next.finally(() => {
+    if (persistenceChains.get(job.id) === next) persistenceChains.delete(job.id);
   });
 };
 
@@ -156,7 +165,7 @@ export const generationJobs = {
     return persisted ? fromPersisted(persisted) : undefined;
   },
 
-  create(id: string, details: JobMetadata): GenerationJob {
+  async create(id: string, details: JobMetadata): Promise<GenerationJob> {
     const timestamp = now();
     const job: GenerationJob = {
       id,
@@ -170,7 +179,7 @@ export const generationJobs = {
     };
     metadata.set(id, details);
     jobs.set(id, job);
-    safePersist(job);
+    await persist(job, details);
     return job;
   },
 

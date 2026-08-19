@@ -86,7 +86,16 @@ export function VideoLibrary({ user, refreshKey = 0 }: VideoLibraryProps) {
             <div className="mt-3 h-2 overflow-hidden rounded bg-slate-700">
               <div className="h-full rounded bg-blue-500 transition-all" style={{ width: `${video.progress}%` }} />
             </div>
-            <p className="mt-2 text-right text-xs text-slate-500">{video.progress}%</p>
+            <div className="mt-2 flex items-center justify-between gap-3 text-xs text-slate-500">
+              <span>{video.progress}%</span>
+              {typeof video.attempts === 'number' && video.attempts > 0 && <span>Intentos: {video.attempts}</span>}
+            </div>
+            {video.status === 'failed' && (
+              <div className="mt-3 rounded border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-200">
+                <p>{video.error || 'La generación no pudo completarse.'}</p>
+                {video.errorCode && <p className="mt-1 font-mono text-red-300/80">Código: {video.errorCode}</p>}
+              </div>
+            )}
             {video.videoUrl?.startsWith('http') && video.status === 'completed' && (
               <video className="mt-3 w-full rounded" controls src={video.videoUrl} />
             )}

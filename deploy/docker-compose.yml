@@ -84,7 +84,7 @@ services:
       TTS_ALLOW_LOCAL_FALLBACK: ${TTS_ALLOW_LOCAL_FALLBACK:-false}
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_healthy
       postgres:

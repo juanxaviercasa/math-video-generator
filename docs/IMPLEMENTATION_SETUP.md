@@ -61,7 +61,11 @@ docker compose -f deploy/docker-compose.yml up --build
 
 El servicio `backend` aplica migraciones y expone el API. El servicio `worker` consume `math-video-generation`. El volumen `media_data` contiene los artefactos y no debe publicarse directamente en un servidor web.
 
-En producción se recomienda sustituir los valores por secretos administrados, habilitar TLS para Redis/PostgreSQL cuando el proveedor lo requiera, cambiar el secreto JWT, revisar `APP_URL` y evitar publicar los puertos de PostgreSQL y Redis a Internet.
+En producción se recomienda sustituir los valores por secretos administrados, habilitar TLS para Redis/PostgreSQL cuando el proveedor lo requiera, cambiar el secreto JWT, revisar `APP_URL` y evitar publicar los puertos de PostgreSQL y Redis a Internet. Las mutaciones con cookies se protegen además comprobando el encabezado `Origin`; las solicitudes que no envían `Origin`, como algunos clientes de servidor, no se bloquean por esa capa.
+
+La ruta `/health` representa liveness y `/readyz` verifica PostgreSQL y Redis. Docker usa `/readyz` en el healthcheck y el worker espera al estado saludable del backend. Cada respuesta recibe un `x-request-id` para correlacionar errores entre navegador, API y logs.
+
+El worker limpia directorios de jobs fallidos antiguos según `FAILED_ARTIFACT_RETENTION_MS`, ejecutando el proceso cada `ARTIFACT_CLEANUP_INTERVAL_MS`. Los videos completados no se eliminan automáticamente porque su retención requiere una política de almacenamiento explícita.
 
 ## QA audiovisual ejecutable
 

@@ -12,5 +12,4 @@ ALTER TABLE "videos"
   ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP(3);
 
 CREATE UNIQUE INDEX IF NOT EXISTS "videos_idempotencyKey_key"
-  ON "videos"("idempotencyKey")
-  WHERE "idempotencyKey" IS NOT NULL;
+  ON "videos"("idempotencyKey");

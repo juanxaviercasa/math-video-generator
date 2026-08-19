@@ -11,6 +11,7 @@ const router = Router();
 router.use(optionalAuth);
 
 router.post('/generate-video', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  let createdVideoId: string | undefined;
   try {
     const parsed = videoGenerationSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -29,11 +30,12 @@ router.post('/generate-video', requireAuth, async (req: AuthenticatedRequest, re
     if (existing) return res.status(200).json(existing);
 
     const videoId = input.id || `video_${randomUUID().replace(/-/g, '')}`;
+    createdVideoId = videoId;
     if (await generationJobs.get(videoId)) {
       return res.status(409).json({ code: 'VIDEO_ID_EXISTS', error: 'Ya existe un trabajo con ese identificador', id: videoId });
     }
 
-    const initialStatus = generationJobs.create(videoId, {
+    const initialStatus = await generationJobs.create(videoId, {
       userId: req.user.id,
       title: input.title,
       content: input.content,
@@ -46,7 +48,7 @@ router.post('/generate-video', requireAuth, async (req: AuthenticatedRequest, re
   } catch (error) {
     console.error('API Error:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const requestedId = typeof req.body?.id === 'string' ? req.body.id : undefined;
+    const requestedId = createdVideoId || (typeof req.body?.id === 'string' ? req.body.id : undefined);
     if (requestedId) generationJobs.fail(requestedId, errorMessage, 'QUEUE_ENQUEUE_FAILED');
     return res.status(503).json({ code: 'QUEUE_UNAVAILABLE', error: 'El sistema de procesamiento no está disponible temporalmente' });
   }

@@ -63,9 +63,19 @@ El servicio `backend` aplica migraciones y expone el API. El servicio `worker` c
 
 En producción se recomienda sustituir los valores por secretos administrados, habilitar TLS para Redis/PostgreSQL cuando el proveedor lo requiera, cambiar el secreto JWT, revisar `APP_URL` y evitar publicar los puertos de PostgreSQL y Redis a Internet.
 
+## QA audiovisual ejecutable
+
+El script `./scripts/media-qa.sh` valida existencia de stream de video y audio, duración positiva y dimensiones exactas. El render genérico Remotion fue comprobado en `1280x720` y `720x1280`; ambos artefactos superaron el QA con duración de aproximadamente 61.46 segundos, H.264 y AAC. En una generación real con narración neural se debe ejecutar el mismo gate sobre el MP4 final, porque una composición que visualmente se ve correcta no garantiza que el audio exista o que sus tiempos sean utilizables.
+
+```bash
+./scripts/media-qa.sh tools/remotion-pilot/out/lesson-timeline-editorial.mp4 1280 720
+./scripts/media-qa.sh tools/remotion-pilot/out/lesson-timeline-editorial-portrait.mp4 720 1280
+```
+
 ## Remotion y Manim
 
-Remotion permanece en modo piloto. La integración oficial debe consumir el mismo `LessonTimeline` generado por el backend, con una única duración por segmento. No se debe activar `NARRATION_TIMELINE=true` ni sustituir el renderer estable hasta que el smoke test confirme:
+Remotion ya está integrado en el workspace piloto mediante `TimelineEditorial`, `AnimatedDeck` y composiciones 16:9, 1:1 y 9:16. La composición se renderizó y pasó QA audiovisual; además admite `audioSrc` por segmento mediante `Sequence`/`Audio`. Permanece opt-in para producción (`REMOTION_ENABLED=false`) porque la integración oficial debe consumir el mismo `LessonTimeline` generado por el backend, con una única duración por segmento, y todavía requiere un runner de producción que serialice el deck y sus audios dentro del worker.
+ No se debe activar `NARRATION_TIMELINE=true` ni sustituir el renderer estable hasta que el smoke test confirme:
 
 | Verificación | Condición |
 |---|---|

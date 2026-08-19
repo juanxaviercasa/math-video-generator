@@ -1,6 +1,6 @@
 import React from 'react';
 import katex from 'katex';
-import { AbsoluteFill, Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Audio, Easing, interpolate, Sequence, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { z } from 'zod';
 import type { AnimatedDeck, AnimatedSlide } from './timelineAdapter';
 import 'katex/dist/katex.min.css';
@@ -26,6 +26,7 @@ export const animatedDeckSchema = z.object({
     title: z.string(),
     objective: z.string().optional(),
     durationSeconds: z.number(),
+    audioSrc: z.string().optional(),
     narrationSegmentId: z.string(),
     formulaAnchorIds: z.array(z.string()),
     visualBlocks: z.array(blockSchema),
@@ -127,7 +128,10 @@ export const TimelineEditorial: React.FC<TimelineEditorialProps> = ({ deck }) =>
       <div style={{ color: COLORS.blue, fontSize: compact ? 12 : 17, fontWeight: 700, border: `1px solid ${COLORS.blue}66`, borderRadius: 999, padding: compact ? '8px 11px' : '10px 16px', height: 'fit-content' }}>{deck.narrationStyle === 'warm_teacher' ? 'Voz cálida' : 'Voz neutra'}</div>
     </div>
     <div style={{ position: 'absolute', left: compact ? 26 : 46, top: compact ? 112 : 132, bottom: compact ? 65 : 86, width: 4, borderRadius: 8, background: 'rgba(148,163,184,0.22)' }}><div style={{ width: 4, height: `${((activeIndex + 1) / deck.slides.length) * 100}%`, background: COLORS.gold, borderRadius: 8 }} /></div>
-    {deck.slides.map((slide, index) => <Slide key={slide.id} slide={slide} startFrame={starts[index]} frame={frame} active={activeIndex === index} />)}
+    {deck.slides.map((slide, index) => <React.Fragment key={slide.id}>
+      <Slide slide={slide} startFrame={starts[index]} frame={frame} active={activeIndex === index} />
+      {slide.audioSrc && <Sequence from={starts[index]} durationInFrames={Math.max(30, Math.round(slide.durationSeconds * 30))}><Audio src={slide.audioSrc} /></Sequence>}
+    </React.Fragment>)}
     <div style={{ position: 'absolute', left: compact ? 54 : 92, right: compact ? 36 : 74, bottom: compact ? 18 : 26, height: 5, borderRadius: 999, background: 'rgba(148,163,184,0.2)' }}><div style={{ width: `${progress}%`, height: '100%', background: `linear-gradient(90deg, ${COLORS.gold}, ${COLORS.rose})`, borderRadius: 999 }} /></div>
   </AbsoluteFill>;
 };

@@ -61,6 +61,7 @@ export interface AnimatedSlide {
   title: string;
   objective?: string;
   durationSeconds: number;
+  audioSrc?: string;
   narrationSegmentId: string;
   formulaAnchorIds: string[];
   visualBlocks: Array<{
@@ -143,6 +144,7 @@ export function timelineToAnimatedDeck(timeline: TimelineLike, format: AnimatedD
       title,
       objective: segment.objective,
       durationSeconds: segment.durationSeconds,
+      audioSrc: (segment as TimelineLike['segments'][number] & { audioSrc?: string }).audioSrc,
       narrationSegmentId: segment.id,
       formulaAnchorIds: anchorIds,
       visualBlocks: blocks,

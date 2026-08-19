@@ -1,0 +1,22 @@
+
+La hoja de contacto cuadrada y vertical muestra los paneles centrados, pero su método de composición reduce demasiado las capturas para compararlas en una cuadrícula. No se tomará esa miniatura como criterio de legibilidad; se inspeccionarán fotogramas nativos de cada formato y se generarán contactos normalizados con padding visual, manteniendo la relación de aspecto.
+
+La segunda regresión corrigió el fallo de escalado: en resolución nativa, 16:9 (854×480) y 1:1 (480×480) muestran `Paso 1`, `Paso 2` y `Paso 3` completamente dentro del panel, con el encabezado separado y márgenes visibles. La causa era que `scale_to_fit_width` se ejecutaba después de limitar altura y volvía a agrandar el grupo.
+
+La inspección nativa de 9:16 (480×854) también quedó dentro de límites: la ecuación del discriminante, `25 − 24` y los tres micro pasos se apilan verticalmente sin salir del panel. La fórmula es más ancha, pero conserva margen lateral dentro del marco seguro.
+
+La revisión del render narrado final detectó tres regresiones visuales que deben corregirse antes de publicar: la tarjeta `a, b y c` desborda horizontalmente y solo deja visible parte de los coeficientes; la escena `Dos soluciones` corta los extremos izquierdo y derecho; y la recapitulación corta las etiquetas inferiores. La escena de discriminante y la fórmula vertical sí quedaron contenidas. La causa probable es el límite por ancho aplicado a grupos con columnas: el ancho de cada par fórmula-caption excede el ancho disponible y el escalado posterior por altura no lo reduce de forma suficiente. Se requiere una composición específica: coeficientes apilados o tarjetas compactas, ramas en fila con fórmulas reducidas o apiladas, y recapitulación con etiquetas en una columna o texto más pequeño.
+
+La segunda revisión del render narrado confirma la corrección: `a = 1`, `b = -5` y `c = 6` aparecen simultáneamente con sus explicaciones; las dos ramas muestran las fracciones completas y sus etiquetas; y la recapitulación conserva `x₁ = 3`, `x₂ = 2` y las cuatro acciones pedagógicas dentro del panel. El tono cálido se renderizó con voz neural y el job terminó con video H.264 y audio AAC.
+
+La primera inspección del renderer de micro-pasos mostró que el concepto de fórmula base y etiquetas ya se está generando, pero la escena de simplificación todavía tiene fórmulas demasiado grandes: la fracción de referencia invade el encabezado y la fórmula activa sale por el borde inferior. Debe aplicarse una zona de contenido más baja, un límite de altura por cada etapa y una escala final basada en el grupo completo, no solo en el ancho.
+
+El render v3 ya presenta correctamente la jerarquía solicitada: etiqueta de etapa, fórmula de partida arriba, fórmula activa debajo y colores de resultado. La escena de simplificación es legible, pero el denominador de la fórmula activa queda demasiado cerca del borde inferior. Se aplicará un último desplazamiento vertical hacia arriba y una reducción leve de altura del grupo para dejar aire visual constante.
+
+El candidato 16:9 final cumple la corrección: la fórmula de partida aparece arriba, la operación `x = (5 ± 1) / 2` aparece debajo, ambas están centradas, legibles y separadas del encabezado y del borde inferior. El grupo conserva aire visual dentro del panel.
+
+La revisión de resolución nativa confirma que la composición de micro-pasos funciona en 1:1 (480×480) y 9:16 (480×854). La fórmula de partida aparece arriba, la operación activa debajo y ninguna fracción sale del panel. El vertical aprovecha el espacio alto sin inflar la tipografía; el cuadrado conserva una lectura equilibrada.
+
+La revisión del render narrado final encontró una excepción importante: las escenas de dos etapas (`formula-substitution` y `formula-simplify`) ya se ven bien, pero la escena de cuatro etapas (`discriminant-calculate`) todavía excede el panel vertical. La primera fórmula invade el encabezado y el resultado queda cortado. El auditor debe usar un factor adicional para escenas con cuatro etapas: menor tamaño de fórmula, etiquetas más pequeñas, menor separación y una altura reservada específica.
+
+La composición v2 del discriminante queda aprobada visualmente: `Δ = b² − 4ac` aparece como fórmula base en la parte superior; debajo se muestran `Reemplazamos`, `Operamos` y `Resultado` en una fila ordenada. El contenido está centrado, legible y dentro del panel en 16:9.

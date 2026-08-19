@@ -1,18 +1,58 @@
-import { useState } from 'react'
-import { api } from '../services/api'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { api, PreviewResponse } from '../services/api'
 import { useVideoStore } from '../store/video.store'
+const InteractiveMathEditor = lazy(() => import('./InteractiveMathEditor').then((module) => ({ default: module.InteractiveMathEditor })))
+import { InteractiveLessonPreview } from './InteractiveLessonPreview'
 
-export function VideoGenerator() {
+type VideoGeneratorProps = {
+  onGenerated?: () => void
+}
+
+export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('medium')
+  const [aspectRatio, setAspectRatio] = useState<'16:9' | '1:1' | '9:16'>('16:9')
+  const [layoutDensity, setLayoutDensity] = useState<'comfortable' | 'compact'>('comfortable')
+  const [narrationStyle, setNarrationStyle] = useState<'warm_teacher' | 'neutral_teacher'>('warm_teacher')
   const [enableNarration, setEnableNarration] = useState(true)
   const [aiProvider, setAiProvider] = useState<'openrouter' | 'gemini' | 'openai'>('openrouter')
   const [enableComfyUI, setEnableComfyUI] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [preview, setPreview] = useState<PreviewResponse | null>(null)
+  const [steps, setSteps] = useState<string[]>([])
   const [error, setError] = useState('')
 
   const addVideo = useVideoStore((state) => state.addVideo)
+  const pollingTimers = useRef(new Map<string, number>())
+
+  useEffect(() => () => {
+    pollingTimers.current.forEach((timer) => window.clearTimeout(timer))
+    pollingTimers.current.clear()
+  }, [])
+
+  const handlePreview = async () => {
+    setError('')
+    if (!title.trim() || !content.trim()) {
+      setError('Completa el título y el contenido antes de previsualizar')
+      return
+    }
+
+    setPreviewLoading(true)
+    try {
+      const result = await api.preview({ title, content, aspectRatio, layoutDensity, narrationStyle })
+      setPreview(result)
+      setSteps(result.steps)
+      if (result.requiresReview) {
+        setError('Este problema requiere revisión manual antes de generar el video.')
+      }
+    } catch (previewError) {
+      setError('No se pudo preparar la previsualización')
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,9 +64,11 @@ export function VideoGenerator() {
     }
 
     setLoading(true)
+    const requestToken = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const videoId = `video_${requestToken.replace(/-/g, '')}`
+    const idempotencyKey = `web-${requestToken}`
 
     try {
-      const videoId = `video_${Date.now()}`
 
       // Agregar a lista
       addVideo({
@@ -37,15 +79,21 @@ export function VideoGenerator() {
         progress: 0,
         createdAt: new Date().toISOString(),
       })
+      onGenerated?.()
 
       const response = await api.generateVideo({
         id: videoId,
+        idempotencyKey,
         title,
         content,
         quality,
+        aspectRatio,
+        layoutDensity,
+        narrationStyle,
         enableNarration,
         aiProvider,
         enableComfyUI,
+        steps: steps.length ? steps : undefined,
       })
 
       const finalStatus = response.status || 'pending'
@@ -59,13 +107,18 @@ export function VideoGenerator() {
         progress: response.progress || 0,
         videoUrl: response.videoUrl,
         thumbnailUrl: response.thumbnailUrl,
+        error: response.error,
+        errorCode: response.errorCode,
+        attempts: response.attempts,
+        heartbeatAt: response.heartbeatAt,
       })
 
-      if (finalStatus === 'processing' || finalStatus === 'pending') {
-        let polling = true
-        const interval = window.setInterval(async () => {
-          if (!polling) return
+      if (finalStatus === 'failed') {
+        setError(response.error || response.message || 'La generación falló')
+      }
 
+      if (finalStatus === 'processing' || finalStatus === 'pending') {
+        const poll = async (attempt = 0): Promise<void> => {
           try {
             const status = await api.getVideoStatus(currentId)
             useVideoStore.getState().updateVideo(currentId, {
@@ -73,23 +126,45 @@ export function VideoGenerator() {
               progress: status.progress,
               videoUrl: status.videoUrl,
               thumbnailUrl: status.thumbnailUrl,
+              message: status.message,
+              error: status.error,
+              errorCode: status.errorCode,
+              attempts: status.attempts,
+              heartbeatAt: status.heartbeatAt,
             })
 
             if (status.status === 'completed' || status.status === 'failed') {
-              polling = false
-              window.clearInterval(interval)
+              pollingTimers.current.delete(currentId)
+              if (status.status === 'failed') setError(status.error || status.message || 'La generación falló')
+              return
             }
+
+            const delay = Math.min(10000, 1500 * Math.pow(1.35, Math.min(attempt, 8)))
+            const timer = window.setTimeout(() => void poll(attempt + 1), delay)
+            pollingTimers.current.set(currentId, timer)
           } catch (pollError) {
-            polling = false
-            window.clearInterval(interval)
+            if (attempt >= 5) {
+              pollingTimers.current.delete(currentId)
+              useVideoStore.getState().updateVideo(currentId, { status: 'failed', progress: 100 })
+              setError('No se pudo consultar el estado del video. Puedes actualizar la biblioteca para reanudar la consulta.')
+              return
+            }
+            const retryDelay = Math.min(15000, 3000 * (attempt + 1))
+            const timer = window.setTimeout(() => void poll(attempt + 1), retryDelay)
+            pollingTimers.current.set(currentId, timer)
           }
-        }, 1500)
+        }
+        void poll()
       }
 
       setTitle('')
       setContent('')
+      setSteps([])
+      setPreview(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido')
+      const message = err instanceof Error ? err.message : 'Error desconocido'
+      useVideoStore.getState().updateVideo(videoId, { status: 'failed', progress: 100, error: message, errorCode: 'CLIENT_GENERATION_FAILED', message })
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -133,7 +208,59 @@ export function VideoGenerator() {
             className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 transition min-h-32"
             disabled={loading}
           />
+          <Suspense fallback={<p className="mt-2 text-xs text-slate-400">Cargando editor matemático...</p>}>
+            <InteractiveMathEditor value={content} onChange={setContent} disabled={loading} />
+          </Suspense>
+          <button
+            type="button"
+            onClick={handlePreview}
+            disabled={loading || previewLoading}
+            className="mt-2 rounded border border-blue-500 px-3 py-2 text-sm font-medium text-blue-300 transition hover:bg-blue-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {previewLoading ? 'Preparando revisión...' : 'Revisar solución antes de generar'}
+          </button>
         </div>
+
+        {preview && (
+          <div className="rounded border border-slate-600 bg-slate-700/40 p-4">
+            <InteractiveLessonPreview validation={preview.validation} steps={steps} />
+            <div className="mt-3 grid grid-cols-3 gap-2 rounded border border-slate-600 bg-slate-900/70 p-3 text-center text-[11px] text-slate-300">
+              <div><span className="block text-slate-500">Canvas</span>{preview.formatProfile.width} × {preview.formatProfile.height}</div>
+              <div><span className="block text-slate-500">Orientación</span>{preview.formatProfile.orientation}</div>
+              <div><span className="block text-slate-500">Safe margin</span>{preview.formatProfile.safeMargin}u</div>
+            </div>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Guion editable</h3>
+                <p className="text-xs text-slate-400">
+                  {preview.validation.valid
+                    ? preview.validation.result || 'Validación completada'
+                    : preview.validation.warnings[0] || 'Revisión manual necesaria'}
+                </p>
+              </div>
+              <span className={`text-xs font-semibold ${preview.validation.valid ? 'text-emerald-300' : 'text-amber-300'}`}>
+                {preview.validation.valid ? 'Verificado' : 'Revisar'}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {steps.map((step, index) => (
+                <div key={`${index}-${step.slice(0, 12)}`} className="flex items-start gap-2">
+                  <span className="pt-2 text-xs text-slate-400">{index + 1}.</span>
+                  <textarea
+                    value={step}
+                    onChange={(event) => {
+                      const next = [...steps]
+                      next[index] = event.target.value
+                      setSteps(next)
+                    }}
+                    rows={2}
+                    className="min-w-0 flex-1 rounded border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-white outline-none focus:border-blue-400"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Calidad */}
         <div>
@@ -150,6 +277,47 @@ export function VideoGenerator() {
             <option value="medium">Media (1080p)</option>
             <option value="high">Alta (4K)</option>
           </select>
+        </div>
+
+        {/* Formato de salida */}
+        <div className="rounded border border-slate-600 bg-slate-700/40 p-4">
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-white">Formato del video</label>
+            <p className="mt-1 text-xs text-slate-400">El contenido se compone dentro de una zona segura; nunca se estira para llenar a la fuerza.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: '16:9', label: '16:9', hint: 'YouTube / Facebook', shape: 'aspect-video' },
+              { value: '1:1', label: '1:1', hint: 'Instagram', shape: 'aspect-square' },
+              { value: '9:16', label: '9:16', hint: 'Reels / Shorts', shape: 'aspect-[9/16]' },
+            ].map((format) => (
+              <button
+                type="button"
+                key={format.value}
+                onClick={() => setAspectRatio(format.value as '16:9' | '1:1' | '9:16')}
+                className={`rounded border p-2 text-left transition ${aspectRatio === format.value ? 'border-blue-400 bg-blue-500/20 text-white' : 'border-slate-600 bg-slate-800 text-slate-300 hover:border-slate-400'}`}
+                disabled={loading}
+              >
+                <span className={`mx-auto mb-2 block w-10 rounded border border-blue-300/70 bg-slate-950 ${format.shape}`} />
+                <span className="block text-xs font-semibold">{format.label}</span>
+                <span className="block text-[10px] text-slate-400">{format.hint}</span>
+              </button>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="text-xs text-slate-300">Densidad visual
+              <select value={layoutDensity} onChange={(event) => setLayoutDensity(event.target.value as 'comfortable' | 'compact')} className="mt-1 w-full rounded border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-white" disabled={loading}>
+                <option value="comfortable">Cómoda: más aire y lectura</option>
+                <option value="compact">Compacta: más contenido por escena</option>
+              </select>
+            </label>
+            <label className="text-xs text-slate-300">Tono de narración
+              <select value={narrationStyle} onChange={(event) => setNarrationStyle(event.target.value as 'warm_teacher' | 'neutral_teacher')} className="mt-1 w-full rounded border border-slate-600 bg-slate-800 px-2 py-2 text-sm text-white" disabled={loading}>
+                <option value="warm_teacher">Docente cercano y motivador</option>
+                <option value="neutral_teacher">Docente claro y neutral</option>
+              </select>
+            </label>
+          </div>
         </div>
 
         {/* Narración */}
@@ -179,6 +347,7 @@ export function VideoGenerator() {
           <div className="grid grid-cols-3 gap-2">
             {['openrouter', 'gemini', 'openai'].map((provider) => (
               <button
+                type="button"
                 key={provider}
                 onClick={() => setAiProvider(provider as any)}
                 className={`px-3 py-2 rounded text-sm font-medium transition ${

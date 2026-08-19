@@ -1,0 +1,829 @@
+{
+  "generatedAt": "2026-08-16T23:39:32.087Z",
+  "corpus": [
+    {
+      "id": "algebra-linear",
+      "category": "álgebra",
+      "problem": "3x + 5 = 20",
+      "formulas": [
+        "3x + 5 = 20",
+        "3x = 15",
+        "x = 5"
+      ],
+      "steps": [
+        "Aislamos el término con x",
+        "Restamos 5",
+        "Dividimos entre 3"
+      ],
+      "layout": "equation"
+    },
+    {
+      "id": "algebra-factorization",
+      "category": "álgebra",
+      "problem": "x^2 + 5x + 6 = 0",
+      "formulas": [
+        "x^2 + 5x + 6 = 0",
+        "(x + 2)(x + 3) = 0",
+        "x_1 = -2, x_2 = -3"
+      ],
+      "steps": [
+        "Buscamos factores",
+        "Aplicamos producto nulo",
+        "Obtenemos las raíces"
+      ],
+      "layout": "equation"
+    },
+    {
+      "id": "equation-quadratic",
+      "category": "ecuaciones",
+      "problem": "x^2 - 5x + 6 = 0",
+      "formulas": [
+        "x^2 - 5x + 6 = 0",
+        "\\Delta = b^2 - 4ac",
+        "x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}"
+      ],
+      "steps": [
+        "Identificamos coeficientes",
+        "Calculamos discriminante",
+        "Aplicamos fórmula general"
+      ],
+      "layout": "equation"
+    },
+    {
+      "id": "equation-rational",
+      "category": "ecuaciones",
+      "problem": "2/(x-1) = 4",
+      "formulas": [
+        "\\frac{2}{x-1} = 4",
+        "2 = 4(x-1)",
+        "x = \\frac{3}{2}"
+      ],
+      "steps": [
+        "Eliminamos denominador",
+        "Distribuimos",
+        "Despejamos x"
+      ],
+      "layout": "equation"
+    },
+    {
+      "id": "system-two",
+      "category": "sistemas",
+      "problem": "x + y = 7; 2x - y = 5",
+      "formulas": [
+        "x + y = 7",
+        "2x - y = 5",
+        "3x = 12 \\Rightarrow x=4, y=3"
+      ],
+      "steps": [
+        "Escribimos el sistema",
+        "Sumamos ecuaciones",
+        "Sustituimos el resultado"
+      ],
+      "layout": "split"
+    },
+    {
+      "id": "system-three",
+      "category": "sistemas",
+      "problem": "x+y+z=6; 2x-y+z=3; x+2y-z=3",
+      "formulas": [
+        "x+y+z=6",
+        "2x-y+z=3",
+        "x+2y-z=3"
+      ],
+      "steps": [
+        "Organizamos la matriz",
+        "Eliminamos variables",
+        "Verificamos la solución"
+      ],
+      "layout": "split"
+    },
+    {
+      "id": "function-linear",
+      "category": "funciones",
+      "problem": "f(x) = 2x + 1",
+      "formulas": [
+        "f(x)=2x+1",
+        "f(0)=1",
+        "f(3)=7"
+      ],
+      "steps": [
+        "Identificamos pendiente",
+        "Evaluamos en cero",
+        "Evaluamos en tres"
+      ],
+      "layout": "card"
+    },
+    {
+      "id": "function-quadratic",
+      "category": "funciones",
+      "problem": "f(x) = x^2 - 4x + 3",
+      "formulas": [
+        "f(x)=x^2-4x+3",
+        "f(x)=(x-1)(x-3)",
+        "V=(2,-1)"
+      ],
+      "steps": [
+        "Factorizamos",
+        "Encontramos raíces",
+        "Localizamos el vértice"
+      ],
+      "layout": "graph"
+    },
+    {
+      "id": "geometry-triangle",
+      "category": "geometría",
+      "problem": "Triángulo base 8 y altura 5",
+      "formulas": [
+        "A=\\frac{b\\cdot h}{2}",
+        "A=\\frac{8\\cdot5}{2}",
+        "A=20"
+      ],
+      "steps": [
+        "Elegimos la fórmula",
+        "Sustituimos datos",
+        "Calculamos el área"
+      ],
+      "layout": "card"
+    },
+    {
+      "id": "geometry-circle",
+      "category": "geometría",
+      "problem": "Círculo de radio 3",
+      "formulas": [
+        "A=\\pi r^2",
+        "A=\\pi(3)^2",
+        "A=9\\pi"
+      ],
+      "steps": [
+        "Recordamos el área",
+        "Sustituimos el radio",
+        "Simplificamos"
+      ],
+      "layout": "card"
+    },
+    {
+      "id": "trig-sine",
+      "category": "trigonometría",
+      "problem": "sen(30°) = 1/2",
+      "formulas": [
+        "\\sin(30^\\circ)=\\frac{opuesto}{hipotenusa}",
+        "\\sin(30^\\circ)=\\frac{1}{2}",
+        "opuesto=\\frac{hipotenusa}{2}"
+      ],
+      "steps": [
+        "Definimos seno",
+        "Usamos el valor notable",
+        "Interpretamos"
+      ],
+      "layout": "equation"
+    },
+    {
+      "id": "trig-pythagorean",
+      "category": "trigonometría",
+      "problem": "sin²(x) + cos²(x) = 1",
+      "formulas": [
+        "\\sin^2(x)+\\cos^2(x)=1",
+        "\\sin^2(x)=1-\\cos^2(x)",
+        "\\sin(x)=\\sqrt{1-\\cos^2(x)}"
+      ],
+      "steps": [
+        "Partimos de la identidad",
+        "Despejamos seno cuadrado",
+        "Tomamos raíz"
+      ],
+      "layout": "equation"
+    },
+    {
+      "id": "calculus-derivative",
+      "category": "cálculo",
+      "problem": "Derivada de x^3 + 2x",
+      "formulas": [
+        "f(x)=x^3+2x",
+        "f'(x)=3x^2+2",
+        "f'(1)=5"
+      ],
+      "steps": [
+        "Aplicamos regla de potencia",
+        "Derivamos cada término",
+        "Evaluamos en x=1"
+      ],
+      "layout": "equation"
+    },
+    {
+      "id": "calculus-integral",
+      "category": "cálculo",
+      "problem": "Integral de 2x entre 0 y 3",
+      "formulas": [
+        "\\int_0^3 2x\\,dx",
+        "[x^2]_0^3",
+        "9"
+      ],
+      "steps": [
+        "Integramos",
+        "Aplicamos límites",
+        "Calculamos el área"
+      ],
+      "layout": "equation"
+    },
+    {
+      "id": "calculus-limit",
+      "category": "cálculo",
+      "problem": "límite de (x²-1)/(x-1) cuando x tiende a 1",
+      "formulas": [
+        "\\lim_{x\\to1}\\frac{x^2-1}{x-1}",
+        "\\lim_{x\\to1}(x+1)",
+        "2"
+      ],
+      "steps": [
+        "Factorizamos",
+        "Cancelamos el factor",
+        "Evaluamos el límite"
+      ],
+      "layout": "equation"
+    },
+    {
+      "id": "statistics-mean",
+      "category": "estadística",
+      "problem": "Media de 2, 4, 6, 8",
+      "formulas": [
+        "\\bar{x}=\\frac{2+4+6+8}{4}",
+        "\\bar{x}=\\frac{20}{4}",
+        "\\bar{x}=5"
+      ],
+      "steps": [
+        "Sumamos datos",
+        "Contamos observaciones",
+        "Dividimos"
+      ],
+      "layout": "card"
+    },
+    {
+      "id": "statistics-probability",
+      "category": "estadística",
+      "problem": "Probabilidad de obtener un 6 en un dado",
+      "formulas": [
+        "P(6)=\\frac{casos\\ favorables}{casos\\ posibles}",
+        "P(6)=\\frac{1}{6}",
+        "P(6)\\approx16.7\\%"
+      ],
+      "steps": [
+        "Definimos casos",
+        "Formamos la razón",
+        "Convertimos a porcentaje"
+      ],
+      "layout": "card"
+    },
+    {
+      "id": "matrix-product",
+      "category": "matrices",
+      "problem": "Producto de matrices 2x2",
+      "formulas": [
+        "A=\\begin{bmatrix}1&2\\3&4\\end{bmatrix}",
+        "B=\\begin{bmatrix}2&0\\1&2\\end{bmatrix}",
+        "AB=\\begin{bmatrix}4&4\\10&8\\end{bmatrix}"
+      ],
+      "steps": [
+        "Alineamos dimensiones",
+        "Multiplicamos filas por columnas",
+        "Verificamos entradas"
+      ],
+      "layout": "split"
+    },
+    {
+      "id": "matrix-determinant",
+      "category": "matrices",
+      "problem": "Determinante de matriz 2x2",
+      "formulas": [
+        "A=\\begin{bmatrix}3&1\\2&4\\end{bmatrix}",
+        "\\det(A)=3\\cdot4-1\\cdot2",
+        "\\det(A)=10"
+      ],
+      "steps": [
+        "Aplicamos fórmula",
+        "Multiplicamos diagonales",
+        "Restamos"
+      ],
+      "layout": "equation"
+    },
+    {
+      "id": "word-rate",
+      "category": "problemas verbales",
+      "problem": "Un tren recorre 180 km en 3 horas",
+      "formulas": [
+        "v=\\frac{d}{t}",
+        "v=\\frac{180}{3}",
+        "v=60\\,km/h"
+      ],
+      "steps": [
+        "Elegimos velocidad",
+        "Sustituimos distancia y tiempo",
+        "Interpretamos unidades"
+      ],
+      "layout": "card"
+    },
+    {
+      "id": "word-mixture",
+      "category": "problemas verbales",
+      "problem": "Mezcla de 2 litros al 20% y 3 litros al 40%",
+      "formulas": [
+        "0.20(2)+0.40(3)",
+        "0.4+1.2=1.6",
+        "\\frac{1.6}{5}=0.32=32\\%"
+      ],
+      "steps": [
+        "Calculamos soluto",
+        "Sumamos cantidades",
+        "Dividimos por volumen"
+      ],
+      "layout": "card"
+    }
+  ],
+  "rows": [
+    {
+      "id": "algebra-factorization",
+      "category": "álgebra",
+      "problem": "x^2 + 5x + 6 = 0",
+      "mathematicalSupported": true,
+      "mathematicalValid": true,
+      "beforePassed": true,
+      "afterPassed": true,
+      "beforeScore": 95,
+      "afterScore": 95,
+      "beforeIssues": 23,
+      "afterIssues": 18,
+      "repairs": [
+        "move-anchor:hook",
+        "move-anchor:coefficients",
+        "move-anchor:coefficients",
+        "move-anchor:coefficients",
+        "move-anchor:coefficients",
+        "move-anchor:coefficients",
+        "reduce-caption:discriminant-setup",
+        "move-anchor:discriminant-setup"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/algebra-factorization/iteration-0/algebra-factorization-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/algebra-factorization/iteration-1/algebra-factorization-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "algebra-linear",
+      "category": "álgebra",
+      "problem": "3x + 5 = 20",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/algebra-linear/iteration-0/algebra-linear-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/algebra-linear/iteration-1/algebra-linear-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "calculus-derivative",
+      "category": "cálculo",
+      "problem": "Derivada de x^3 + 2x",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/calculus-derivative/iteration-0/calculus-derivative-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/calculus-derivative/iteration-1/calculus-derivative-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "calculus-integral",
+      "category": "cálculo",
+      "problem": "Integral de 2x entre 0 y 3",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/calculus-integral/iteration-0/calculus-integral-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/calculus-integral/iteration-1/calculus-integral-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "calculus-limit",
+      "category": "cálculo",
+      "problem": "límite de (x²-1)/(x-1) cuando x tiende a 1",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 6,
+      "afterIssues": 6,
+      "repairs": [
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/calculus-limit/iteration-0/calculus-limit-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/calculus-limit/iteration-1/calculus-limit-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "equation-quadratic",
+      "category": "ecuaciones",
+      "problem": "x^2 - 5x + 6 = 0",
+      "mathematicalSupported": true,
+      "mathematicalValid": true,
+      "beforePassed": true,
+      "afterPassed": true,
+      "beforeScore": 95,
+      "afterScore": 95,
+      "beforeIssues": 23,
+      "afterIssues": 18,
+      "repairs": [
+        "move-anchor:hook",
+        "move-anchor:coefficients",
+        "move-anchor:coefficients",
+        "move-anchor:coefficients",
+        "move-anchor:coefficients",
+        "move-anchor:coefficients",
+        "reduce-caption:discriminant-setup",
+        "move-anchor:discriminant-setup"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/equation-quadratic/iteration-0/equation-quadratic-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/equation-quadratic/iteration-1/equation-quadratic-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "equation-rational",
+      "category": "ecuaciones",
+      "problem": "2/(x-1) = 4",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/equation-rational/iteration-0/equation-rational-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/equation-rational/iteration-1/equation-rational-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "function-linear",
+      "category": "funciones",
+      "problem": "f(x) = 2x + 1",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/function-linear/iteration-0/function-linear-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/function-linear/iteration-1/function-linear-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "function-quadratic",
+      "category": "funciones",
+      "problem": "f(x) = x^2 - 4x + 3",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/function-quadratic/iteration-0/function-quadratic-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/function-quadratic/iteration-1/function-quadratic-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "geometry-circle",
+      "category": "geometría",
+      "problem": "Círculo de radio 3",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/geometry-circle/iteration-0/geometry-circle-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/geometry-circle/iteration-1/geometry-circle-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "geometry-triangle",
+      "category": "geometría",
+      "problem": "Triángulo base 8 y altura 5",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/geometry-triangle/iteration-0/geometry-triangle-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/geometry-triangle/iteration-1/geometry-triangle-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "matrix-determinant",
+      "category": "matrices",
+      "problem": "Determinante de matriz 2x2",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/matrix-determinant/iteration-0/matrix-determinant-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/matrix-determinant/iteration-1/matrix-determinant-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "matrix-product",
+      "category": "matrices",
+      "problem": "Producto de matrices 2x2",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/matrix-product/iteration-0/matrix-product-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/matrix-product/iteration-1/matrix-product-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "statistics-mean",
+      "category": "estadística",
+      "problem": "Media de 2, 4, 6, 8",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/statistics-mean/iteration-0/statistics-mean-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/statistics-mean/iteration-1/statistics-mean-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "statistics-probability",
+      "category": "estadística",
+      "problem": "Probabilidad de obtener un 6 en un dado",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 6,
+      "afterIssues": 6,
+      "repairs": [
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/statistics-probability/iteration-0/statistics-probability-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/statistics-probability/iteration-1/statistics-probability-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "system-three",
+      "category": "sistemas",
+      "problem": "x+y+z=6; 2x-y+z=3; x+2y-z=3",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/system-three/iteration-0/system-three-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/system-three/iteration-1/system-three-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "system-two",
+      "category": "sistemas",
+      "problem": "x + y = 7; 2x - y = 5",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/system-two/iteration-0/system-two-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/system-two/iteration-1/system-two-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "trig-pythagorean",
+      "category": "trigonometría",
+      "problem": "sin²(x) + cos²(x) = 1",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/trig-pythagorean/iteration-0/trig-pythagorean-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/trig-pythagorean/iteration-1/trig-pythagorean-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "trig-sine",
+      "category": "trigonometría",
+      "problem": "sen(30°) = 1/2",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/trig-sine/iteration-0/trig-sine-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/trig-sine/iteration-1/trig-sine-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "word-mixture",
+      "category": "problemas verbales",
+      "problem": "Mezcla de 2 litros al 20% y 3 litros al 40%",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 6,
+      "afterIssues": 6,
+      "repairs": [
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/word-mixture/iteration-0/word-mixture-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/word-mixture/iteration-1/word-mixture-final.mp4",
+      "warnings": []
+    },
+    {
+      "id": "word-rate",
+      "category": "problemas verbales",
+      "problem": "Un tren recorre 180 km en 3 horas",
+      "mathematicalSupported": false,
+      "mathematicalValid": false,
+      "beforePassed": false,
+      "afterPassed": false,
+      "beforeScore": 88,
+      "afterScore": 88,
+      "beforeIssues": 7,
+      "afterIssues": 7,
+      "repairs": [
+        "reduce-caption:intro",
+        "reduce-caption:step-1",
+        "reduce-caption:step-2",
+        "reduce-caption:step-3",
+        "reduce-caption:conclusion"
+      ],
+      "renderBefore": "/tmp/mvg-audit-20-final3/word-rate/iteration-0/word-rate-final.mp4",
+      "renderAfter": "/tmp/mvg-audit-20-final3/word-rate/iteration-1/word-rate-final.mp4",
+      "warnings": []
+    }
+  ]
+}

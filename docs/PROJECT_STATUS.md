@@ -15,14 +15,15 @@ La generación estable usa Manim para precisión matemática y FFmpeg para el em
 | API y jobs | Estructuralmente listo | Prisma, idempotencia, heartbeat, retries y recuperación |
 | Worker | Separado y con apagado ordenado | Bull/Redis, cleanup y retry policy |
 | Media | Protegida y validada | Ownership, traversal guard y media QA |
-| Frontend | Contratos endurecidos | Polling con backoff, IDs criptográficos y errores normalizados |
+| Frontend | Contratos endurecidos | Polling con backoff, IDs criptográficos, errores normalizados y MathLive lazy |
 | Remotion | Integrado como opt-in | Smoke test backend en 16:9, 1:1 y 9:16 con AAC |
 | Docker | Definido y documentado | Compose, healthcheck `/readyz` y runtime multimedia |
+| Observabilidad | Lista para staging | Request IDs, `/metrics` protegido y latencias HTTP agregadas |
 | Staging real | Pendiente | Requiere PostgreSQL, Redis, Supabase y secretos |
 
 ## Validación local actual
 
-La última ronda aprobó **56 tests**, compilación del backend, compilación del frontend, lint sin errores, type-check de Remotion y QA audiovisual en los tres formatos del runner Remotion. El frontend todavía muestra un warning de Rollup por tamaño de chunk de MathLive; no es un fallo de compilación, pero se recomienda code splitting antes de una optimización final de carga.
+La última ronda aprobó **56 tests**, compilación del backend, compilación del frontend, lint sin errores, type-check de Remotion y QA audiovisual en los tres formatos del runner Remotion. MathLive ahora se carga de forma diferida: el bundle inicial queda separado del chunk matemático pesado. Vite todavía puede advertir sobre el tamaño del chunk lazy de MathLive, pero ya no bloquea la primera carga del formulario.
 
 ## Decisión de activación
 

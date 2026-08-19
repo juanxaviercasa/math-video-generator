@@ -9,6 +9,7 @@ import { authRoutes } from './routes/auth.routes.js'
 import { mediaRoutes } from './routes/media.routes.js'
 import { prisma } from './lib/prisma.js'
 import { videoQueue } from './services/job.service.js'
+import { runtimeMetrics } from './services/runtime-metrics.service.js'
 
 dotenv.config()
 
@@ -17,8 +18,13 @@ const PORT = process.env.BACKEND_PORT || 3001
 
 app.use((req, res, next) => {
   const requestId = req.header('x-request-id') || randomUUID()
+  const startedAt = process.hrtime.bigint()
   res.setHeader('x-request-id', requestId)
   res.locals.requestId = requestId
+  res.on('finish', () => {
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000
+    runtimeMetrics.observe({ method: req.method, route: req.path, status: res.statusCode, durationMs })
+  })
   next()
 })
 
@@ -68,6 +74,14 @@ app.use(csrfOriginGuard)
 // Health checks: liveness is cheap; readiness verifies dependencies.
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
+app.get('/metrics', (req, res) => {
+  const configuredToken = process.env.METRICS_TOKEN
+  if (!configuredToken || req.header('x-metrics-token') !== configuredToken) {
+    return res.status(404).end()
+  }
+  res.type('text/plain').send(runtimeMetrics.prometheus())
 })
 
 app.get('/readyz', async (_req, res) => {

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { api, PreviewResponse } from '../services/api'
 import { useVideoStore } from '../store/video.store'
-import { InteractiveMathEditor } from './InteractiveMathEditor'
+const InteractiveMathEditor = lazy(() => import('./InteractiveMathEditor').then((module) => ({ default: module.InteractiveMathEditor })))
 import { InteractiveLessonPreview } from './InteractiveLessonPreview'
 
 type VideoGeneratorProps = {
@@ -208,7 +208,9 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
             className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 transition min-h-32"
             disabled={loading}
           />
-          <InteractiveMathEditor value={content} onChange={setContent} disabled={loading} />
+          <Suspense fallback={<p className="mt-2 text-xs text-slate-400">Cargando editor matemático...</p>}>
+            <InteractiveMathEditor value={content} onChange={setContent} disabled={loading} />
+          </Suspense>
           <button
             type="button"
             onClick={handlePreview}

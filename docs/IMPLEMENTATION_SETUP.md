@@ -65,6 +65,8 @@ En producción se recomienda sustituir los valores por secretos administrados, h
 
 La ruta `/health` representa liveness y `/readyz` verifica PostgreSQL y Redis. Docker usa `/readyz` en el healthcheck y el worker espera al estado saludable del backend. Cada respuesta recibe un `x-request-id` para correlacionar errores entre navegador, API y logs.
 
+El endpoint `/metrics` permanece oculto salvo que se configure `METRICS_TOKEN`. Cuando está habilitado, se consulta con `x-metrics-token` y devuelve contadores HTTP y latencias agregadas en formato compatible con scraping. El token real es un placeholder de staging/producción y nunca debe versionarse.
+
 El worker limpia directorios de jobs fallidos antiguos según `FAILED_ARTIFACT_RETENTION_MS`, ejecutando el proceso cada `ARTIFACT_CLEANUP_INTERVAL_MS`. Los videos completados no se eliminan automáticamente porque su retención requiere una política de almacenamiento explícita.
 
 ## QA audiovisual ejecutable

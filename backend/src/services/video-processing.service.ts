@@ -7,6 +7,7 @@ import { synchronization, type SynchronizedScene } from './synchronization.servi
 import { buildLessonTimeline, validateLessonTimeline } from './timeline.service.js';
 import type { LessonTimeline } from './timeline.types.js';
 import { buildQuadraticStoryboard } from './pedagogy.service.js';
+import { renderRemotionDeck } from './remotion-renderer.service.js';
 import { getVideoFormatProfile, type VideoAspectRatio, type VideoQuality } from './video-format.service.js';
 import * as path from 'path';
 import * as os from 'os';
@@ -184,6 +185,9 @@ export const videoProcessing = {
           lessonMode: 'tutorial',
           pedagogicalContract: pedagogicalScenes[0]?.pedagogicalContract,
         });
+        lessonTimeline.segments.forEach((segment, index) => {
+          segment.audioPath = audioSegments[index];
+        });
         const timelineReport = validateLessonTimeline(lessonTimeline);
         if (!timelineReport.passed) {
           throw new Error(`La línea de tiempo pedagógica es inválida: ${timelineReport.issues.map((issue) => issue.message).join(' | ')}`);
@@ -226,7 +230,14 @@ export const videoProcessing = {
         narrationTimeline: process.env.NARRATION_TIMELINE === 'true',
       };
 
-      const videoPath = await manim.renderVideo(manimScene);
+      const manimVideoPath = await manim.renderVideo(manimScene);
+      const remotionEnabled = process.env.REMOTION_ENABLED === 'true';
+      if (remotionEnabled && !lessonTimeline) {
+        throw new Error('REMOTION_ENABLED=true requiere enableNarration=true para conservar un único timeline audiovisual.');
+      }
+      const videoPath = remotionEnabled
+        ? await renderRemotionDeck({ id, timeline: lessonTimeline!, format: aspectRatio, outputDir })
+        : manimVideoPath;
       progress.progress = 70;
       progress.message = 'Animación renderizada; preparando video final...';
       report();
@@ -256,7 +267,7 @@ export const videoProcessing = {
         throw new Error('FFmpeg no produjo el archivo de video final');
       }
 
-      if (narrationAudioPath) {
+      if (narrationAudioPath && !remotionEnabled) {
         const narratedVideoPath = path.join(outputDir, `${id}-narrated.mp4`);
         processedPath = await ffmpeg.mergeAudioWithVideo({
           videoPath: processedPath,

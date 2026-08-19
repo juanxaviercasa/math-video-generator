@@ -85,8 +85,12 @@ cd ../..
 
 ## Remotion y Manim
 
-Remotion ya está integrado en el workspace piloto mediante `TimelineEditorial`, `AnimatedDeck` y composiciones 16:9, 1:1 y 9:16. La composición se renderizó y pasó QA audiovisual; además admite `audioSrc` por segmento mediante `Sequence`/`Audio`. Permanece opt-in para producción (`REMOTION_ENABLED=false`) porque la integración oficial debe consumir el mismo `LessonTimeline` generado por el backend, con una única duración por segmento, y todavía requiere un runner de producción que serialice el deck y sus audios dentro del worker.
- No se debe activar `NARRATION_TIMELINE=true` ni sustituir el renderer estable hasta que el smoke test confirme:
+Remotion ya está integrado en el workspace piloto mediante `TimelineEditorial`, `AnimatedDeck` y composiciones 16:9, 1:1 y 9:16. La composición se renderizó y pasó QA audiovisual; además admite `audioSrc` por segmento mediante `Sequence`/`Audio`.
+
+El runner backend `remotion-renderer.service.ts` ya puede serializar el `LessonTimeline` validado, copiar temporalmente los clips TTS a `public`, ejecutar la composición adecuada por formato y devolver un MP4 para el pipeline FFmpeg. Se activa únicamente con `REMOTION_ENABLED=true`, exige narración para conservar un único reloj audiovisual y deja Manim como ruta estable cuando el flag permanece en `false`. El smoke test backend se ejecutó con voz `es-MX-DaliaNeural` y el MP4 resultante pasó `media-qa.sh`.
+
+Remotion sigue opt-in para producción porque aún debe validarse contra Redis/PostgreSQL/Supabase reales, volúmenes persistentes y concurrencia de workers antes de convertirlo en el renderer predeterminado.
+No se debe activar `NARRATION_TIMELINE=true` ni sustituir el renderer estable hasta que el smoke test confirme:
 
 | Verificación | Condición |
 |---|---|

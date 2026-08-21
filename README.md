@@ -166,3 +166,22 @@ MIT
 ## Nota importante
 
 Este proyecto está pensado como una base funcional para generar videos matemáticos con herramientas locales y con integración opcional de IA. El objetivo es seguir mejorando la calidad pedagógica, el render y la experiencia del usuario.
+
+
+## Presentación profesional
+
+Este proyecto demuestra un flujo multimedia completo: entrada educativa, generación asistida, render matemático, composición de video, narración y descarga desde una interfaz web. La combinación de React, Express, TypeScript, Manim, LaTeX y FFmpeg permite evaluar tanto experiencia de producto como integración con herramientas nativas.
+
+## Arquitectura y operación
+
+El frontend solicita trabajos al backend. El backend valida la entrada, registra el estado del proceso y coordina generación, render y composición. Los binarios externos deben verificarse mediante health checks y sus rutas deben configurarse por entorno. Las claves de IA nunca deben almacenarse en Git.
+
+Para una evaluación de producción, el siguiente paso es documentar una cola de trabajos, límites de duración y tamaño, cancelación, limpieza de artefactos temporales, logs estructurados y una estrategia de despliegue reproducible con Docker.
+
+## Calidad
+
+La evolución recomendada incluye pruebas de contratos del API, pruebas de estados del render, fixtures de problemas matemáticos, smoke tests del frontend y un workflow de GitHub Actions que ejecute lint, typecheck y pruebas sin requerir claves reales. Las respuestas generadas por IA deben validarse antes de convertirse en instrucciones para Manim.
+
+## Caso para reclutadores
+
+La señal principal no es solamente generar un video, sino coordinar un pipeline con dependencias externas, fallos parciales y una experiencia comprensible para docentes y estudiantes. Este proyecto complementa `pymes-insights-platform` al demostrar procesamiento multimedia y productos educativos.

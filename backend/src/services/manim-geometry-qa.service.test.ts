@@ -72,5 +72,19 @@ test('reports narration timing drift and malformed capture metadata', () => {
   const result = validateObservedGeometry(report, requirements);
   assert.equal(result.passed, false);
   assert.ok(result.errors.some((error) => error.includes('GEOMETRY_CAPTURE')));
-  assert.ok(result.warnings.some((warning) => warning.includes('GEOMETRY_SYNC')));
+  assert.ok(result.errors.some((error) => error.includes('GEOMETRY_SYNC')));
+});
+
+test('warns on small sync drift but blocks a half-second timeline discrepancy', () => {
+  const report = valid();
+  report.stages[0].end = 5.3;
+  report.stages[1].start = 5.3;
+  report.stages[1].end = 10.3;
+  const warning = validateObservedGeometry(report, requirements);
+  assert.equal(warning.passed, true);
+  assert.ok(warning.warnings.some((issue) => issue.includes('GEOMETRY_SYNC')));
+  report.stages[0].end = 5.7;
+  const blocking = validateObservedGeometry(report, requirements);
+  assert.equal(blocking.passed, false);
+  assert.ok(blocking.errors.some((issue) => issue.includes('GEOMETRY_SYNC')));
 });

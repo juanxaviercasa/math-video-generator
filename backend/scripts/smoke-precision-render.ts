@@ -12,17 +12,18 @@ import { validateRenderIntegrity } from '../src/services/render-integrity.servic
 const problem = 'x^2 - 5x + 6 = 0';
 const formats: VideoAspectRatio[] = ['16:9', '1:1', '9:16'];
 
-async function smoke(format: VideoAspectRatio): Promise<void> {
+async function smoke(format: VideoAspectRatio, fullLesson = false): Promise<void> {
   const artifactRoot = process.env.PRECISION_ARTIFACTS_DIR || path.resolve('smoke-artifacts');
-  const root = path.join(path.resolve(artifactRoot), format.replace(':', 'x'));
+  const root = path.join(path.resolve(artifactRoot), format.replace(':', 'x') + (fullLesson ? '-full' : ''));
   fs.mkdirSync(root, { recursive: true });
   const profile = getVideoFormatProfile(format, 'low');
   const validated = validateMathProblem(problem);
-  const scenes = buildQuadraticStoryboard(problem, validated)
+  const storyboard = buildQuadraticStoryboard(problem, validated);
+  const scenes = fullLesson ? storyboard : storyboard
     .filter((scene) => scene.id === 'coefficients' || scene.id === 'graph');
   const geometryFile = path.join(root, 'observed-geometry.json');
   const raw = await manim.renderVideo({
-    title: 'Precise Math Smoke',
+    title: fullLesson ? 'Full Quadratic Lesson' : 'Precise Math Smoke',
     content: problem,
     steps: validated.steps,
     outputDir: root,
@@ -59,11 +60,12 @@ async function smoke(format: VideoAspectRatio): Promise<void> {
   const frames = await auditFinalVideoFrames(exported, root, integrity.actual.videoDuration || 0, 6);
   fs.writeFileSync(path.join(root, 'final-frames-qa.json'), JSON.stringify(frames, null, 2));
   if (!frames.passed) throw new Error('Final frames failed: ' + frames.errors.join(' | '));
-  console.log('APPROVED', format, profile.width, profile.height, 'duration', integrity.actual.videoDuration, 'snapshots', geometry.stages.length);
+  console.log(fullLesson ? 'APPROVED FULL LESSON' : 'APPROVED', format, profile.width, profile.height, 'duration', integrity.actual.videoDuration, 'snapshots', geometry.stages.length);
 }
 
 (async () => {
   for (const format of formats) await smoke(format);
+  await smoke('16:9', true);
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

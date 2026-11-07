@@ -83,6 +83,22 @@ interface VideoResponse {
   validation?: MathValidation
 }
 
+export interface AiModel {
+  slug: string
+  title: string
+  role: string
+  pack?: string
+  sizeGb?: number
+}
+export interface AiInfrastructureStatus {
+  configured: boolean
+  reachable: boolean
+  inferenceReady: boolean
+  source: 'viralforge'
+  models: AiModel[]
+  message: string
+}
+
 export interface VoiceChoice {
   id: string
   label: string
@@ -134,6 +150,11 @@ export interface LibraryVideo {
 }
 
 export const api = {
+  async getAiInfrastructure(): Promise<AiInfrastructureStatus> {
+    const response = await axios.get<AiInfrastructureStatus>(`${API_URL}/ai-infrastructure`, { withCredentials: true })
+    return response.data
+  },
+
   async listVideos(): Promise<LibraryVideo[]> {
     const response = await axios.get<{ videos: LibraryVideo[] }>(`${API_URL}/videos`, {
       withCredentials: true,

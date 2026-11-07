@@ -20,10 +20,11 @@ WORKDIR /app
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     python3 python3-pip python3-dev build-essential pkg-config \
-    libcairo2-dev libpango1.0-dev ffmpeg \
+    libcairo2-dev libpango1.0-dev ffmpeg poppler-utils \
     texlive-latex-base texlive-latex-extra texlive-fonts-recommended \
     dvisvgm ghostscript \
   && python3 -m pip install --break-system-packages --no-cache-dir manim edge-tts \
+  && python3 -m edge_tts --version \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/node_modules ./node_modules

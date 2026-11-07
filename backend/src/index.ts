@@ -10,6 +10,7 @@ import { mediaRoutes } from './routes/media.routes.js'
 import { prisma } from './lib/prisma.js'
 import { videoQueue } from './services/job.service.js'
 import { runtimeMetrics } from './services/runtime-metrics.service.js'
+import { mcpHttpRouter } from './mcp/http.js'
 
 dotenv.config()
 
@@ -64,7 +65,7 @@ app.use(express.urlencoded({ limit: '1mb', extended: true }))
 const csrfOriginGuard = (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const mutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)
   const origin = req.header('origin')
-  if (mutating && origin && origin !== allowedOrigin) {
+  if (mutating && origin && origin !== allowedOrigin && req.path !== '/mcp' && req.path !== '/mcp/') {
     return res.status(403).json({ code: 'CSRF_ORIGIN_REJECTED', error: 'Origen no autorizado' })
   }
   return next()
@@ -95,6 +96,10 @@ app.get('/readyz', async (_req, res) => {
   }
 })
 
+// Remote MCP is disabled by default. All calls require a 32+ character bearer token.
+// Use HTTPS/TLS at the reverse proxy when enabling ChatGPT remote access.
+app.use('/mcp', mcpHttpRouter)
+
 // API Routes
 app.get('/api', (req, res) => {
   res.json({ message: 'Math Video Generator API v0.1.0' })
@@ -107,6 +112,7 @@ app.use('/api/media', mediaRoutes)
 app.use('/api/auth', authLimiter, authRoutes)
 
 // Video generation routes. Only creation is rate-limited; polling remains available.
+app.use('/api/voices/preview', generationLimiter)
 app.use('/api/extract-exercise', generationLimiter)
 app.use('/api/generate-video', (req, res, next) => {
   if (req.method === 'POST') return generationLimiter(req, res, next)

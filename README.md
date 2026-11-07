@@ -12,9 +12,11 @@ Requisitos, límites y pruebas del flujo: [Pipeline de imagen/PDF a matemática 
 ## Despliegue privado para una sola persona
 
 La instalación Oracle se ha adaptado al **modo personal**: sin registro abierto,
-con acceso exclusivo al UUID existente del propietario en Supabase, frontend
-protegido por sesión, PostgreSQL/Redis sin puertos públicos y worker de video
-limitado a una ejecución simultánea.
+con acceso exclusivo al UUID del propietario en Supabase, frontend protegido
+por sesión, **Supabase PostgreSQL gestionado**, Redis privado en Oracle y
+worker de video limitado a una ejecución simultánea. El proyecto Supabase
+`Video Generator` (`jplhbgyhswvbghhzhjvm`) ya tiene las tablas privadas de
+perfiles y videos con RLS, sin permisos directos desde la Data API.
 
 - [Manual de despliegue privado Cloudflare Pages + Oracle](docs/PERSONAL_ORACLE_DEPLOYMENT.md)
 - [Variables privadas del servidor](.env.personal.example)

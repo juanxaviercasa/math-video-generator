@@ -3,6 +3,7 @@ import { ffmpeg } from './ffmpeg.service.js';
 import { openai } from './openai.service.js';
 import { tts } from './tts.service.js';
 import { resolveVoiceId } from './voice-catalog.service.js';
+import { validateAudibleAudio } from './audio-qa.service.js';
 import { validateMathProblem, type MathValidation } from './math-validation.service.js';
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
 import { buildLessonTimeline, validateLessonTimeline } from './timeline.service.js';
@@ -423,6 +424,14 @@ export const videoProcessing = {
       }
       // Sample each measured pedagogical scene in the encoded MP4, not only
       // uniform timestamps which may skip short scenes.
+      if (enableNarration) {
+        const audibility = await validateAudibleAudio(processedPath);
+        fs.writeFileSync(path.join(outputDir, `${id}-audio-qa.json`), JSON.stringify(audibility, null, 2));
+        if (!audibility.passed) {
+          throw new Error(`NARRATION_INAUDIBLE: El MP4 no contiene voz suficientemente audible (${audibility.reason}; pico ${audibility.maxDb} dBFS).`);
+        }
+      }
+
       const measuredStages = !remotionEnabled && pedagogicalScenes.length
         ? (JSON.parse(fs.readFileSync(manimScene.geometryReportPath, 'utf8')) as {
           stages: Array<{ id: string; start: number; end: number }>;

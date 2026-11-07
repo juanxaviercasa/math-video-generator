@@ -34,7 +34,8 @@ jobs:
 
       - name: Validate personal Docker Compose without real secrets
         env:
-          DB_PASSWORD: ci-only-password
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/postgres
+          DIRECT_URL: postgresql://ci:ci@127.0.0.1:5432/postgres
           JWT_SECRET: 0123456789abcdef0123456789abcdef
           OWNER_USER_ID: e233caa1-3a71-4c2c-a731-71af5e6d84b0
           SUPABASE_URL: https://ci-placeholder.supabase.co
@@ -46,9 +47,11 @@ jobs:
           node - <<'NODE'
           const fs = require('node:fs')
           const cfg = JSON.parse(fs.readFileSync('/tmp/math-compose-ci.json', 'utf8'))
-          for (const name of ['postgres', 'redis']) {
-            if (cfg.services[name].ports?.length) throw Error(name + ' must not publish ports')
-          }
+          if (cfg.services.postgres) throw Error('Oracle must not run a duplicate Postgres service')
+          if (cfg.services.redis.ports?.length) throw Error('Redis must stay private')
+          if (!cfg.services.backend.environment.DATABASE_URL) throw Error('Supabase database URL missing')
+          if (!cfg.services.backend.environment.SUPABASE_URL.includes('jplhbgyhswvbghhzhjvm')) throw Error('Wrong Supabase project')
+          if (cfg.services.worker.ports?.length) throw Error('Worker must not be published')
           const apiPorts = cfg.services.backend.ports || []
           if (apiPorts.length !== 1 || apiPorts[0].host_ip !== '127.0.0.1') {
             throw Error('Backend API must bind only to localhost')
@@ -59,7 +62,7 @@ jobs:
           if (cfg.services.worker.environment.VIDEO_WORKER_CONCURRENCY !== '1') {
             throw Error('Personal worker concurrency must be 1')
           }
-          console.log('Private Compose config validated: no DB/Redis exposure, single-owner mode, localhost API.')
+          console.log('Private Compose config validated: no duplicate Postgres, private Redis, single-owner mode, localhost API.')
           NODE
 
       - name: Verify Cloudflare Pages files

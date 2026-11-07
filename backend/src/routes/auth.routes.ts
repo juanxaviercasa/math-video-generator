@@ -3,6 +3,7 @@ import { supabaseAuth } from '../lib/supabase.js';
 import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { loginSchema, registerSchema } from '../schemas/auth.schema.js';
 import { syncSupabaseProfile } from '../services/profile.service.js';
+import { personalModeEnabled, isOwner } from '../services/personal-mode.service.js';
 
 const router = Router();
 const ACCESS_COOKIE = 'mvg_access_token';
@@ -37,6 +38,7 @@ const clearSession = (res: Response) => {
 };
 
 router.post('/register', async (req: Request, res: Response) => {
+  if (personalModeEnabled()) return res.status(403).json({ code: 'PRIVATE_INSTALLATION', error: 'El registro está deshabilitado en esta instalación personal.' });
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
@@ -92,6 +94,7 @@ router.post('/login', async (req: Request, res: Response) => {
     return res.status(401).json({ code: 'INVALID_CREDENTIALS', error: 'Correo o contraseña incorrectos' });
   }
 
+  if (!isOwner(data.user.id)) return res.status(403).json({ code: 'OWNER_ONLY', error: 'Acceso reservado al propietario.' });
   const user = await syncSupabaseProfile(data.user);
   issueSession(res, data.session);
   return res.json({ user: publicUser(user) });

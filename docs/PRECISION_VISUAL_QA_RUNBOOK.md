@@ -48,6 +48,9 @@ Las rutas anteriores son internas del trabajo y no se publican sin autorización
 - **Exactitud matemática:** un solver no respaldado no habilita una solución ficticia.
 - **Geometría:** los objetos de texto deben quedar dentro del área segura con tolerancia
   máxima de 2 px; no se aceptan colisiones entre textos simultáneos.
+- **Legibilidad:** `Text` exige al menos `max(9 px, 1 % del alto)` y `Tex/MathTex`
+  `max(12 px, 1,4 % del alto)`. Son pisos técnicos, no sustituyen una revisión
+  editorial en pantalla móvil; su criterio puede endurecerse por tipo de elemento.
 - **Sincronización:** variaciones de 0,15 a 0,50 s generan advertencia; desviaciones
   superiores a 0,50 s bloquean el video.
 - **FPS:** se espera un valor promedio de 30 con tolerancia de 0,01 fps.

@@ -59,3 +59,23 @@ test('uses timeline micro-events only when explicitly enabled', () => {
   assert.match(script, /FadeOut\(timeline_0_0\), run_time=/);
   assert.match(script, /FadeIn\(timeline_0_1\), run_time=/);
 });
+
+test('legacy graph uses actual quadratic coefficients and roots, never the demo parabola', async () => {
+  const { validateMathProblem } = await import('./math-validation.service.js');
+  const { buildQuadraticStoryboard } = await import('./pedagogy.service.js');
+  const input = '3x^2 + 2x - 8 = 0';
+  const scenes = buildQuadraticStoryboard(input, validateMathProblem(input));
+  const script = manim.generatePythonScript({
+    title: 'Graph validation',
+    content: input,
+    steps: [],
+    outputDir: '/tmp',
+    pedagogicalScenes: scenes,
+    narrationTimeline: false,
+  }, true);
+
+  assert.match(script, /lambda x: 3 \* x\*\*2 \+ \(2\) \* x \+ \(-8\)/);
+  assert.match(script, /x=1\.333/);
+  assert.match(script, /x=-2\.000/);
+  assert.doesNotMatch(script, /lambda x: \(x - 2\) \* \(x - 3\)/);
+});

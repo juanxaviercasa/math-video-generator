@@ -1,9 +1,10 @@
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 
 const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const ffmpegCandidates = [
   'C:\\Users\\pc\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0-full_build\\bin\\ffmpeg.exe',
@@ -51,6 +52,32 @@ export const ffmpeg = {
   },
   getProbeCommand(): string {
     return resolveBinary(ffprobeCandidates);
+  },
+  /**
+   * Every narration scene must have an explicit audio segment of the same
+   * duration as its visual scene. Pad at the end instead of shifting the next voice.
+   * Unify sample rate and channels so the concat demuxer is deterministic.
+   */
+  async alignNarrationSegment(inputPath: string, outputPath: string, targetDuration: number): Promise<string> {
+    if (!Number.isFinite(targetDuration) || targetDuration <= 0 || !fs.existsSync(inputPath)) {
+      throw new Error('AUDIO_ALIGNMENT_INVALID: Archivo o duración de audio inválidos.');
+    }
+    const args = [
+      '-hide_banner', '-loglevel', 'error', '-nostdin',
+      '-i', inputPath, '-af', 'apad',
+      '-t', String(targetDuration), '-ar', '24000', '-ac', '1',
+      '-c:a', 'pcm_s16le', '-y', outputPath,
+    ];
+    await execFileAsync(this.getCommand(), args, { maxBuffer: 5 * 1024 * 1024 });
+    if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size < 1024) {
+      throw new Error('AUDIO_ALIGNMENT_FAILED: No se produjo el segmento sincronizado.');
+    }
+    const metadata = await this.getVideoInfo(outputPath);
+    const actual = Number(metadata.format?.duration);
+    if (!Number.isFinite(actual) || Math.abs(actual - targetDuration) > 0.06) {
+      throw new Error('AUDIO_ALIGNMENT_DRIFT: El audio no coincide con la duración de la escena.');
+    }
+    return outputPath;
   },
   /**
    * Procesar y optimizar video

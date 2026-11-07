@@ -4,6 +4,7 @@ import { assertPersonalModeConfigured, isOwner, personalModeEnabled } from './pe
 
 const originalMode = process.env.PERSONAL_MODE;
 const originalOwner = process.env.OWNER_USER_ID;
+const originalNodeEnv = process.env.NODE_ENV;
 const validOwner = 'e233caa1-3a71-4c2c-a731-71af5e6d84b0';
 
 test('private mode rejects startup without a valid owner UUID', () => {
@@ -31,7 +32,17 @@ test('existing multi-user development installs are unaffected when private mode 
   assert.equal(isOwner('test'), true);
 });
 
+test('production defaults to owner-only even when PERSONAL_MODE was omitted', () => {
+  delete process.env.PERSONAL_MODE;
+  delete process.env.OWNER_USER_ID;
+  process.env.NODE_ENV = 'production';
+  assert.equal(personalModeEnabled(), true);
+  assert.throws(() => assertPersonalModeConfigured(), /OWNER_USER_ID/);
+});
+
 test.after(() => {
+  if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = originalNodeEnv;
   if (originalMode === undefined) delete process.env.PERSONAL_MODE;
   else process.env.PERSONAL_MODE = originalMode;
   if (originalOwner === undefined) delete process.env.OWNER_USER_ID;

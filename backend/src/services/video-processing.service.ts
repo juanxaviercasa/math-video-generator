@@ -11,6 +11,7 @@ import { renderRemotionDeck } from './remotion-renderer.service.js';
 import { getVideoFormatProfile, type VideoAspectRatio, type VideoQuality } from './video-format.service.js';
 import { validateRenderIntegrity } from './render-integrity.service.js';
 import { readAndValidateGeometry } from './manim-geometry-qa.service.js';
+import { auditFinalVideoFrames } from './final-frame-qa.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -343,6 +344,12 @@ export const videoProcessing = {
       }
       if (!integrity.passed || !fs.existsSync(processedPath) || !fs.existsSync(thumbnailPath)) {
         throw new Error(`Los artefactos finales no superaron la validación audiovisual: ${integrity.errors.join(' | ') || 'archivos faltantes'}`);
+      }
+      const frameQa = await auditFinalVideoFrames(processedPath, outputDir, integrity.actual.videoDuration ?? 0);
+      fs.writeFileSync(path.join(outputDir, `${id}-frame-qa.json`), JSON.stringify(frameQa, null, 2), 'utf8');
+      for (const warning of frameQa.warnings) console.warn('⚠️  Fotogramas:', warning);
+      if (!frameQa.passed) {
+        throw new Error(`FINAL_FRAME_QA_FAILED: ${frameQa.errors.join(' | ')}`);
       }
       const duration = Math.round(integrity.actual.videoDuration ?? 0);
 

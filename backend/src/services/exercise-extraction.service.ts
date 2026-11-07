@@ -128,7 +128,7 @@ function extractTextFromResponse(value: unknown): string {
   return '';
 }
 
-export async function extractExerciseFromSource(data: Buffer, mediaType: string, rawPage?: unknown): Promise<ExerciseExtraction> {
+export async function extractExerciseFromSource(data: Buffer, mediaType: string, rawPage?: unknown, preferredProvider: 'gemini' | 'openai' | 'openrouter' | 'auto' = 'auto'): Promise<ExerciseExtraction> {
   const sourceType = verifyExerciseSource(data, mediaType);
   const page = validatePdfPage(rawPage);
   const image = await prepareExerciseImage(data, sourceType, page);
@@ -139,8 +139,17 @@ export async function extractExerciseFromSource(data: Buffer, mediaType: string,
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   const openAiKey = process.env.OPENAI_API_KEY;
   const openRouterKey = process.env.OPENROUTER_API_KEY;
+  const provider = preferredProvider === 'auto'
+    ? geminiKey ? 'gemini' : openAiKey ? 'openai' : 'openrouter'
+    : preferredProvider;
+  if ((provider === 'gemini' && !geminiKey)
+      || (provider === 'openai' && !openAiKey)
+      || (provider === 'openrouter' && (!openRouterKey || !process.env.OPENROUTER_VISION_MODEL))) {
+    throw new ExerciseExtractionError('EXERCISE_VISION_NOT_CONFIGURED',
+      `Configura las credenciales y un modelo multimodal de ${provider} para analizar imágenes.`, 503);
+  }
   try {
-    if (geminiKey) {
+    if (provider === 'gemini') {
       const model = process.env.GEMINI_VISION_MODEL || 'gemini-2.5-flash';
       const response = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
@@ -148,8 +157,8 @@ export async function extractExerciseFromSource(data: Buffer, mediaType: string,
         { headers: { 'x-goog-api-key': geminiKey }, timeout: 45000 },
       );
       responseText = response.data?.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('') || '';
-    } else if (openAiKey || (openRouterKey && process.env.OPENROUTER_VISION_MODEL)) {
-      const useOpenAi = Boolean(openAiKey);
+    } else if (provider === 'openai' || provider === 'openrouter') {
+      const useOpenAi = provider === 'openai';
       const endpoint = useOpenAi ? 'https://api.openai.com/v1/chat/completions' : 'https://openrouter.ai/api/v1/chat/completions';
       const model = useOpenAi ? (process.env.OPENAI_VISION_MODEL || 'gpt-4o-mini') : process.env.OPENROUTER_VISION_MODEL;
       const response = await axios.post(endpoint, {

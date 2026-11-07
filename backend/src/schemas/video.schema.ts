@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_NARRATOR, SPANISH_VOICES } from '../services/voice-catalog.service.js';
 
 export const videoGenerationSchema = z
   .object({
@@ -31,6 +32,7 @@ export const videoGenerationSchema = z
     layoutDensity: z.enum(['comfortable', 'compact']).default('comfortable'),
     narrationStyle: z.enum(['warm_teacher', 'neutral_teacher']).default('warm_teacher'),
     enableNarration: z.boolean().default(true),
+    narratorVoiceId: z.string().max(64).refine((value) => SPANISH_VOICES.some((voice) => voice.id === value), 'Selecciona una voz del catálogo').default(DEFAULT_NARRATOR),
     aiProvider: z.enum(['openrouter', 'gemini', 'openai']).default('openrouter'),
     enableComfyUI: z.boolean().default(false),
     steps: z

@@ -75,7 +75,31 @@ test('legacy graph uses actual quadratic coefficients and roots, never the demo 
   }, true);
 
   assert.match(script, /lambda x: 3 \* x\*\*2 \+ \(2\) \* x \+ \(-8\)/);
-  assert.match(script, /x=1\.333/);
-  assert.match(script, /x=-2\.000/);
+  assert.ok(script.includes('x\\\\approx1.333'));
+  assert.match(script, /x=-2/);
   assert.doesNotMatch(script, /lambda x: \(x - 2\) \* \(x - 3\)/);
+});
+
+test('rejects graphs without validated coefficients instead of drawing demonstration roots', () => {
+  assert.throws(() => manim.generatePythonScript({
+    title: 'Unverified graph',
+    content: 'y=x^2+100',
+    steps: [],
+    outputDir: '/tmp',
+    synchronizedScenes: [
+      { id: 'intro', kind: 'intro', visualText: 'y=x^2+100', narrationText: 'Veamos.', estimatedDuration: 5 },
+      { id: 'graph', kind: 'graph', visualText: 'Grafica', narrationText: 'Analizamos.', estimatedDuration: 5 },
+    ],
+  }, true), /GRAPH_SPEC_MISSING/);
+});
+
+test('does not fabricate a graph in a steps-only fallback', () => {
+  const script = manim.generatePythonScript({
+    title: 'Legacy equation',
+    content: 'x^2 + 100 = 0',
+    steps: ['No hay soluciones reales'],
+    outputDir: '/tmp',
+  }, true);
+  assert.doesNotMatch(script, /lambda x: \(x - 2\) \* \(x - 3\)/);
+  assert.doesNotMatch(script, /root_2 = Dot/);
 });

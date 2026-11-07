@@ -62,6 +62,7 @@ interface VideoRequest {
   layoutDensity?: 'comfortable' | 'compact'
   narrationStyle?: 'warm_teacher' | 'neutral_teacher'
   enableNarration?: boolean
+  narratorVoiceId?: string
   aiProvider?: 'openrouter' | 'gemini' | 'openai'
   enableComfyUI?: boolean
   steps?: string[]
@@ -80,6 +81,15 @@ interface VideoResponse {
   heartbeatAt?: string
   workerId?: string
   validation?: MathValidation
+}
+
+export interface VoiceChoice {
+  id: string
+  label: string
+  locale: string
+  language: 'es'
+  gender: 'female' | 'male'
+  provider: 'edge'
 }
 
 export interface ExtractedExercise {
@@ -129,6 +139,33 @@ export const api = {
       withCredentials: true,
     })
     return response.data.videos.map(normalizeVideo)
+  },
+
+  async getVoices(): Promise<VoiceChoice[]> {
+    const response = await axios.get<{ voices: VoiceChoice[] }>(`${API_URL}/voices`, { withCredentials: true })
+    return response.data.voices
+  },
+
+  async previewVoice(narratorVoiceId: string, narrationStyle: 'warm_teacher' | 'neutral_teacher'): Promise<Blob> {
+    try {
+      const response = await axios.post<ArrayBuffer>(
+        `${API_URL}/voices/preview`,
+        { narratorVoiceId, narrationStyle },
+        { withCredentials: true, responseType: 'arraybuffer', timeout: 65000 },
+      )
+      return new Blob([response.data], { type: 'audio/mpeg' })
+    } catch (error) {
+      // For binary responses axios cannot parse the server's JSON diagnostic automatically.
+      if (axios.isAxiosError(error) && error.response?.data instanceof ArrayBuffer) {
+        try {
+          const data = JSON.parse(new TextDecoder().decode(error.response.data)) as { code?: string; error?: string }
+          throw new ApiError(data.error || 'No se pudo generar la muestra de voz', { code: data.code, status: error.response.status })
+        } catch (parsed) {
+          if (parsed instanceof ApiError) throw parsed
+        }
+      }
+      throw normalizeApiError(error)
+    }
   },
 
   async extractExercise(file: File, page = 1): Promise<ExtractedExercise> {

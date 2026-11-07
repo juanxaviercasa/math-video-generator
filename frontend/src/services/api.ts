@@ -82,6 +82,16 @@ interface VideoResponse {
   validation?: MathValidation
 }
 
+export interface ExtractedExercise {
+  problem: string
+  sourceType: 'image/png' | 'image/jpeg' | 'image/webp' | 'application/pdf'
+  observedSolutionSteps: string[]
+  confidence: 'high' | 'medium' | 'low'
+  requiresConfirmation: true
+  warnings: string[]
+  validation: MathValidation
+}
+
 export interface PreviewResponse {
   title: string
   validation: MathValidation
@@ -119,6 +129,19 @@ export const api = {
       withCredentials: true,
     })
     return response.data.videos.map(normalizeVideo)
+  },
+
+  async extractExercise(file: File, page = 1): Promise<ExtractedExercise> {
+    try {
+      const response = await axios.post<ExtractedExercise>(`${API_URL}/extract-exercise?page=${encodeURIComponent(page)}`, file, {
+        withCredentials: true,
+        headers: { 'Content-Type': file.type },
+        timeout: 60000,
+      })
+      return response.data
+    } catch (error) {
+      throw normalizeApiError(error)
+    }
   },
 
   async preview(data: Omit<VideoRequest, 'id'>): Promise<PreviewResponse> {

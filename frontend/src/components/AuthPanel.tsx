@@ -6,9 +6,10 @@ type AuthPanelProps = {
   user: User | null
   onAuthenticated: (user: User) => void
   onLogout: () => void
+  onForgotPassword: () => void
 }
 
-export function AuthPanel({ user, onAuthenticated, onLogout }: AuthPanelProps) {
+export function AuthPanel({ user, onAuthenticated, onLogout, onForgotPassword }: AuthPanelProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -67,6 +68,10 @@ export function AuthPanel({ user, onAuthenticated, onLogout }: AuthPanelProps) {
           />
 
           {error && <p className="mb-3 text-xs text-red-300">{error}</p>}
+          <button type="button" onClick={() => { setOpen(false); setPassword(''); onForgotPassword() }}
+            className="mb-3 block text-xs text-blue-300 hover:text-blue-200">
+            Olvidé mi contraseña
+          </button>
 
           <button
             type="button"

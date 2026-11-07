@@ -5,6 +5,7 @@ import type { CheckpointKind, FormulaPersistence, PedagogicalContract, Pedagogic
 export interface VisualStage {
   label: string;
   latex: string;
+  voiceText?: string;
   detail?: string;
   role?: PedagogicalRole;
   semanticStep?: string;
@@ -38,6 +39,7 @@ export interface PedagogicalScene extends SynchronizedScene {
   formulaAnchor?: PedagogicalFormulaAnchor;
   checkpoints?: PedagogicalCheckpoint[];
   graphSpec?: QuadraticGraphSpec;
+  visualCueDurations?: number[];
   pedagogicalStep?: PedagogicalStep;
   pedagogicalContract?: PedagogicalContract;
   emphasis?: string;
@@ -232,10 +234,10 @@ export const buildQuadraticStoryboard = (
       9,
       ['Paso 1 · elevar', 'Paso 2 · multiplicar', 'Paso 3 · restar'],
       [
-        { label: 'Fórmula base', latex: discriminantFormula, role: 'operation', semanticStep: 'Mostrar la fórmula del discriminante' },
-        { label: 'Reemplazamos', latex: discriminantSubstitution, role: 'operation', semanticStep: 'Sustituir b, a y c en la fórmula' },
-        { label: 'Operamos', latex: discriminantOperation, role: 'operation', semanticStep: 'Calcular las operaciones del discriminante' },
-        { label: 'Resultado', latex: `\\Delta = ${formatValue(delta)}`, role: 'result', semanticStep: 'Conservar el valor del discriminante' },
+        { label: 'Fórmula base', latex: discriminantFormula, voiceText: 'El discriminante se calcula con be al cuadrado menos cuatro por a por ce.', role: 'operation', semanticStep: 'Mostrar la fórmula del discriminante' },
+        { label: 'Reemplazamos', latex: discriminantSubstitution, voiceText: `Reemplazamos be por ${numberToSpanish(b)}, a por ${numberToSpanish(a)} y ce por ${numberToSpanish(c)}.`, role: 'operation', semanticStep: 'Sustituir b, a y c en la fórmula' },
+        { label: 'Operamos', latex: discriminantOperation, voiceText: `Be al cuadrado es ${numberToSpanish(b * b)}; cuatro por a por ce es ${numberToSpanish(4 * a * c)}.`, role: 'operation', semanticStep: 'Calcular las operaciones del discriminante' },
+        { label: 'Resultado', latex: `\\Delta = ${formatValue(delta)}`, voiceText: `Al restar, el discriminante vale ${numberToSpanish(delta)}.`, role: 'result', semanticStep: 'Conservar el valor del discriminante' },
       ],
       {
         formulaAnchor: { latex: discriminantFormula, label: 'Referencia', persistence: 'segment', position: 'top' },
@@ -262,8 +264,8 @@ export const buildQuadraticStoryboard = (
       8,
       [],
       [
-        { label: 'Fórmula de partida', latex: 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}', role: 'context', semanticStep: 'Mantener visible la fórmula de referencia' },
-        { label: 'Sustituimos a, b y Δ', latex: formulaSubstitution, role: 'operation', semanticStep: 'Reemplazar cada símbolo por su valor' },
+        { label: 'Fórmula de partida', latex: 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}', voiceText: 'Recordamos la fórmula general para resolver una ecuación cuadrática.', role: 'context', semanticStep: 'Mantener visible la fórmula de referencia' },
+        { label: 'Sustituimos a, b y Δ', latex: formulaSubstitution, voiceText: `En la fórmula sustituimos a por ${numberToSpanish(a)}, be por ${numberToSpanish(b)} y el discriminante por ${numberToSpanish(delta)}.`, role: 'operation', semanticStep: 'Reemplazar cada símbolo por su valor' },
       ],
       {
         formulaAnchor: { latex: 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}', label: 'Fórmula de referencia', persistence: 'segment', position: 'top' },
@@ -280,8 +282,8 @@ export const buildQuadraticStoryboard = (
       8,
       [],
       [
-        { label: 'Después de sustituir', latex: formulaSubstitution, role: 'context', semanticStep: 'Conservar la sustitución completa' },
-        { label: 'Simplificamos', latex: formulaSimplified, role: 'operation', semanticStep: 'Simplificar raíz y denominador' },
+        { label: 'Después de sustituir', latex: formulaSubstitution, voiceText: 'Partimos de la fórmula que acabamos de completar.', role: 'context', semanticStep: 'Conservar la sustitución completa' },
+        { label: 'Simplificamos', latex: formulaSimplified, voiceText: `Simplificamos el denominador, dos por a, y la raíz cuadrada del discriminante ${numberToSpanish(delta)}.`, role: 'operation', semanticStep: 'Simplificar raíz y denominador' },
       ],
       {
         formulaAnchor: { latex: formulaSubstitution, label: 'Sustitución de referencia', persistence: 'segment', position: 'top' },
@@ -297,9 +299,9 @@ export const buildQuadraticStoryboard = (
       10,
       ['Camino +', 'Camino −'],
       [
-        { label: 'Expresión simplificada', latex: formulaSimplified, role: 'context', semanticStep: 'Conservar la expresión simplificada' },
-        { label: 'Camino +', latex: `x_1 = \\frac{${formatValue(-b)} + ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x1)} ${formatRoot(x1)}`, role: 'result', semanticStep: 'Resolver la primera rama' },
-        { label: 'Camino −', latex: `x_2 = \\frac{${formatValue(-b)} - ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x2)} ${formatRoot(x2)}`, role: 'result', semanticStep: 'Resolver la segunda rama' },
+        { label: 'Expresión simplificada', latex: formulaSimplified, voiceText: 'La expresión contiene el símbolo más o menos, que genera dos caminos.', role: 'context', semanticStep: 'Conservar la expresión simplificada' },
+        { label: 'Camino +', latex: `x_1 = \\frac{${formatValue(-b)} + ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x1)} ${formatRoot(x1)}`, voiceText: `En el primer camino sumamos y obtenemos equis uno ${rootRelation(x1) === '=' ? 'igual a' : 'aproximadamente'} ${numberToSpanish(Number(formatRoot(x1)))}.`, role: 'result', semanticStep: 'Resolver la primera rama' },
+        { label: 'Camino −', latex: `x_2 = \\frac{${formatValue(-b)} - ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x2)} ${formatRoot(x2)}`, voiceText: `En el segundo camino restamos y obtenemos equis dos ${rootRelation(x2) === '=' ? 'igual a' : 'aproximadamente'} ${numberToSpanish(Number(formatRoot(x2)))}.`, role: 'result', semanticStep: 'Resolver la segunda rama' },
       ],
       {
         formulaAnchor: { latex: formulaSimplified, label: 'Expresión de referencia', persistence: 'segment', position: 'top' },

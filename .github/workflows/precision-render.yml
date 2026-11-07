@@ -9,6 +9,10 @@ on:
       - 'backend/scripts/smoke-precision-render.ts'
       - '.github/workflows/precision-render.yml'
 
+concurrency:
+  group: precision-render-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   render:
     runs-on: ubuntu-latest
@@ -37,7 +41,9 @@ jobs:
           npm ci --ignore-scripts
 
       - name: Render three visual formats and check pixels
-        run: npx --no-install tsx backend/scripts/smoke-precision-render.ts
+        env:
+          PRECISION_ARTIFACTS_DIR: ${{ github.workspace }}/smoke-artifacts
+        run: npm run smoke:precision --workspace backend
 
       - name: Preserve real videos and diagnostic reports
         if: always()

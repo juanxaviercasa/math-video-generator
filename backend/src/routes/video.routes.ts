@@ -72,7 +72,11 @@ router.post('/extract-exercise', requireAuth,
     if (!req.user) return res.status(401).json({ code: 'UNAUTHENTICATED', error: 'Debes iniciar sesión' });
     try {
       const mediaType = req.header('content-type') || '';
-      const result = await extractExerciseFromSource(req.body as Buffer, mediaType, req.query.page);
+      const provider = req.query.provider;
+      if (provider !== undefined && provider !== 'gemini' && provider !== 'openai' && provider !== 'openrouter') {
+        return res.status(400).json({ code: 'VISION_PROVIDER_INVALID', error: 'Proveedor visual no reconocido.' });
+      }
+      const result = await extractExerciseFromSource(req.body as Buffer, mediaType, req.query.page, provider || 'auto');
       return res.json(result);
     } catch (error) {
       if (error instanceof ExerciseExtractionError) {

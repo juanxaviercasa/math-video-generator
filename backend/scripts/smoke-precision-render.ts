@@ -21,8 +21,15 @@ async function smoke(format: VideoAspectRatio, fullLesson = false, problemInput 
   const profile = getVideoFormatProfile(format, 'low');
   const validated = validateMathProblem(problemInput);
   const storyboard = buildQuadraticStoryboard(problemInput, validated);
-  const scenes = fullLesson ? storyboard : storyboard
-    .filter((scene) => scene.id === 'coefficients' || scene.id === 'graph');
+  const scenes = variant === 'voice-locked'
+    ? storyboard.filter((scene) => scene.id === 'discriminant-calculate')
+    : fullLesson ? storyboard : storyboard.filter((scene) => scene.id === 'coefficients' || scene.id === 'graph');
+  if (variant === 'voice-locked') {
+    const stage = scenes[0];
+    if (!stage || stage.visualStages?.length !== 4) throw new Error('VOICE_CUE_SMOKE_INVALID');
+    stage.visualCueDurations = [2.2, 2.2, 2.2, 2.2];
+    stage.duration = 1.2 + stage.visualCueDurations.reduce((total, seconds) => total + seconds, 0) + 1;
+  }
   const geometryFile = path.join(root, 'observed-geometry.json');
   const raw = await manim.renderVideo({
     title: fullLesson ? 'Full Quadratic Lesson' : 'Precise Math Smoke',
@@ -38,7 +45,7 @@ async function smoke(format: VideoAspectRatio, fullLesson = false, problemInput 
     width: profile.width,
     height: profile.height,
     sceneIds: scenes.map((scene) => scene.id),
-    expectedDurations: Object.fromEntries(scenes.map((scene) => [scene.id, scene.estimatedDuration])),
+    expectedDurations: Object.fromEntries(scenes.map((scene) => [scene.id, scene.duration ?? scene.estimatedDuration])),
     tolerancePixels: 2,
   });
   fs.writeFileSync(path.join(root, 'geometry-qa.json'), JSON.stringify(geometry, null, 2));
@@ -110,6 +117,7 @@ async function smokeAudioAlignment(): Promise<void> {
   // Mathematical edge cases: no fictitious real roots, and exactly one double root.
   await smoke('16:9', true, 'x^2 + 2x + 5 = 0', 'no-real-roots');
   await smoke('16:9', true, 'x^2 - 2x + 1 = 0', 'double-root');
+  await smoke('16:9', false, problem, 'voice-locked');
   await smokeAudioAlignment();
 })().catch((error) => {
   console.error(error);

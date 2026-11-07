@@ -332,7 +332,7 @@ export const manim = {
    * Generar script Python de Manim para una animación matemática
    */
   generatePythonScript(scene: ManimScene, useLatex = latexCompilerAvailable()): string {
-    const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [], lessonTimeline, narrationTimeline = false } = scene;
+    const { title, steps, synchronizedScenes = [], pedagogicalScenes = [], lessonTimeline, narrationTimeline = false } = scene;
     const timelineEnabled = narrationTimeline && Boolean(lessonTimeline) && pedagogicalScenes.length > 0;
     const formatProfile = scene.formatProfile || getVideoFormatProfile('16:9', 'medium');
     const verifyGraphSpec = (spec: { a: number; b: number; c: number; roots: [number, number] }): void => {

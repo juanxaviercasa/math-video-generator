@@ -53,6 +53,20 @@ export const ffmpeg = {
   getProbeCommand(): string {
     return resolveBinary(ffprobeCandidates);
   },
+  async createSilentAudio(outputPath: string, durationSeconds: number): Promise<string> {
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0 || durationSeconds > 20) {
+      throw new Error('SILENCE_DURATION_INVALID: Duración de pausa inválida.');
+    }
+    await execFileAsync(this.getCommand(), [
+      '-hide_banner', '-loglevel', 'error', '-nostdin',
+      '-f', 'lavfi', '-i', 'anullsrc=r=24000:cl=mono',
+      '-t', String(durationSeconds), '-c:a', 'pcm_s16le', '-y', outputPath,
+    ], { maxBuffer: 1024 * 1024 });
+    if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size < 1024) {
+      throw new Error('SILENCE_CREATION_FAILED: No se produjo una pausa de audio válida.');
+    }
+    return outputPath;
+  },
   /**
    * Every narration scene must have an explicit audio segment of the same
    * duration as its visual scene. Pad at the end instead of shifting the next voice.

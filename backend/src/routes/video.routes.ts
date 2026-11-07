@@ -9,6 +9,7 @@ import { extractExerciseFromSource, ExerciseExtractionError } from '../services/
 import { SPANISH_VOICES, resolveVoiceId } from '../services/voice-catalog.service.js';
 import { tts } from '../services/tts.service.js';
 import { validateAudibleAudio } from '../services/audio-qa.service.js';
+import { inspectViralForge } from '../services/viralforge-bridge.service.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -19,6 +20,11 @@ router.use(optionalAuth);
 
 router.get('/voices', (_req: Request, res: Response) => {
   return res.json({ voices: SPANISH_VOICES, defaultVoiceId: SPANISH_VOICES[0].id, voiceTechnology: 'edge-tts', generatedByAI: true });
+});
+
+router.get('/ai-infrastructure', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) return res.status(401).json({ code: 'UNAUTHENTICATED', error: 'Debes iniciar sesión' });
+  return res.json(await inspectViralForge());
 });
 
 router.post('/voices/preview', requireAuth, async (req: AuthenticatedRequest, res: Response) => {

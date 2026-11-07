@@ -1,6 +1,9 @@
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+// This private studio uses a fixed production API hostname. Never direct a
+// deployed frontend to the visitor's localhost if Pages omitted VITE_API_URL.
+const API_URL = import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? 'https://api-math.forjavia.site/api' : 'http://localhost:3001/api')
 
 export interface User {
   id: string

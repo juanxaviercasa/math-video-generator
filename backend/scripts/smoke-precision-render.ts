@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { manim } from '../src/services/manim.service.js';
 import { ffmpeg } from '../src/services/ffmpeg.service.js';
 import { validateMathProblem } from '../src/services/math-validation.service.js';
@@ -63,9 +65,31 @@ async function smoke(format: VideoAspectRatio, fullLesson = false): Promise<void
   console.log(fullLesson ? 'APPROVED FULL LESSON' : 'APPROVED', format, profile.width, profile.height, 'duration', integrity.actual.videoDuration, 'snapshots', geometry.stages.length);
 }
 
+async function smokeAudioAlignment(): Promise<void> {
+  const execFileAsync = promisify(execFile);
+  const artifactRoot = process.env.PRECISION_ARTIFACTS_DIR || path.resolve('smoke-artifacts');
+  const root = path.join(path.resolve(artifactRoot), 'audio-alignment');
+  fs.mkdirSync(root, { recursive: true });
+  const raw = path.join(root, 'synthetic-voice.wav');
+  const aligned = path.join(root, 'aligned-voice.wav');
+  await execFileAsync(ffmpeg.getCommand(), [
+    '-hide_banner', '-loglevel', 'error', '-f', 'lavfi',
+    '-i', 'sine=frequency=440:duration=1.2', '-ac', '1', '-ar', '24000',
+    '-c:a', 'pcm_s16le', '-y', raw,
+  ]);
+  await ffmpeg.alignNarrationSegment(raw, aligned, 4.15);
+  const info = await ffmpeg.getVideoInfo(aligned);
+  const duration = Number(info.format?.duration);
+  const report = { targetSeconds: 4.15, measuredSeconds: duration, passed: Math.abs(duration - 4.15) <= 0.06 };
+  fs.writeFileSync(path.join(root, 'audio-qa.json'), JSON.stringify(report, null, 2));
+  if (!report.passed) throw new Error('AUDIO_ALIGNMENT_FAILED: ' + duration);
+  console.log('APPROVED AUDIO', report.targetSeconds, report.measuredSeconds);
+}
+
 (async () => {
   for (const format of formats) await smoke(format);
-  await smoke('16:9', true);
+  for (const format of formats) await smoke(format, true);
+  await smokeAudioAlignment();
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

@@ -58,6 +58,24 @@ function App() {
           <PasswordRecovery key={recovery.session?.accessToken ? 'token' : 'request'} recovery={recovery} onClose={() => setRecovery(null)} />
         ) : authLoading ? (
           <div className="rounded-lg border border-slate-700 bg-slate-800 p-8 text-center text-slate-300">Verificando mi sesión…</div>
+        ) : user?.authMode === 'supabase' ? (
+          <div className="mx-auto max-w-2xl rounded-lg border border-blue-500/40 bg-slate-800 p-8">
+            <h2 className="text-xl font-semibold text-white">Acceso personal verificado con Supabase</h2>
+            <p className="mt-3 text-slate-200">
+              Ya has iniciado sesión con tu cuenta propietaria. La contraseña funciona correctamente.
+            </p>
+            <div className="mt-5 rounded-lg border border-amber-500/30 bg-slate-900/60 p-4">
+              <p className="font-semibold text-amber-200">El servidor de generación aún no está conectado</p>
+              <p className="mt-2 text-sm text-slate-300">
+                Para crear videos, usar voces neurales y consultar archivos privados falta desplegar la API y el worker en Oracle
+                y conectar api-math.forjavia.site. No se ha generado una sesión de backend.
+              </p>
+            </div>
+            <p className="mt-4 text-sm text-slate-400">
+              Cuando Oracle esté disponible, utiliza «Salir» e inicia sesión otra vez con esta misma contraseña
+              para activar las funciones de video.
+            </p>
+          </div>
         ) : !user ? (
           <div className="mx-auto max-w-xl rounded-lg border border-slate-700 bg-slate-800 p-8 text-center">
             <h2 className="text-xl font-semibold text-white">Estudio privado de matemáticas</h2>

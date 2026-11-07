@@ -68,3 +68,22 @@ test('negative discriminant never yields fictitious roots or a real-intercept gr
   assert.deepEqual(scenes[0]?.pedagogicalContract?.requiredSteps, ['hook', 'identify', 'compute', 'interpret']);
   assert.match(scenes.at(-1)?.narrationText ?? '', /no tiene soluciones reales/i);
 });
+
+test('irrational roots retain exact radicals and use approximate equality for decimals', () => {
+  const input = 'x^2 - 2x - 1 = 0';
+  const scenes = buildQuadraticStoryboard(input, validateMathProblem(input));
+  const simplify = scenes.find((scene) => scene.id === 'formula-simplify');
+  const branches = scenes.find((scene) => scene.id === 'solution-branches');
+
+  assert.match(simplify?.visualLatex?.[0] ?? '', /\\\\sqrt\{8\}/);
+  assert.match(branches?.visualLatex?.[0] ?? '', /\\\\approx/);
+  assert.match(branches?.narrationText ?? '', /aproximadamente/);
+});
+
+test('repeated quadratic roots are mathematically exact', () => {
+  const input = 'x^2 - 2x + 1 = 0';
+  const scenes = buildQuadraticStoryboard(input, validateMathProblem(input));
+  const branches = scenes.find((scene) => scene.id === 'solution-branches');
+  assert.deepEqual(scenes.find((scene) => scene.id === 'graph')?.graphSpec?.roots, [1, 1]);
+  assert.ok(branches?.visualLatex?.every((latex) => !latex.includes('\\\\approx')));
+});

@@ -1,17 +1,15 @@
-version: '3.8'
-
+# Math Video Generator personal deployment. Frontend hosted separately on Cloudflare Pages.
+# Usage: docker compose -f deploy/docker-compose.yml --env-file .env.personal up -d --build
 services:
   postgres:
     image: postgres:15-alpine
     container_name: math-video-db
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set a private DB_PASSWORD}
       POSTGRES_DB: math_video_generator
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -21,8 +19,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: math-video-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -33,27 +29,33 @@ services:
 
   backend:
     build:
-      context: .
+      context: ..
       dockerfile: deploy/Dockerfile
     container_name: math-video-backend
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/math_video_generator
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:?Set DB_PASSWORD}@postgres:5432/math_video_generator
       DIRECT_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/math_video_generator
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
-      JWT_SECRET: ${JWT_SECRET:-replace-with-a-32-character-secret}
-      SUPABASE_URL: ${SUPABASE_URL:-https://placeholder.supabase.co}
-      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-placeholder}
-      APP_URL: ${APP_URL:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:?Set a long random JWT_SECRET}
+      SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:?Set SUPABASE_PUBLISHABLE_KEY}
+      APP_URL: ${APP_URL:?Set the HTTPS frontend origin}
       BACKEND_PORT: 3001
+      PERSONAL_MODE: "true"
+      OWNER_USER_ID: ${OWNER_USER_ID:?Set the existing Supabase Auth user UUID}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_VISION_MODEL: ${OPENROUTER_VISION_MODEL:-}
       MEDIA_ROOT: /var/lib/math-video-generator/media
       VIDEO_QUEUE_NAME: math-video-generation
-      VIDEO_WORKER_CONCURRENCY: ${VIDEO_WORKER_CONCURRENCY:-1}
+      VIDEO_WORKER_CONCURRENCY: 1
       TTS_PROVIDER: ${TTS_PROVIDER:-edge}
-      TTS_NEURAL_VOICE: ${TTS_NEURAL_VOICE:-es-MX-DaliaNeural}
+      TTS_NEURAL_VOICE: ${TTS_NEURAL_VOICE:-es-PE-CamilaNeural}
       TTS_ALLOW_LOCAL_FALLBACK: ${TTS_ALLOW_LOCAL_FALLBACK:-false}
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,6 +64,8 @@ services:
     volumes:
       - media_data:/var/lib/math-video-generator/media
     command: ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+    cpus: ${API_CPUS:-0.5}
+    mem_limit: ${API_MEMORY:-768m}
 
   worker:
     build:
@@ -73,6 +77,12 @@ services:
       DIRECT_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/math_video_generator
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
+      PERSONAL_MODE: "true"
+      OWNER_USER_ID: ${OWNER_USER_ID:?Set the existing Supabase Auth user UUID}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_VISION_MODEL: ${OPENROUTER_VISION_MODEL:-}
       JWT_SECRET: ${JWT_SECRET:-replace-with-a-32-character-secret}
       SUPABASE_URL: ${SUPABASE_URL:-https://placeholder.supabase.co}
       SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-placeholder}
@@ -91,17 +101,20 @@ services:
         condition: service_healthy
     volumes:
       - media_data:/var/lib/math-video-generator/media
-    command: ["sh", "-c", "npx prisma migrate deploy && node dist/worker.js"]
+    command: ["node", "dist/worker.js"]
+    cpus: ${WORKER_CPUS:-1.0}
+    mem_limit: ${WORKER_MEMORY:-3g}
 
   frontend:
+    profiles: ["local-ui"]
     build:
-      context: ./frontend
+      context: ../frontend
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:3001/api}
     container_name: math-video-frontend
     ports:
-      - "3000:80"
+      - "127.0.0.1:3000:80"
     depends_on:
       - backend
 

@@ -465,12 +465,12 @@ export const manim = {
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         axes_${i} = Axes(x_range=[${left}, ${right}, 1], y_range=[${ymin}, ${ymax}, 1], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).shift(DOWN * 0.2)
         curve_${i} = axes_${i}.plot(lambda x: ${graphSpec.a} * x**2 + (${graphSpec.b}) * x + (${graphSpec.c}), x_range=[${left}, ${right}], color=YELLOW)
-        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x"))
-        y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
+        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=60))
+        y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y", font_size=60))
         root_2_${i} = Dot(axes_${i}.c2p(${rootA}, 0), color=GREEN)
         ${repeatedRoot ? '' : `root_3_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)`}
-        root_2_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=26).next_to(root_2_${i}, DOWN)
-        ${repeatedRoot ? '' : `root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=26).next_to(root_3_${i}, UP)`}
+        root_2_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=40).next_to(root_2_${i}, DOWN)
+        ${repeatedRoot ? '' : `root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=40).next_to(root_3_${i}, UP)`}
         graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP, buff=${(formatProfile.safeMargin + 0.20).toFixed(3)})
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, ${repeatedRoot ? '' : `root_3_${i}, `}root_2_label_${i}, ${repeatedRoot ? '' : `root_3_label_${i}, `}graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
@@ -593,12 +593,12 @@ export const manim = {
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         axes_${i} = Axes(x_range=[${sampleLeft.toFixed(2)}, ${sampleRight.toFixed(2)}, ${graphXStep}], y_range=[${graphYMin}, ${graphYMax}, ${graphYStep}], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).shift(DOWN * 0.2)
         curve_${i} = axes_${i}.plot(lambda x: ${graphSpec.a} * x**2 + ${graphSpec.b} * x + ${graphSpec.c}, x_range=[${curveStart}, ${curveEnd}], color=YELLOW)
-        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x"))
-        y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
+        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=60))
+        y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y", font_size=60))
         root_a_${i} = Dot(axes_${i}.c2p(${rootA}, 0), color=GREEN)
         ${repeatedRoot ? '' : `root_b_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)`}
-        root_a_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=24).next_to(root_a_${i}, DOWN)
-        ${repeatedRoot ? '' : `root_b_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=24).next_to(root_b_${i}, UP)`}
+        root_a_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=40).next_to(root_a_${i}, DOWN)
+        ${repeatedRoot ? '' : `root_b_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=40).next_to(root_b_${i}, UP)`}
         graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP, buff=${(formatProfile.safeMargin + 0.20).toFixed(3)})
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_a_${i}, ${repeatedRoot ? '' : `root_b_${i}, `}root_a_label_${i}, ${repeatedRoot ? '' : `root_b_label_${i}, `}graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)

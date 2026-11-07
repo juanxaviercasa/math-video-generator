@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { AuthPanel } from './components/AuthPanel'
 import { VideoGenerator } from './components/VideoGenerator'
 import { VideoLibrary } from './components/VideoLibrary'
+import { AiModelsPanel } from './components/AiModelsPanel'
 import { auth, User } from './services/auth'
 
 function App() {
@@ -60,6 +61,7 @@ function App() {
               </div>
               <div className="lg:col-span-2">
                 <VideoLibrary user={user} refreshKey={libraryRefresh} />
+                <AiModelsPanel />
               </div>
             </div>
           </>

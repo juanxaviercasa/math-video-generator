@@ -38,7 +38,7 @@ jobs:
           DIRECT_URL: postgresql://ci:ci@127.0.0.1:5432/postgres
           JWT_SECRET: 0123456789abcdef0123456789abcdef
           OWNER_USER_ID: e233caa1-3a71-4c2c-a731-71af5e6d84b0
-          SUPABASE_URL: https://ci-placeholder.supabase.co
+          SUPABASE_URL: https://jplhbgyhswvbghhzhjvm.supabase.co
           SUPABASE_PUBLISHABLE_KEY: ci-placeholder
           APP_URL: https://math.forjavia.site
         run: |

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { api, PreviewResponse, type ExtractedExercise } from '../services/api'
+import { api, PreviewResponse, type ExtractedExercise, type VoiceChoice } from '../services/api'
 import { useVideoStore } from '../store/video.store'
 const InteractiveMathEditor = lazy(() => import('./InteractiveMathEditor').then((module) => ({ default: module.InteractiveMathEditor })))
 import { InteractiveLessonPreview } from './InteractiveLessonPreview'
@@ -16,6 +16,10 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
   const [layoutDensity, setLayoutDensity] = useState<'comfortable' | 'compact'>('comfortable')
   const [narrationStyle, setNarrationStyle] = useState<'warm_teacher' | 'neutral_teacher'>('warm_teacher')
   const [enableNarration, setEnableNarration] = useState(true)
+  const [narratorVoiceId, setNarratorVoiceId] = useState('es-PE-CamilaNeural')
+  const [voices, setVoices] = useState<VoiceChoice[]>([])
+  const [voicePreviewUrl, setVoicePreviewUrl] = useState('')
+  const [previewingVoice, setPreviewingVoice] = useState(false)
   const [aiProvider, setAiProvider] = useState<'openrouter' | 'gemini' | 'openai'>('openrouter')
   const [enableComfyUI, setEnableComfyUI] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -36,6 +40,32 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
     pollingTimers.current.forEach((timer) => window.clearTimeout(timer))
     pollingTimers.current.clear()
   }, [])
+
+  useEffect(() => {
+    let active = true
+    void api.getVoices().then((results) => {
+      if (active) setVoices(results)
+    }).catch(() => {
+      if (active) setError('No se pudo cargar la biblioteca de voces neurales.')
+    })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => () => {
+    if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl)
+  }, [voicePreviewUrl])
+
+  const handleVoicePreview = async () => {
+    setPreviewingVoice(true)
+    try {
+      const audio = await api.previewVoice(narratorVoiceId, narrationStyle)
+      setVoicePreviewUrl(URL.createObjectURL(audio))
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'No se pudo generar la prueba de voz.')
+    } finally {
+      setPreviewingVoice(false)
+    }
+  }
 
   const handleExtract = async () => {
     setError('')
@@ -133,6 +163,7 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
         layoutDensity,
         narrationStyle,
         enableNarration,
+        narratorVoiceId,
         aiProvider,
         enableComfyUI,
         steps: steps.length ? steps : undefined,
@@ -426,6 +457,32 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
               </p>
             </div>
           </label>
+          {enableNarration && (
+            <div className="mt-3 space-y-3">
+              <label htmlFor="narrator-voice" className="block text-sm text-slate-200">
+                Biblioteca de voces neurales en español
+              </label>
+              <select id="narrator-voice" value={narratorVoiceId}
+                onChange={(event) => { setNarratorVoiceId(event.target.value); setVoicePreviewUrl('') }}
+                disabled={loading || previewingVoice}
+                className="w-full rounded border border-slate-500 bg-slate-800 px-3 py-2 text-sm text-white">
+                {(voices.length ? voices : [{ id: 'es-PE-CamilaNeural', label: 'Camila — Perú', locale: 'es-PE', language: 'es' as const, gender: 'female' as const, provider: 'edge' as const }]).map((voice) =>
+                  <option key={voice.id} value={voice.id}>{voice.label}</option>
+                )}
+              </select>
+              <button type="button" onClick={() => void handleVoicePreview()} disabled={loading || previewingVoice}
+                className="rounded border border-blue-500 px-3 py-2 text-sm text-blue-300 disabled:opacity-50">
+                {previewingVoice ? 'Generando voz real...' : 'Escuchar muestra de la voz'}
+              </button>
+              {voicePreviewUrl && (
+                <div className="space-y-1">
+                  <audio key={voicePreviewUrl} controls preload="auto" className="w-full" src={voicePreviewUrl} />
+                  <p className="text-xs text-slate-400">Pulsa reproducir y comprueba el volumen antes de generar tu video.</p>
+                </div>
+              )}
+              <p className="text-xs text-slate-400">Voz sintetizada por IA. La vista previa necesita que Edge TTS esté disponible en el servidor.</p>
+            </div>
+          )}
         </div>
 
         {/* Proveedor IA */}

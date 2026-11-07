@@ -69,3 +69,14 @@ jobs:
         run: |
           test -s frontend/dist/_redirects
           test -s frontend/dist/_headers
+
+      # This is a deployable static build, not a claim that a Cloudflare site exists.
+      # Prefer connecting Pages to GitHub for automatic future production deploys.
+      - name: Upload private Cloudflare Pages build
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: math-video-frontend-cloudflare
+          path: frontend/dist/
+          retention-days: 7
+          if-no-files-found: error

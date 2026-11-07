@@ -453,7 +453,7 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
             <div className="flex-1">
               <p className="text-sm font-medium text-white">🎙️ Narración en Voz</p>
               <p className="text-xs text-slate-400 mt-1">
-                Añade una voz en off didáctica explicando cada paso matemático
+                Añade una voz neural real que acompaña y resalta cada paso matemático. Comprueba la muestra antes de generar.
               </p>
             </div>
           </label>
@@ -488,7 +488,7 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
         {/* Proveedor IA */}
         <div>
           <label className="block text-sm font-medium text-white mb-2">
-            🤖 Proveedor de IA (para narración y análisis)
+            🤖 Modelo de IA (para reconocer y analizar ejercicios)
           </label>
           <div className="grid grid-cols-3 gap-2">
             {['openrouter', 'gemini', 'openai'].map((provider) => (
@@ -505,12 +505,12 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
               >
                 {provider === 'openrouter' && '🚀 OpenRouter (Gratis)'}
                 {provider === 'gemini' && '✨ Gemini (Gratis)'}
-                {provider === 'openai' && '🔧 OpenAI'}
+                {provider === 'openai' && '🔧 OpenAI / ChatGPT API'}
               </button>
             ))}
           </div>
           <p className="text-xs text-slate-400 mt-2">
-            OpenRouter y Gemini tienen opciones gratis. OpenAI requiere crédito pagado.
+            El reconocimiento visual usa el proveedor seleccionado y una clave API del servidor. Una suscripción a ChatGPT no sustituye una clave de API de OpenAI.
           </p>
         </div>
 

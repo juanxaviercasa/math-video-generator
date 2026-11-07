@@ -34,10 +34,10 @@ const dimensions: Record<VideoQuality, Record<VideoAspectRatio, { width: number;
   },
 };
 
-const cameraFrames: Record<VideoAspectRatio, { frameWidth: number; frameHeight: number }> = {
-  '16:9': { frameWidth: 14, frameHeight: 8 },
-  '1:1': { frameWidth: 10, frameHeight: 10 },
-  '9:16': { frameWidth: 8, frameHeight: 14.22 },
+const cameraFrameWidths: Record<VideoAspectRatio, number> = {
+  '16:9': 14,
+  '1:1': 10,
+  '9:16': 8,
 };
 
 export const getVideoFormatProfile = (
@@ -45,7 +45,9 @@ export const getVideoFormatProfile = (
   quality: VideoQuality = 'medium',
 ): VideoFormatProfile => {
   const { width, height } = dimensions[quality][aspectRatio];
-  const { frameWidth, frameHeight } = cameraFrames[aspectRatio];
+  const frameWidth = cameraFrameWidths[aspectRatio];
+  // Manim's logical camera must match the actual pixel aspect ratio exactly.
+  const frameHeight = frameWidth * height / width;
   const safeMargin = Math.round(Math.min(frameWidth, frameHeight) * 0.08 * 100) / 100;
   const panelWidth = Math.round((frameWidth - safeMargin * 2) * 100) / 100;
   const panelHeight = Math.round((frameHeight - safeMargin * 2) * 100) / 100;

@@ -483,13 +483,14 @@ export const manim = {
             const recapLabels = textLines.map((line) => `Text(${escapeForPythonString(line)}, font_size=18, color=GREY_B)`);
             const recapMathDirection = formatProfile.orientation === 'portrait' ? 'DOWN' : 'RIGHT';
             const recapLabelsDirection = formatProfile.orientation === 'portrait' ? 'DOWN' : 'RIGHT';
-            const recapFit = formatProfile.orientation === 'portrait' ? `.scale_to_fit_height(${contentHeight})` : `.scale_to_fit_width(${contentWidth})`;
-            const recapContent = `VGroup(VGroup(${recapMath.join(', ')}).arrange(${recapMathDirection}, buff=0.55), VGroup(${recapLabels.join(', ')}).arrange(${recapLabelsDirection}, buff=0.25)).arrange(DOWN, buff=0.5)${recapFit}.move_to(DOWN * ${contentY})`;
+            const recapContent = `VGroup(VGroup(${recapMath.join(', ')}).arrange(${recapMathDirection}, buff=0.55), VGroup(${recapLabels.join(', ')}).arrange(${recapLabelsDirection}, buff=0.25)).arrange(DOWN, buff=0.5)`;
             return `
         # Storyboard pedagógico: recapitulación
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * ${headerY})
         content_${i} = ${recapContent}
+        content_${i}.scale(min(1, ${contentWidth} / content_${i}.width, ${contentHeight} / content_${i}.height))
+        content_${i}.move_to(DOWN * ${contentY})
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
@@ -507,13 +508,14 @@ export const manim = {
               return `VGroup(${formula}, ${caption}).arrange(DOWN, buff=0.18)`;
             });
             const arrangement = formatProfile.orientation === 'portrait' ? 'DOWN' : 'RIGHT';
-            const cardFit = formatProfile.orientation === 'portrait' ? `.scale_to_fit_height(${contentHeight})` : `.scale_to_fit_width(${contentWidth})`;
-            const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=${formatProfile.orientation === 'portrait' ? '0.35' : '0.55'})${cardFit}.move_to(DOWN * ${contentY})`;
+            const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=${formatProfile.orientation === 'portrait' ? '0.35' : '0.55'})`;
             return `
         # Storyboard pedagógico: ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * ${headerY})
         content_${i} = ${compactGroup}
+        content_${i}.scale(min(1, ${contentWidth} / content_${i}.width, ${contentHeight} / content_${i}.height))
+        content_${i}.move_to(DOWN * ${contentY})
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))

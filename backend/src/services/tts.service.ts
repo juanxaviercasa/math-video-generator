@@ -82,7 +82,8 @@ export const tts = {
         removeIfExists(neuralOutputPath);
         const invocations = [
           { command: process.env.EDGE_TTS_COMMAND || 'edge-tts', prefix: [] as string[] },
-          { command: process.platform === 'win32' ? 'py' : 'python', prefix: ['-m', 'edge_tts'] },
+          { command: process.platform === 'win32' ? 'py' : 'python3', prefix: ['-m', 'edge_tts'] },
+          { command: 'python', prefix: ['-m', 'edge_tts'] },
         ];
         for (const entry of invocations) {
           try {

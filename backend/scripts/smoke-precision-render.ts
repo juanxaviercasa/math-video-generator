@@ -59,7 +59,8 @@ async function smoke(format: VideoAspectRatio, fullLesson = false): Promise<void
   fs.writeFileSync(path.join(root, 'integrity-qa.json'), JSON.stringify(integrity, null, 2));
   if (!integrity.passed) throw new Error('Media integrity failed: ' + integrity.errors.join(' | '));
 
-  const frames = await auditFinalVideoFrames(exported, root, integrity.actual.videoDuration || 0, 6);
+  const observed = JSON.parse(fs.readFileSync(geometryFile, 'utf8')) as { stages: Array<{ id: string; start: number; end: number }> };
+  const frames = await auditFinalVideoFrames(exported, root, integrity.actual.videoDuration || 0, 6, observed.stages);
   fs.writeFileSync(path.join(root, 'final-frames-qa.json'), JSON.stringify(frames, null, 2));
   if (!frames.passed) throw new Error('Final frames failed: ' + frames.errors.join(' | '));
   console.log(fullLesson ? 'APPROVED FULL LESSON' : 'APPROVED', format, profile.width, profile.height, 'duration', integrity.actual.videoDuration, 'snapshots', geometry.stages.length);
@@ -83,7 +84,24 @@ async function smokeAudioAlignment(): Promise<void> {
   const report = { targetSeconds: 4.15, measuredSeconds: duration, passed: Math.abs(duration - 4.15) <= 0.06 };
   fs.writeFileSync(path.join(root, 'audio-qa.json'), JSON.stringify(report, null, 2));
   if (!report.passed) throw new Error('AUDIO_ALIGNMENT_FAILED: ' + duration);
-  console.log('APPROVED AUDIO', report.targetSeconds, report.measuredSeconds);
+
+  // Verify that the encoded MP4 really carries the narration, not merely
+  // that a disconnected WAV file had the right duration.
+  const videoPath = path.join(root, 'narration-video.mp4');
+  const muxedPath = path.join(root, 'narration-final.mp4');
+  await execFileAsync(ffmpeg.getCommand(), [
+    '-hide_banner', '-loglevel', 'error', '-f', 'lavfi',
+    '-i', 'color=c=navy:s=854x480:r=30:d=4.15',
+    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-y', videoPath,
+  ]);
+  await ffmpeg.mergeAudioWithVideo({ videoPath, audioPath: aligned, outputPath: muxedPath });
+  const mp4Info = await ffmpeg.getVideoInfo(muxedPath);
+  const muxed = validateRenderIntegrity(mp4Info, {
+    width: 854, height: 480, fps: 30, narrationRequired: true, plannedDurationSeconds: 4.15,
+  });
+  fs.writeFileSync(path.join(root, 'muxed-audio-qa.json'), JSON.stringify(muxed, null, 2));
+  if (!muxed.passed) throw new Error('ENCODED_AUDIO_FAILED: ' + muxed.errors.join(' | '));
+  console.log('APPROVED AUDIO MP4', report.targetSeconds, report.measuredSeconds);
 }
 
 (async () => {

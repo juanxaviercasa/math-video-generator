@@ -6,10 +6,62 @@ import { validateMathProblem } from '../services/math-validation.service.js';
 import { videoGenerationSchema } from '../schemas/video.schema.js';
 import { getVideoFormatProfile } from '../services/video-format.service.js';
 import { extractExerciseFromSource, ExerciseExtractionError } from '../services/exercise-extraction.service.js';
+import { SPANISH_VOICES, resolveVoiceId } from '../services/voice-catalog.service.js';
+import { tts } from '../services/tts.service.js';
+import { validateAudibleAudio } from '../services/audio-qa.service.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
 
 const awaitRawExerciseUpload = express.raw({ type: ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'], limit: '10mb' });
 const router = Router();
 router.use(optionalAuth);
+
+router.get('/voices', (_req: Request, res: Response) => {
+  return res.json({ voices: SPANISH_VOICES, defaultVoiceId: SPANISH_VOICES[0].id, voiceTechnology: 'edge-tts', generatedByAI: true });
+});
+
+router.post('/voices/preview', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) return res.status(401).json({ code: 'UNAUTHENTICATED', error: 'Debes iniciar sesión' });
+  const requestedVoice = req.body?.narratorVoiceId;
+  const requestedStyle = req.body?.narrationStyle;
+  if (typeof requestedVoice !== 'string' || (requestedStyle !== 'warm_teacher' && requestedStyle !== 'neutral_teacher')) {
+    return res.status(400).json({ code: 'VOICE_PREVIEW_INVALID', error: 'Selecciona una voz y un estilo válidos.' });
+  }
+  let voiceId: string;
+  try {
+    voiceId = resolveVoiceId(requestedVoice);
+  } catch {
+    return res.status(400).json({ code: 'VOICE_NOT_SUPPORTED', error: 'La voz elegida no está disponible.' });
+  }
+  const scratch = await fs.mkdtemp(path.join(os.tmpdir(), 'mvg-voice-preview-'));
+  try {
+    // Preview the actual math reading, not a synthetic beep.
+    const message = 'Hoy resolveremos una ecuación de segundo grado. Primero identificamos los coeficientes y después calculamos el discriminante.';
+    const audioFile = await tts.generateNarrationAudio(message, scratch, 'voice-preview', { style: requestedStyle, voiceId });
+    if (!audioFile) {
+      return res.status(503).json({
+        code: 'NEURAL_VOICE_UNAVAILABLE',
+        error: 'La voz neural no se pudo generar. Instala edge-tts en el servidor y comprueba el acceso a Internet.',
+      });
+    }
+    const qa = await validateAudibleAudio(audioFile);
+    if (!qa.passed) {
+      return res.status(502).json({ code: 'VOICE_PREVIEW_SILENT', error: 'La voz de prueba no contiene audio audible.' });
+    }
+    const data = await fs.readFile(audioFile);
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Length', String(data.length));
+    return res.end(data);
+  } catch (error) {
+    console.warn('[Voice preview] Error:', error instanceof Error ? error.message : error);
+    return res.status(503).json({ code: 'VOICE_PREVIEW_FAILED', error: 'No fue posible producir una muestra neural audible.' });
+  } finally {
+    await fs.rm(scratch, { recursive: true, force: true });
+  }
+});
+
 
 // Binary upload; no source image or PDF is persisted with the video job.
 // The extracted text must be confirmed in the editor before generation.

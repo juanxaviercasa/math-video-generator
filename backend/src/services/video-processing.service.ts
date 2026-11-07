@@ -265,6 +265,11 @@ export const videoProcessing = {
       }
 
       const remotionEnabled = process.env.REMOTION_ENABLED === 'true';
+      // Manim's measured text geometry cannot certify Remotion's independent
+      // HTML/CSS compositor. Keep the experimental output out of production.
+      if (remotionEnabled && process.env.REMOTION_ALLOW_UNVERIFIED_LAYOUT !== 'true') {
+        throw new Error('REMOTION_VISUAL_QA_REQUIRED: La salida Remotion necesita un validador de geometría propio antes de publicarse.');
+      }
       const remotionTimeline = lessonTimeline;
       if (remotionEnabled && !remotionTimeline) {
         throw new Error('REMOTION_ENABLED=true requiere enableNarration=true para conservar un único timeline audiovisual.');

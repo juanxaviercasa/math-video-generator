@@ -80,18 +80,24 @@ export const tts = {
       let lastError: unknown;
       for (let attempt = 1; attempt <= retryCount; attempt += 1) {
         removeIfExists(neuralOutputPath);
-        try {
-          await execFileAsync(process.env.EDGE_TTS_COMMAND || 'edge-tts', getEdgeTtsArgs(neuralOutputPath, normalized, style, voiceId), {
-            timeout: 45000,
-            killSignal: 'SIGKILL',
-          });
-          if (await isValidAudioFile(neuralOutputPath)) return neuralOutputPath;
-          throw new Error('Edge TTS produjo un archivo vacío o no decodificable');
-        } catch (error) {
-          lastError = error;
-          removeIfExists(neuralOutputPath);
-          if (attempt < retryCount) console.warn(`⚠️ TTS neural reintento ${attempt}/${retryCount}:`, error instanceof Error ? error.message : error);
+        const invocations = [
+          { command: process.env.EDGE_TTS_COMMAND || 'edge-tts', prefix: [] as string[] },
+          { command: process.platform === 'win32' ? 'py' : 'python', prefix: ['-m', 'edge_tts'] },
+        ];
+        for (const entry of invocations) {
+          try {
+            await execFileAsync(entry.command, [...entry.prefix, ...getEdgeTtsArgs(neuralOutputPath, normalized, style, voiceId)], {
+              timeout: 45000,
+              killSignal: 'SIGKILL',
+            });
+            if (await isValidAudioFile(neuralOutputPath)) return neuralOutputPath;
+            throw new Error('Edge TTS produjo un archivo vacío o no decodificable');
+          } catch (error) {
+            lastError = error;
+            removeIfExists(neuralOutputPath);
+          }
         }
+        if (attempt < retryCount) console.warn(`⚠️ TTS neural reintento ${attempt}/${retryCount}:`, lastError instanceof Error ? lastError.message : lastError);
       }
       console.warn('⚠️ TTS neural no disponible:', lastError instanceof Error ? lastError.message : lastError);
       console.warn('Para habilitar las voces neurales, instala la librería: python -m pip install edge-tts (y comprueba edge-tts --version).');

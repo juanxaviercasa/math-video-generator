@@ -38,7 +38,9 @@ const resolveBinary = (candidates: string[]) => {
 interface VideoProcessingOptions {
   inputPath: string;
   outputPath: string;
-  resolution?: string; // "1080" | "4k"
+  width?: number;
+  height?: number;
+  resolution?: string; // compatibilidad con llamadas antiguas
   fps?: number; // Frames per second
   bitrate?: string; // "5000k" | "10000k"
 }
@@ -58,6 +60,8 @@ export const ffmpeg = {
       const {
         inputPath,
         outputPath,
+        width,
+        height,
         resolution = '1080',
         fps = 30,
         bitrate = '5000k',
@@ -72,12 +76,10 @@ export const ffmpeg = {
       const ffmpegCommand = this.getCommand();
       let cmd = `"${ffmpegCommand}" -i "${inputPath}"`;
 
-      // Resolución
-      if (resolution === '4k') {
-        cmd += ' -s 3840x2160';
-      } else if (resolution === '1080') {
-        cmd += ' -s 1920x1080';
-      }
+      // Dimensiones explícitas con padding: nunca estirar ni deformar contenido.
+      const targetWidth = width || (resolution === '4k' ? 3840 : resolution === '1080' ? 1920 : 854);
+      const targetHeight = height || (resolution === '4k' ? 2160 : resolution === '1080' ? 1080 : 480);
+      cmd += ` -vf "scale=${targetWidth}:${targetHeight}:force_original_aspect_ratio=decrease,pad=${targetWidth}:${targetHeight}:(ow-iw)/2:(oh-ih)/2:color=#000000"`;
 
       // FPS y bitrate
       cmd += ` -r ${fps} -b:v ${bitrate}`;
@@ -93,7 +95,7 @@ export const ffmpeg = {
 
       console.log(`🎬 FFmpeg processing: ${path.basename(inputPath)} -> ${path.basename(outputPath)}`);
 
-      const { stdout, stderr } = await execAsync(cmd, {
+      const { stderr } = await execAsync(cmd, {
         maxBuffer: 1024 * 1024 * 50,
       });
 
@@ -118,14 +120,28 @@ export const ffmpeg = {
   /**
    * Extraer thumbnail del video
    */
-  async extractThumbnail(videoPath: string, outputPath: string, timeCode: string = '00:00:02'): Promise<string> {
+  async extractThumbnail(
+    videoPath: string,
+    outputPath: string,
+    timeCode: string = '00:00:08',
+    width = 1280,
+    height = 720,
+  ): Promise<string> {
     try {
       const ffmpegCommand = this.getCommand();
-      const cmd = `"${ffmpegCommand}" -i "${videoPath}" -ss ${timeCode} -vf scale=1280:720 -vframes 1 -y "${outputPath}"`;
+      // Rendered scenes spend their first seconds writing text. Extract after
+      // that transition so the library thumbnail captures a stable equation,
+      // not a black frame or partially written glyphs.
+      const filter = `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=#000000`;
+      const representativeCmd = `"${ffmpegCommand}" -ss ${timeCode} -i "${videoPath}" -vf "${filter}" -frames:v 1 -y "${outputPath}"`;
+      await execAsync(representativeCmd, { maxBuffer: 1024 * 1024 * 10 });
 
-      await execAsync(cmd);
+      if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size === 0) {
+        const fallbackCmd = `"${ffmpegCommand}" -ss 00:00:02 -i "${videoPath}" -vf "${filter}" -frames:v 1 -y "${outputPath}"`;
+        await execAsync(fallbackCmd, { maxBuffer: 1024 * 1024 * 10 });
+      }
 
-      if (!fs.existsSync(outputPath)) {
+      if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size === 0) {
         throw new Error('Thumbnail not created');
       }
 
@@ -134,6 +150,43 @@ export const ffmpeg = {
     } catch (error) {
       console.error('❌ FFmpeg thumbnail error:', error);
       throw error;
+    }
+  },
+
+  /**
+   * Unir segmentos de narración sin recomprimir el audio PCM.
+   */
+  async concatenateAudio(audioPaths: string[], outputPath: string): Promise<string> {
+    if (!audioPaths.length) throw new Error('No hay segmentos de audio para concatenar');
+
+    for (const audioPath of audioPaths) {
+      if (!fs.existsSync(audioPath) || fs.statSync(audioPath).size < 1024) {
+        throw new Error(`Segmento de audio inválido o vacío: ${audioPath}`);
+      }
+      const metadata = await this.getVideoInfo(audioPath);
+      const audioStream = metadata?.streams?.find((stream: any) => stream.codec_type === 'audio');
+      const duration = Number(metadata?.format?.duration);
+      if (!audioStream || !Number.isFinite(duration) || duration <= 0) {
+        throw new Error(`Segmento de audio no decodificable: ${audioPath}`);
+      }
+    }
+
+    const concatPath = path.join(path.dirname(outputPath), `${path.basename(outputPath)}.concat.txt`);
+    const concatContent = audioPaths
+      .map((audioPath) => `file '${path.resolve(audioPath).replace(/'/g, "'\\\\''")}'`)
+      .join('\n');
+    fs.writeFileSync(concatPath, concatContent);
+
+    try {
+      const ffmpegCommand = this.getCommand();
+      const cmd = `"${ffmpegCommand}" -f concat -safe 0 -i "${concatPath}" -c:a pcm_s16le -y "${outputPath}"`;
+      await execAsync(cmd, { maxBuffer: 1024 * 1024 * 10 });
+      if (!fs.existsSync(outputPath) || fs.statSync(outputPath).size === 0) {
+        throw new Error('Audio concatenado no creado');
+      }
+      return outputPath;
+    } finally {
+      if (fs.existsSync(concatPath)) fs.unlinkSync(concatPath);
     }
   },
 
@@ -180,7 +233,7 @@ export const ffmpeg = {
   async getVideoInfo(videoPath: string) {
     try {
       const ffprobeCommand = this.getProbeCommand();
-      const cmd = `"${ffprobeCommand}" -v error -show_format -show_streams -print_section -of json "${videoPath}"`;
+      const cmd = `"${ffprobeCommand}" -v error -show_format -show_streams -of json "${videoPath}"`;
 
       const { stdout } = await execAsync(cmd);
       return JSON.parse(stdout);

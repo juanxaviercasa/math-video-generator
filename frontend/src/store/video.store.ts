@@ -8,6 +8,11 @@ interface Video {
   progress: number
   videoUrl?: string
   thumbnailUrl?: string
+  message?: string
+  error?: string
+  errorCode?: string
+  attempts?: number
+  heartbeatAt?: string
   createdAt: string
 }
 

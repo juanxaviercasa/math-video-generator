@@ -1,9 +1,24 @@
 import React from 'react'
+import { useEffect, useState } from 'react'
+import { AuthPanel } from './components/AuthPanel'
 import { VideoGenerator } from './components/VideoGenerator'
+import { VideoLibrary } from './components/VideoLibrary'
+import { auth, User } from './services/auth'
 import { useVideoStore } from './store/video.store'
 
 function App() {
   const videos = useVideoStore((state) => state.videos)
+  const [user, setUser] = useState<User | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [libraryRefresh, setLibraryRefresh] = useState(0)
+
+  useEffect(() => {
+    auth
+      .me()
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setAuthLoading(false))
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
@@ -14,9 +29,18 @@ function App() {
               <h1 className="text-3xl font-bold text-white">🎓 Math Video Generator</h1>
               <p className="text-slate-400 mt-1">Transforma problemas matemáticos en videos educativos</p>
             </div>
-            <div className="text-right">
-              <div className="text-sm text-slate-400">v0.1.0 Beta</div>
-              <div className="text-xs text-slate-500 mt-1">Generador de IA</div>
+            <div className="flex items-center gap-5">
+              <div className="text-right">
+                <div className="text-sm text-slate-400">v0.1.0 Beta</div>
+                <div className="text-xs text-slate-500 mt-1">Generador de IA</div>
+              </div>
+              {!authLoading && (
+                <AuthPanel
+                  user={user}
+                  onAuthenticated={setUser}
+                  onLogout={() => setUser(null)}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -26,7 +50,7 @@ function App() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Panel de generación */}
           <div className="lg:col-span-1">
-            <VideoGenerator />
+            <VideoGenerator onGenerated={() => setLibraryRefresh((value) => value + 1)} />
           </div>
 
           {/* Panel de videos */}
@@ -114,6 +138,10 @@ function App() {
           </div>
         </div>
 
+        <div className="mt-8">
+          <VideoLibrary user={user} refreshKey={libraryRefresh} />
+        </div>
+
         {/* Feature cards */}
         <div className="mt-20 grid md:grid-cols-4 gap-4">
           {[
@@ -140,7 +168,7 @@ function App() {
             🚀 Math Video Generator v0.1.0 Beta
             {' | '}
             <a
-              href="https://github.com/duckmartians/math-video-generator"
+              href="https://github.com/juanxaviercasa/math-video-generator"
               className="text-blue-400 hover:text-blue-300"
             >
               GitHub

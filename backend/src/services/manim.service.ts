@@ -67,6 +67,7 @@ interface ManimScene {
   narrationStyle?: 'warm_teacher' | 'neutral_teacher';
   lessonTimeline?: LessonTimeline;
   narrationTimeline?: boolean;
+  geometryReportPath?: string;
 }
 
 const escapeForPythonString = (value: string): string => JSON.stringify(value);
@@ -715,25 +716,105 @@ ${graphBlock}
         ? synchronizedBlock
         : legacyBlock;
 
+    // Each human-visible pedagogical scene receives an explicit timecode.
+    // This is distinct from the estimated PresentationPlan geometry.
+    let stageIndex = 0;
+    const sceneBlockAudited = pedagogicalScenes.length
+      ? sceneBlock.replace(/^(\s*)# (?:Storyboard pedagógico|Timeline pedagógico):[^\n]*/gm, (line, indent: string) => {
+          const pedScene = pedagogicalScenes[stageIndex++];
+          if (!pedScene) throw new Error('GEOMETRY_STAGE_MISMATCH: sobran escenas generadas.');
+          return `${indent}self._qa_start(${escapeForPythonString(pedScene.id)})\n${line}`;
+        })
+      : sceneBlock;
+    if (pedagogicalScenes.length && stageIndex !== pedagogicalScenes.length) {
+      throw new Error(`GEOMETRY_STAGE_MISMATCH: ${stageIndex}/${pedagogicalScenes.length} escenas instrumentadas.`);
+    }
+    const geometryReportPath = scene.geometryReportPath || path.join(scene.outputDir, `${safeName}-geometry.json`);
+
     const pythonCode = `
 # -*- coding: utf-8 -*-
 from manim import *
+import json
+from pathlib import Path
 
 class ${className}(Scene):
+    def _qa_now(self):
+        return float(getattr(self, "time", getattr(self.renderer, "time", 0.0)))
+
+    def _qa_start(self, stage_id):
+        self._qa_finish()
+        self._qa_current = {"id": stage_id, "start": self._qa_now(), "snapshots": []}
+        self._qa_capture()
+
+    def _qa_finish(self):
+        if self._qa_current is not None:
+            self._qa_capture()
+            self._qa_current["end"] = self._qa_now()
+            self._qa_stages.append(self._qa_current)
+            self._qa_current = None
+
+    def _qa_capture(self):
+        if self._qa_current is None:
+            return
+        objects = []
+        seen = set()
+        for top in self.mobjects:
+            for obj in top.get_family():
+                if id(obj) in seen or not isinstance(obj, (Text, Tex, MathTex)):
+                    continue
+                seen.add(id(obj))
+                try:
+                    left = float(obj.get_left()[0])
+                    right = float(obj.get_right()[0])
+                    bottom = float(obj.get_bottom()[1])
+                    upper = float(obj.get_top()[1])
+                    if not all(map(lambda v: abs(v) < 1e7, [left, right, bottom, upper])):
+                        continue
+                    if right <= left or upper <= bottom:
+                        continue
+                    content = str(getattr(obj, "tex_string", getattr(obj, "text", "")))[:180]
+                    objects.append({"kind": type(obj).__name__, "content": content, "bbox": {
+                        "x": left, "y": bottom, "width": right - left, "height": upper - bottom}})
+                except (ValueError, TypeError, AttributeError) as exc:
+                    self._qa_errors.append(str(exc))
+        if objects:
+            self._qa_current["snapshots"].append({"time": self._qa_now(), "objects": objects})
+
+    def play(self, *animations, **kwargs):
+        result = super().play(*animations, **kwargs)
+        self._qa_capture()
+        return result
+
+    def _qa_write(self):
+        payload = {"version": 1, "canvas": {
+            "pixelWidth": ${formatProfile.width}, "pixelHeight": ${formatProfile.height},
+            "frameWidth": ${formatProfile.frameWidth}, "frameHeight": ${formatProfile.frameHeight},
+            "safeMargin": ${formatProfile.safeMargin}},
+            "stages": self._qa_stages, "captureErrors": self._qa_errors}
+        target = Path(${escapeForPythonString(geometryReportPath)})
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
     def construct(self):
+        self._qa_current = None
+        self._qa_stages = []
+        self._qa_errors = []
         self.camera.frame_width = ${formatProfile.frameWidth}
         self.camera.frame_height = ${formatProfile.frameHeight}
         # Apertura segura: la ruta experimental evita comenzar sobre fondo negro.
-${timelineEnabled ? `        opening_panel = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)\n        opening_panel.set_z_index(-10)\n        self.add(opening_panel)\n` : ''}        # Título científico con estilo tipo revista
-        title = ${titleObject}
+${timelineEnabled ? `        opening_panel = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)\n        opening_panel.set_z_index(-10)\n        self.add(opening_panel)\n` : ''}        # The storyboard already contains the introduction; a second title
+        # adds unplanned seconds and shifts the narration from every scene.
+${pedagogicalScenes.length ? '' : `        title = ${titleObject}
         title.to_edge(UP)
-${timelineEnabled ? `        title.scale(min(0.82, ${contentWidth} / title.width, 0.58 / title.height))\n` : ''}        self.add(title)
-        self.play(${timelineEnabled ? 'FadeIn(title)' : 'Write(title)'}, run_time=${pedagogicalScenes.length ? '0.6' : '1'})
-        self.wait(${pedagogicalScenes.length ? '0.2' : `max(0.5, ${introDuration.toFixed(2)} - 2)`})
-        self.play(FadeOut(title), run_time=${pedagogicalScenes.length ? '0.5' : '1'})
+        self.add(title)
+        self.play(Write(title), run_time=1)
+        self.wait(max(0.5, ${introDuration.toFixed(2)} - 2))
+        self.play(FadeOut(title), run_time=1)`}
 
         # Contenido sincronizado con la narración
-${sceneBlock}
+${sceneBlockAudited}
+        self._qa_finish()
+        self._qa_write()
 `;
 
     return pythonCode;
@@ -777,6 +858,10 @@ ${sceneBlock}
       console.log('📹 Manim output:', stdout);
       if (stderr) console.warn('⚠️  Manim warnings:', stderr);
 
+      const geometryPath = scene.geometryReportPath || path.join(scene.outputDir, `${safeName}-geometry.json`);
+      if (!fs.existsSync(geometryPath) || fs.statSync(geometryPath).size === 0) {
+        throw new Error('GEOMETRY_REPORT_MISSING: Manim no entregó las medidas reales del render.');
+      }
       const videoPath = findGeneratedVideo(scene.outputDir, safeName);
 
       if (videoPath && fs.existsSync(videoPath)) {

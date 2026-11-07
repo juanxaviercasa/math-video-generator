@@ -16,7 +16,9 @@
     "prisma:studio": "prisma studio",
     "smoke:precision": "tsx scripts/smoke-precision-render.ts",
     "mcp": "node dist/mcp/stdio.js",
-    "mcp:dev": "tsx src/mcp/stdio.ts"
+    "mcp:dev": "tsx src/mcp/stdio.ts",
+    "setup:voices": "python -m pip install --upgrade edge-tts",
+    "smoke:voice": "tsx scripts/smoke-neural-voice.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",

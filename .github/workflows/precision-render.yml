@@ -1,0 +1,49 @@
+name: Precision Render Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/src/services/**'
+      - 'backend/scripts/smoke-precision-render.ts'
+      - '.github/workflows/precision-render.yml'
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Manim native and TeX dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq pkg-config libcairo2-dev libpango1.0-dev ffmpeg dvisvgm texlive-latex-recommended texlive-latex-extra
+
+      - name: Install Python and JavaScript dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install manim==0.19.0
+          npm ci --ignore-scripts
+
+      - name: Render three visual formats and check pixels
+        run: npx --no-install tsx backend/scripts/smoke-precision-render.ts
+
+      - name: Preserve real videos and diagnostic reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: precision-render-samples
+          path: smoke-artifacts/
+          if-no-files-found: warn
+          retention-days: 7

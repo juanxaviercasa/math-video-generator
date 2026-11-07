@@ -59,6 +59,19 @@ fi
 
 echo ""
 
+# Neural voices are a core pipeline dependency, not an optional browser feature.
+if command -v python3 >/dev/null 2>&1; then
+    echo "[Voice] Installing edge-tts for neural narration..."
+    python3 -m pip install --user --upgrade edge-tts || {
+        echo "Edge TTS installation failed. Use a Python virtual environment if your OS manages Python packages."
+        exit 1
+    }
+    python3 -m edge_tts --version || exit 1
+else
+    echo "Python 3 is required for Manim and neural voices."
+    exit 1
+fi
+
 # Step 4: Instructions
 echo -e "${BLUE}[4/4]${NC} Next steps..."
 echo ""

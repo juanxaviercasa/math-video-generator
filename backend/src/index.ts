@@ -11,8 +11,10 @@ import { prisma } from './lib/prisma.js'
 import { videoQueue } from './services/job.service.js'
 import { runtimeMetrics } from './services/runtime-metrics.service.js'
 import { mcpHttpRouter } from './mcp/http.js'
+import { assertPersonalModeConfigured } from './services/personal-mode.service.js'
 
 dotenv.config()
+assertPersonalModeConfigured()
 
 const app: Express = express()
 const PORT = process.env.BACKEND_PORT || 3001

@@ -2,11 +2,11 @@ import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import { resolveVoiceId } from './voice-catalog.service.js';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
-const DEFAULT_NEURAL_VOICE = 'es-MX-DaliaNeural';
 const DEFAULT_NEURAL_RATE = '-8%';
 
 const escapeSingleQuotes = (value: string): string => value.replace(/'/g, "''");
@@ -42,8 +42,8 @@ const buildWindowsTtsCommand = (outputPath: string, text: string): string => {
   return `powershell -NoProfile -ExecutionPolicy Bypass -Command "$tts = New-Object System.Speech.Synthesis.SpeechSynthesizer; $tts.SetOutputToWaveFile('${safeOutput}'); $tts.Rate = -1; $tts.Volume = 100; $tts.Speak('${safeText}'); $tts.Dispose()"`;
 };
 
-const getEdgeTtsArgs = (outputPath: string, text: string, style: 'warm_teacher' | 'neutral_teacher'): string[] => [
-  `--voice=${process.env.TTS_NEURAL_VOICE || DEFAULT_NEURAL_VOICE}`,
+const getEdgeTtsArgs = (outputPath: string, text: string, style: 'warm_teacher' | 'neutral_teacher', voiceId: string): string[] => [
+  `--voice=${resolveVoiceId(voiceId)}`,
   `--rate=${style === 'warm_teacher' ? (process.env.TTS_NEURAL_RATE || DEFAULT_NEURAL_RATE) : '-10%'}`,
   '--text', text,
   '--write-media', outputPath,
@@ -61,7 +61,7 @@ export const tts = {
     text: string,
     outputDir: string,
     fileName: string,
-    options: { style?: 'warm_teacher' | 'neutral_teacher' } = {},
+    options: { style?: 'warm_teacher' | 'neutral_teacher'; voiceId?: string } = {},
   ): Promise<string> {
     const normalized = (text || '').replace(/\s+/g, ' ').trim();
     if (!normalized) {
@@ -73,6 +73,7 @@ export const tts = {
     const neuralOutputPath = path.join(outputDir, `${fileName}-narration.mp3`);
     const provider = (process.env.TTS_PROVIDER || 'edge').toLowerCase();
     const style = options.style || 'warm_teacher';
+    const voiceId = resolveVoiceId(options.voiceId);
 
     if (provider !== 'espeak' && provider !== 'local') {
       const retryCount = Math.max(1, Math.min(3, Number(process.env.TTS_NEURAL_RETRIES || 2)));
@@ -80,7 +81,7 @@ export const tts = {
       for (let attempt = 1; attempt <= retryCount; attempt += 1) {
         removeIfExists(neuralOutputPath);
         try {
-          await execFileAsync('edge-tts', getEdgeTtsArgs(neuralOutputPath, normalized, style), {
+          await execFileAsync(process.env.EDGE_TTS_COMMAND || 'edge-tts', getEdgeTtsArgs(neuralOutputPath, normalized, style, voiceId), {
             timeout: 45000,
             killSignal: 'SIGKILL',
           });
@@ -93,6 +94,7 @@ export const tts = {
         }
       }
       console.warn('⚠️ TTS neural no disponible:', lastError instanceof Error ? lastError.message : lastError);
+      console.warn('Para habilitar las voces neurales, instala la librería: python -m pip install edge-tts (y comprueba edge-tts --version).');
       if (process.env.TTS_ALLOW_LOCAL_FALLBACK !== 'true') {
         console.warn('⚠️ Fallback local deshabilitado para conservar la voz neural aprobada.');
         return '';

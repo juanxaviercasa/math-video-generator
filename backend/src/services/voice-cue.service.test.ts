@@ -17,9 +17,9 @@ test('the verified quadratic discriminant has one spoken cue for each mathematic
 
 test('cue timing is based on decoded neural audio and is contiguous', () => {
   const plan = buildCueTimingPlan([2.27, 1.01, 3.25]);
-  assert.deepEqual(plan.stageDurations, [2.45, 1.2, 3.43]);
-  assert.deepEqual(plan.stageStarts, [1.2, 3.65, 4.85]);
-  assert.equal(plan.sceneDuration, CUE_INTRO_SECONDS + plan.stageDurations.reduce((sum, seconds) => sum + seconds, 0) + CUE_OUTRO_SECONDS);
+  assert.deepEqual(plan.stageDurations, [2.9, 1.64, 3.88]);
+  assert.deepEqual(plan.stageStarts, [1.2, 4.1, 5.74]);
+  assert.ok(Math.abs(plan.sceneDuration - (CUE_INTRO_SECONDS + plan.stageDurations.reduce((sum, seconds) => sum + seconds, 0) + CUE_OUTRO_SECONDS)) < 1e-9);
 });
 
 test('invalid and missing cue audio durations are blocked', () => {

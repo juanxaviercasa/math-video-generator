@@ -9,6 +9,7 @@ import type { LessonTimeline } from './timeline.types.js';
 import { buildQuadraticStoryboard } from './pedagogy.service.js';
 import { renderRemotionDeck } from './remotion-renderer.service.js';
 import { getVideoFormatProfile, type VideoAspectRatio, type VideoQuality } from './video-format.service.js';
+import { validateRenderIntegrity } from './render-integrity.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -304,17 +305,25 @@ export const videoProcessing = {
       progress.message = 'Validando artefactos finales...';
       report();
 
-      // 6. Validar metadatos audiovisuales del artefacto final
+      // 6. Validar el MP4 final con metadatos decodificados, no solo su existencia.
       const videoInfo = await ffmpeg.getVideoInfo(processedPath);
-      const videoStream = videoInfo.streams?.find((stream: any) => stream.codec_type === 'video');
-      const audioStream = videoInfo.streams?.find((stream: any) => stream.codec_type === 'audio');
-      const duration = Math.round(Number.parseFloat(videoInfo.format?.duration));
       const expectedVideo = getVideoFormatProfile(aspectRatio, quality);
-      const hasExpectedDimensions = videoStream?.width === expectedVideo.width && videoStream?.height === expectedVideo.height;
-      const hasAudioWhenRequested = !enableNarration || Boolean(audioStream);
-      if (!Number.isFinite(duration) || duration <= 0 || !videoStream || !hasExpectedDimensions || !hasAudioWhenRequested || !fs.existsSync(processedPath) || !fs.existsSync(thumbnailPath)) {
-        throw new Error('Los artefactos generados no superaron la validación audiovisual final');
+      const plannedDurationSeconds = lessonTimeline?.segments.reduce((total, segment) => total + segment.durationSeconds, 0);
+      const integrity = validateRenderIntegrity(videoInfo, {
+        width: expectedVideo.width,
+        height: expectedVideo.height,
+        fps: 30,
+        narrationRequired: enableNarration,
+        plannedDurationSeconds,
+      });
+      fs.writeFileSync(path.join(outputDir, `${id}-render-integrity.json`), JSON.stringify(integrity, null, 2), 'utf8');
+      if (integrity.warnings.length) {
+        console.warn('⚠️  Advertencias de sincronización:', integrity.warnings.join(' | '));
       }
+      if (!integrity.passed || !fs.existsSync(processedPath) || !fs.existsSync(thumbnailPath)) {
+        throw new Error(`Los artefactos finales no superaron la validación audiovisual: ${integrity.errors.join(' | ') || 'archivos faltantes'}`);
+      }
+      const duration = Math.round(integrity.actual.videoDuration ?? 0);
 
       progress.duration = duration;
       progress.videoUrl = toMediaUrl(processedPath);

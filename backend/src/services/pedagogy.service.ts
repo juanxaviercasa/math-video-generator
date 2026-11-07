@@ -157,6 +157,34 @@ export const buildQuadraticStoryboard = (
     layout,
   });
 
+  // A negative discriminant has no real roots. Never build fictitious
+  // real-root branches or a graph with x-axis intercepts.
+  if (delta < 0) {
+    const noRealRootsContract: PedagogicalContract = {
+      requiredSteps: ['hook', 'identify', 'compute', 'interpret'],
+      hook: 'Identificar los coeficientes y estudiar el signo del discriminante.',
+      successCriterion: 'Concluir correctamente que no existen raíces reales.',
+    };
+    const scenes = [
+      make('hook', 'intro',
+        `${lead}Analizaremos ${oralProblem} y determinaremos si tiene soluciones reales.`,
+        [validation.normalizedInput], 'hero', 'Analicemos la ecuación', 5),
+      make('coefficients', 'step',
+        `Identificamos los coeficientes: a es ${numberToSpanish(a)}, b es ${numberToSpanish(b)} y c es ${numberToSpanish(c)}.`,
+        [`a = ${formatValue(a)}`, `b = ${formatValue(b)}`, `c = ${formatValue(c)}`],
+        'card', 'Coeficientes', 6),
+      make('discriminant-calculate', 'calculation',
+        `Calculamos el discriminante: ${numberToSpanish(b * b)} menos cuatro por ${numberToSpanish(a)} por ${numberToSpanish(c)}. El resultado es negativo: ${numberToSpanish(delta)}.`,
+        [discriminantFormula, discriminantSubstitution, `\\Delta = ${formatValue(delta)} < 0`],
+        'equation', 'Discriminante negativo', 8),
+      make('recap', 'conclusion',
+        'Como el discriminante es menor que cero, esta ecuación no tiene soluciones reales. No dibujamos intersecciones inexistentes con el eje horizontal.',
+        [`\\Delta = ${formatValue(delta)} < 0`, '\\text{No hay raíces reales}'],
+        'recap', 'Conclusión en los números reales', 7),
+    ];
+    return scenes.map((scene) => ({ ...scene, pedagogicalContract: noRealRootsContract }));
+  }
+
   return [
     make(
       'hook',

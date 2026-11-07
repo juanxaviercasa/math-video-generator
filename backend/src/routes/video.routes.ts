@@ -1,13 +1,37 @@
-import { Router, Request, Response } from 'express';
+import express, { Router, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { generationJobs } from '../services/job.service.js';
 import { optionalAuth, requireAuth, type AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { validateMathProblem } from '../services/math-validation.service.js';
 import { videoGenerationSchema } from '../schemas/video.schema.js';
 import { getVideoFormatProfile } from '../services/video-format.service.js';
+import { extractExerciseFromSource, ExerciseExtractionError } from '../services/exercise-extraction.service.js';
 
+const awaitRawExerciseUpload = express.raw({ type: ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'], limit: '10mb' });
 const router = Router();
 router.use(optionalAuth);
+
+// Binary upload; no source image or PDF is persisted with the video job.
+// The extracted text must be confirmed in the editor before generation.
+router.post('/extract-exercise', requireAuth,
+  // The global JSON parser does not consume image/pdf bodies.
+  (awaitRawExerciseUpload),
+  async (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) return res.status(401).json({ code: 'UNAUTHENTICATED', error: 'Debes iniciar sesión' });
+    try {
+      const mediaType = req.header('content-type') || '';
+      const result = await extractExerciseFromSource(req.body as Buffer, mediaType, req.query.page);
+      return res.json(result);
+    } catch (error) {
+      if (error instanceof ExerciseExtractionError) {
+        return res.status(error.status).json({ code: error.code, error: error.message });
+      }
+      console.error('[Exercise extraction]', error);
+      return res.status(500).json({ code: 'EXERCISE_EXTRACTION_FAILED', error: 'No se pudo procesar el ejercicio.' });
+    }
+  },
+);
+
 
 router.post('/generate-video', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   let createdVideoId: string | undefined;

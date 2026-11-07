@@ -178,8 +178,16 @@ export const videoProcessing = {
           if (!Number.isFinite(audioDuration) || audioDuration <= 0) {
             throw new Error(`AUDIO_SEGMENT_INVALID: Duración de narración inválida en ${scene.id}.`);
           }
-          audioSegments.push(segmentPath);
-          scene.duration = Math.max(2, audioDuration);
+          // Reserve enough time for Manim transitions (graph scenes need six
+          // seconds minimum), then insert silence at the segment tail.
+          const visualDuration = Math.max(scene.kind === 'graph' ? 6 : 4, audioDuration + 0.15);
+          const alignedSegment = await ffmpeg.alignNarrationSegment(
+            segmentPath,
+            path.join(outputDir, `${id}-${scene.id}-aligned.wav`),
+            visualDuration,
+          );
+          audioSegments.push(alignedSegment);
+          scene.duration = visualDuration;
         }
 
         const timelineScenes = pedagogicalScenes.length ? pedagogicalScenes : synchronizedScenes;

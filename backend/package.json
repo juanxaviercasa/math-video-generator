@@ -13,7 +13,8 @@
     "type-check": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "smoke:precision": "tsx scripts/smoke-precision-render.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",

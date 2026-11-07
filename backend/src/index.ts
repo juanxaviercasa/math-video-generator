@@ -107,6 +107,7 @@ app.use('/api/media', mediaRoutes)
 app.use('/api/auth', authLimiter, authRoutes)
 
 // Video generation routes. Only creation is rate-limited; polling remains available.
+app.use('/api/extract-exercise', generationLimiter)
 app.use('/api/generate-video', (req, res, next) => {
   if (req.method === 'POST') return generationLimiter(req, res, next)
   next()
@@ -116,7 +117,10 @@ app.use('/api', videoRoutes)
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[HTTP Error]', { requestId: res.locals.requestId, method: req.method, path: req.path, error: err?.stack || err })
-  res.status(500).json({ code: 'INTERNAL_SERVER_ERROR', error: 'Internal Server Error', requestId: res.locals.requestId })
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ code: 'UPLOAD_TOO_LARGE', error: 'El archivo supera el límite de 10 MB.', requestId: res.locals.requestId })
+  }
+  return res.status(500).json({ code: 'INTERNAL_SERVER_ERROR', error: 'Internal Server Error', requestId: res.locals.requestId })
 })
 
 // 404 handler

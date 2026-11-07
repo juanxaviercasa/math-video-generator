@@ -20,3 +20,12 @@ test('resolves square and portrait dimensions without swapping width and height'
   assert.deepEqual([portrait.width, portrait.height, portrait.orientation], [480, 854, 'portrait']);
   assert.ok(portrait.contentHeight > portrait.contentWidth);
 });
+
+test('every renderer camera keeps the encoded pixel aspect ratio exactly', () => {
+  for (const quality of ['low', 'medium', 'high'] as const) {
+    for (const ratio of ['16:9', '1:1', '9:16'] as const) {
+      const p = getVideoFormatProfile(ratio, quality);
+      assert.ok(Math.abs(p.frameWidth / p.frameHeight - p.width / p.height) < 1e-12);
+    }
+  }
+});

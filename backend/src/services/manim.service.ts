@@ -469,7 +469,7 @@ export const manim = {
         ${repeatedRoot ? '' : `root_3_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)`}
         root_2_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=26).next_to(root_2_${i}, DOWN)
         ${repeatedRoot ? '' : `root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=26).next_to(root_3_${i}, UP)`}
-        graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP)
+        graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP, buff=${(formatProfile.safeMargin + 0.20).toFixed(3)})
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, ${repeatedRoot ? '' : `root_3_${i}, `}root_2_label_${i}, ${repeatedRoot ? '' : `root_3_label_${i}, `}graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
         self.play(FadeIn(root_2_${i}), ${repeatedRoot ? '' : `FadeIn(root_3_${i}), `}Write(root_2_label_${i}), ${repeatedRoot ? '' : `Write(root_3_label_${i}), `}FadeIn(graph_title_${i}), run_time=2)
@@ -595,7 +595,7 @@ export const manim = {
         ${repeatedRoot ? '' : `root_b_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)`}
         root_a_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=24).next_to(root_a_${i}, DOWN)
         ${repeatedRoot ? '' : `root_b_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=24).next_to(root_b_${i}, UP)`}
-        graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP)
+        graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP, buff=${(formatProfile.safeMargin + 0.20).toFixed(3)})
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_a_${i}, ${repeatedRoot ? '' : `root_b_${i}, `}root_a_label_${i}, ${repeatedRoot ? '' : `root_b_label_${i}, `}graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
         self.play(FadeIn(root_a_${i}), ${repeatedRoot ? '' : `FadeIn(root_b_${i}), `}Write(root_a_label_${i}), ${repeatedRoot ? '' : `Write(root_b_label_${i}), `}FadeIn(graph_title_${i}), run_time=2)

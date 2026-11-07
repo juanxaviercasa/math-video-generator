@@ -10,6 +10,7 @@ import { buildQuadraticStoryboard } from './pedagogy.service.js';
 import { renderRemotionDeck } from './remotion-renderer.service.js';
 import { getVideoFormatProfile, type VideoAspectRatio, type VideoQuality } from './video-format.service.js';
 import { validateRenderIntegrity } from './render-integrity.service.js';
+import { readAndValidateGeometry } from './manim-geometry-qa.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -231,9 +232,29 @@ export const videoProcessing = {
         narrationStyle,
         lessonTimeline,
         narrationTimeline: process.env.NARRATION_TIMELINE === 'true',
+        geometryReportPath: path.join(outputDir, `${id}-manim-geometry.json`),
       };
 
       const manimVideoPath = await manim.renderVideo(manimScene);
+      // Validate real rendered text/formula bounding boxes and measured stage timecodes.
+      // Reject unsafe geometry before publishing the final MP4.
+      if (pedagogicalScenes.length) {
+        const geometry = readAndValidateGeometry(manimScene.geometryReportPath, {
+          width: formatProfile.width,
+          height: formatProfile.height,
+          sceneIds: pedagogicalScenes.map((scene) => scene.id),
+          expectedDurations: Object.fromEntries(pedagogicalScenes.map((scene) => [
+            scene.id, Math.max(4, scene.duration ?? scene.estimatedDuration),
+          ])),
+          tolerancePixels: 2,
+        });
+        fs.writeFileSync(path.join(outputDir, `${id}-geometry-qa.json`), JSON.stringify(geometry, null, 2), 'utf8');
+        for (const warning of geometry.warnings) console.warn('⚠️  Geometría:', warning);
+        if (!geometry.passed) {
+          throw new Error(`VISUAL_QA_FAILED: ${geometry.errors.join(' | ')}`);
+        }
+      }
+
       const remotionEnabled = process.env.REMOTION_ENABLED === 'true';
       const remotionTimeline = lessonTimeline;
       if (remotionEnabled && !remotionTimeline) {

@@ -335,6 +335,19 @@ export const manim = {
     const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [], lessonTimeline, narrationTimeline = false } = scene;
     const timelineEnabled = narrationTimeline && Boolean(lessonTimeline) && pedagogicalScenes.length > 0;
     const formatProfile = scene.formatProfile || getVideoFormatProfile('16:9', 'medium');
+    const verifyGraphSpec = (spec: { a: number; b: number; c: number; roots: [number, number] }): void => {
+      const values = [spec.a, spec.b, spec.c, ...spec.roots];
+      if (!values.every(Number.isFinite) || spec.a === 0) {
+        throw new Error('GRAPH_SPEC_INVALID: La gráfica requiere coeficientes y raíces reales finitos.');
+      }
+      for (const root of spec.roots) {
+        const residual = spec.a * root * root + spec.b * root + spec.c;
+        const scale = Math.max(1, Math.abs(spec.a * root * root), Math.abs(spec.b * root), Math.abs(spec.c));
+        if (Math.abs(residual) > 1e-8 * scale) {
+          throw new Error('GRAPH_SPEC_INVALID: Una raíz suministrada no satisface la ecuación.');
+        }
+      }
+    };
     const rootLabel = (value: number): string => {
       const rounded = Number(value.toFixed(3));
       const relation = Math.abs(value - rounded) <= 1e-9 ? '=' : '\\approx';
@@ -435,7 +448,9 @@ export const manim = {
           if (pedScene.layout === 'graph') {
             const graphSpec = pedScene.graphSpec;
             if (!graphSpec) throw new Error('GRAPH_SPEC_MISSING: No se puede dibujar una parábola sin coeficientes validados.');
+            verifyGraphSpec(graphSpec);
             const [rootA, rootB] = graphSpec.roots;
+            const repeatedRoot = Math.abs(rootA - rootB) < 1e-8;
             const vertexX = -graphSpec.b / (2 * graphSpec.a);
             const left = Math.min(rootA, rootB, vertexX) - 1.5;
             const right = Math.max(rootA, rootB, vertexX) + 1.5;
@@ -450,13 +465,13 @@ export const manim = {
         x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x"))
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
         root_2_${i} = Dot(axes_${i}.c2p(${rootA}, 0), color=GREEN)
-        root_3_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)
+        ${repeatedRoot ? '' : `root_3_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)`}
         root_2_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=26).next_to(root_2_${i}, DOWN)
-        root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=26).next_to(root_3_${i}, DOWN)
+        ${repeatedRoot ? '' : `root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=26).next_to(root_3_${i}, UP)`}
         graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP)
-        graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, root_3_${i}, root_2_label_${i}, root_3_label_${i}, graph_title_${i})
+        graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, ${repeatedRoot ? '' : `root_3_${i}, `}root_2_label_${i}, ${repeatedRoot ? '' : `root_3_label_${i}, `}graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
-        self.play(FadeIn(root_2_${i}), FadeIn(root_3_${i}), Write(root_2_label_${i}), Write(root_3_label_${i}), FadeIn(graph_title_${i}), run_time=2)
+        self.play(FadeIn(root_2_${i}), ${repeatedRoot ? '' : `FadeIn(root_3_${i}), `}Write(root_2_label_${i}), ${repeatedRoot ? '' : `Write(root_3_label_${i}), `}FadeIn(graph_title_${i}), run_time=2)
         self.wait(max(0.5, ${duration.toFixed(2)} - 5.5))
         self.play(FadeOut(graph_group_${i}), run_time=1)
 `;
@@ -554,7 +569,9 @@ export const manim = {
           if (pedScene.layout === 'graph') {
             const graphSpec = pedScene.graphSpec;
             if (!graphSpec) throw new Error('GRAPH_SPEC_MISSING: Falta el modelo matemático validado para la gráfica.');
+            verifyGraphSpec(graphSpec);
             const [rootA, rootB] = graphSpec.roots;
+            const repeatedRoot = Math.abs(rootA - rootB) < 1e-8;
             const vertexX = graphSpec.a === 0 ? 0 : -graphSpec.b / (2 * graphSpec.a);
             const sampleLeft = Math.min(rootA, rootB, vertexX) - 1;
             const sampleRight = Math.max(rootA, rootB, vertexX) + 1;
@@ -573,14 +590,14 @@ export const manim = {
         curve_${i} = axes_${i}.plot(lambda x: ${graphSpec.a} * x**2 + ${graphSpec.b} * x + ${graphSpec.c}, x_range=[${curveStart}, ${curveEnd}], color=YELLOW)
         x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x"))
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
-        root_a_${i} = Dot(axes_${i}.c2p(${rootA.toFixed(3)}, 0), color=GREEN)
-        root_b_${i} = Dot(axes_${i}.c2p(${rootB.toFixed(3)}, 0), color=GREEN)
+        root_a_${i} = Dot(axes_${i}.c2p(${rootA}, 0), color=GREEN)
+        ${repeatedRoot ? '' : `root_b_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)`}
         root_a_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=24).next_to(root_a_${i}, DOWN)
-        root_b_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=24).next_to(root_b_${i}, DOWN)
+        ${repeatedRoot ? '' : `root_b_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=24).next_to(root_b_${i}, UP)`}
         graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP)
-        graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_a_${i}, root_b_${i}, root_a_label_${i}, root_b_label_${i}, graph_title_${i})
+        graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_a_${i}, ${repeatedRoot ? '' : `root_b_${i}, `}root_a_label_${i}, ${repeatedRoot ? '' : `root_b_label_${i}, `}graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
-        self.play(FadeIn(root_a_${i}), FadeIn(root_b_${i}), Write(root_a_label_${i}), Write(root_b_label_${i}), FadeIn(graph_title_${i}), run_time=2)
+        self.play(FadeIn(root_a_${i}), ${repeatedRoot ? '' : `FadeIn(root_b_${i}), `}Write(root_a_label_${i}), ${repeatedRoot ? '' : `Write(root_b_label_${i}), `}FadeIn(graph_title_${i}), run_time=2)
         self.wait(max(0.5, ${duration.toFixed(2)} - 5.5))
         self.play(FadeOut(graph_group_${i}), run_time=1)
 `;

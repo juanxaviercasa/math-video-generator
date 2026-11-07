@@ -1,24 +1,89 @@
-# Math Video Generator — despliegue privado en Oracle + Cloudflare Pages
+# Math Video Generator — instalación personal con Supabase + Oracle + Cloudflare Pages
 
-> Este repositorio contiene una **configuración preparada**, no una declaración de que el VPS, el DNS o Cloudflare Pages hayan sido desplegados. No tocar ViralForge, servicios Forjavia ni instalaciones existentes sin verificar los recursos reales.
+**Estado comprobado (7 nov 2026):** el proyecto Supabase **Video Generator**
+(`jplhbgyhswvbghhzhjvm`, `sa-east-1`) está creado y saludable. Se aplicó
+la migración `20261107185018_personal_math_video_private_schema`, con tablas
+`public.users` y `public.videos`, RLS activado y ningún permiso Data API
+para `anon` ni `authenticated`.
 
-## Arquitectura mínima (una sola persona)
+Este documento configura exclusivamente tu estudio. No crea un servicio
+público multiusuario, no cobra ni modifica ViralForge.
 
-- **Frontend privado**: React/Vite en Cloudflare Pages, con dominio propio en el mismo sitio que la API.
-- **API**: Node/Express en Oracle VPS, `127.0.0.1:3001` solamente, publicada mediante Cloudflare Tunnel (HTTPS).
-- **Worker**: Manim + FFmpeg + Edge TTS, un solo trabajo simultáneo, con límites de memoria y CPU.
-- **Estado**: PostgreSQL y Redis privados dentro del proyecto Docker Compose; archivos MP4 y diagnósticos en volumen persistente.
-- **IA externa**: Gemini u OpenAI para OCR visual según claves existentes; solver cuadrático local para resultados verificables.
-- **ViralForge/Kaggle**: consulta opcional del catálogo de modelos; nunca inicia GPUs ni mueve datasets automáticamente.
+## Arquitectura
 
-La instalación solo admite a la cuenta existente definida por `OWNER_USER_ID` y no ofrece registro de nuevos usuarios.
+| Servicio | Dónde corre |
+|---|---|
+| React/Vite (pantalla privada) | Cloudflare Pages, `math.forjavia.site` (propuesto, aún sin desplegar) |
+| Supabase Auth | Proyecto `jplhbgyhswvbghhzhjvm` |
+| PostgreSQL de videos | El **mismo Supabase**, NO un Postgres duplicado en Oracle |
+| API Express y worker Manim/FFmpeg/Edge TTS | Oracle VPS, Docker Compose independiente |
+| Cola BullMQ | Redis privado en ese Compose |
+| Videos MP4 | Volumen persistente `media_data` en Oracle |
+| Kaggle/ViralForge | Catálogo opcional de lectura, inferencia GPU aún no conectada |
 
-## 0. Revisiones previas — no destructivas
+## 1. Crear tu única cuenta autorizada (imprescindible)
 
-En el VPS elegido, revisa:
+Al crear el proyecto se verificó que **`auth.users` está vacío**. No existe
+un propietario aún. El complemento de Supabase disponible no administra
+directamente usuarios Auth y no debe fabricarlos con SQL.
+
+1. Abre [Supabase — Authentication/Users](https://supabase.com/dashboard/project/jplhbgyhswvbghhzhjvm/auth/users).
+2. Selecciona **Add user** para crear tu propia cuenta por correo y contraseña, preferentemente marcada como confirmada o confirmándola por correo.
+3. Copia el **UUID** que Supabase asigna a ese usuario.
+4. Configura `OWNER_USER_ID` con ese UUID **solo en el archivo privado del VPS**.
+5. En [Authentication — URL Configuration](https://supabase.com/dashboard/project/jplhbgyhswvbghhzhjvm/auth/url-configuration), establece el Site URL definitivo `https://math.forjavia.site` y agrega los redirect URLs que sean necesarios una vez publicado.
+6. En Authentication > Providers, desactiva el registro público si está disponible. De cualquier modo, el backend ya bloquea `/api/auth/register` y las tablas Prisma no son accesibles vía la Data API.
+
+Nunca guardes la contraseña, el UUID de otros usuarios ni un token secreto en el código. **`OWNER_USER_ID` no es una clave de API, pero conviene mantenerlo en el entorno privado**.
+
+## 2. Credenciales de Supabase y PostgreSQL
+
+En Supabase Dashboard > **Connect** copia la URL de conexión **Session Pooler**
+(port `5432`) si Oracle no tiene IPv6. La URL directa en el plan Free
+suele requerir IPv6; no inventes el hostname regional del pooler. Usa la
+cadena exacta que muestre Supabase.
+
+En [API Keys](https://supabase.com/dashboard/project/jplhbgyhswvbghhzhjvm/settings/api-keys)
+copia la clave **publishable** activa (nunca service-role/secret).
+
+Variables obligatorias en `.env.personal` del servidor:
+
+```dotenv
+PERSONAL_MODE=true
+OWNER_USER_ID=UUID_DE_TU_CUENTA_CONFIRMADA
+SUPABASE_URL=https://jplhbgyhswvbghhzhjvm.supabase.co
+SUPABASE_PUBLISHABLE_KEY=CLAVE_PUBLICABLE_DE_SUPABASE
+DATABASE_URL=POSTGRES_SESSION_POOLER_URL_CON_CONTRASENA
+DIRECT_URL=POSTGRES_SESSION_POOLER_URL_CON_CONTRASENA
+JWT_SECRET=CADENA_ALEATORIA_LARGA
+APP_URL=https://math.forjavia.site
+VITE_API_URL=https://api-math.forjavia.site/api
+```
+
+Para `DIRECT_URL` puedes usar el endpoint directo si el VPS soporta IPv6;
+en caso contrario, el pooler **session** es la alternativa IPv4. La contraseña
+de PostgreSQL debe estar percent-encoded si contiene caracteres reservados
+en una URL. No pongas estas cadenas en GitHub, Pages, capturas o conversaciones.
+
+La migración ya se aplicó desde el complemento Supabase; el backend ejecuta
+**`node dist/index.js` sin `prisma migrate deploy`** para no volver a
+ejecutar las migraciones antiguas incompatibles con una base ya provisionada.
+El archivo reproducible es
+[`supabase/migrations/20261107185018_personal_math_video_private_schema.sql`](../supabase/migrations/20261107185018_personal_math_video_private_schema.sql).
+Para evoluciones futuras usa una única estrategia de migraciones y actualiza
+`backend/prisma/schema.prisma` en paralelo.
+
+Las advertencias informativas `rls_enabled_no_policy` para estas dos tablas
+son **intencionales**: su acceso está reservado a Prisma con credenciales
+privilegiadas del servidor, nunca a clientes `anon` o `authenticated`.
+Consulta [Supabase RLS sin política](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+
+## 3. Preparar Oracle sin tocar otras aplicaciones
+
+Antes de instalar nada:
 
 ```bash
-uname -m                         # Oracle Ampere: aarch64
+uname -m
 free -h
 df -h
 docker version
@@ -26,9 +91,12 @@ docker compose version
 ss -lntup | grep -E ':(3001|5432|6379|8765|8501)\b' || true
 ```
 
-Verifica también la forma (shape) y cuota real Always Free en la consola de Oracle. **No uses automáticamente una instancia que ya está al límite ni borres volúmenes existentes**.
+No pares, reemplaces ni elimines contenedores existentes de ViralForge,
+Forjavia ni túneles actuales. El Dockerfile con Manim/LaTeX puede requerir
+mucho disco y tiempo de compilación en Ampere A1. Si faltan recursos, mueve
+el worker a otro host antes de forzar el VPS gratuito.
 
-## 1. Descarga y configuración de secretos privados
+Instala en un directorio propio:
 
 ```bash
 sudo mkdir -p /opt/math-video-generator
@@ -39,111 +107,79 @@ cp .env.personal.example .env.personal
 chmod 600 .env.personal
 ```
 
-Si el repositorio es privado, emplea una credencial de GitHub de solo lectura / deploy key; no copies tokens al repositorio.
+Si el repositorio es privado, usa deploy key GitHub de lectura. Completa
+`.env.personal` con las variables del apartado anterior y las credenciales
+opcionales de visión (`GEMINI_API_KEY`, `OPENAI_API_KEY`), nunca con
+credenciales de otras apps.
 
-Edita `.env.personal` con:
-
-- `OWNER_USER_ID`: el UUID real de **tu cuenta ya existente** en Supabase Auth, no un email ni un UUID inventado.
-- `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`: tus valores existentes; nunca se envían al navegador desde la API.
-- `DB_PASSWORD`: una contraseña nueva para el Postgres **de esta instalación** (sin caracteres reservados en URI si no están percent-encoded).
-- `JWT_SECRET`: un valor aleatorio largo (por ejemplo `openssl rand -hex 32`).
-- `APP_URL`: origen HTTPS exacto del frontend, sin barra final.
-- `GEMINI_API_KEY` u `OPENAI_API_KEY`: opcionales, necesarios para extracción de fotos y PDF. No se cargan en Cloudflare Pages.
-- `TTS_PROVIDER=edge`, `TTS_ALLOW_LOCAL_FALLBACK=false`: para evitar videos con una voz inesperada o silencio.
-
-**Nota:** El esquema usa un PostgreSQL nuevo privado del proyecto. Si prefieres reutilizar el servidor PostgreSQL de otra aplicación, se necesita otro compose y otra base/esquema aislado; no reuses ni sobreescribas una base de producción existente.
-
-## 2. Validar el stack ANTES del primer arranque
+Validación y arranque:
 
 ```bash
 docker compose --env-file .env.personal -f deploy/docker-compose.yml config --quiet
 docker compose --env-file .env.personal -f deploy/docker-compose.yml config --services
-```
-
-Los servicios por defecto son `postgres`, `redis`, `backend`, `worker`.
-`frontend` está bajo perfil `local-ui`, porque la web final vivirá en Cloudflare Pages.
-
-El contenedor de la API solo publica `127.0.0.1:3001`. **Nunca** exponer 5432, 6379 ni 3001 a `0.0.0.0` en Internet.
-
-## 3. Ejecutar y verificar sin modificar servicios de terceros
-
-```bash
 docker compose --env-file .env.personal -f deploy/docker-compose.yml up -d --build
 docker compose --env-file .env.personal -f deploy/docker-compose.yml ps
 curl --fail http://127.0.0.1:3001/health
 curl --fail http://127.0.0.1:3001/readyz
-docker compose --env-file .env.personal -f deploy/docker-compose.yml logs --tail=50 backend worker
 ```
 
-Si no hay espacio suficiente para los paquetes LaTeX/Manim, detén **solo** este proyecto, revisa el consumo y selecciona otro host para el worker. No elimines contenedores ni volúmenes de ViralForge/Forjavia.
+Servicios por defecto: `redis`, `backend`, `worker`. Los contenedores
+usan `PERSONAL_MODE=true`; la API publica solamente
+`127.0.0.1:3001:3001`; Redis no publica ningún puerto; el worker limita
+el paralelismo a un trabajo. El frontend Docker local es optativo.
 
-El backend ejecuta `prisma migrate deploy` solo contra la base nueva de Math Video Generator. El worker no ejecuta migraciones. Los MP4 se guardan en `media_data`.
+**No usar `docker compose down -v`**, ya que borraría Redis y los MP4
+persistidos. No almacenar videos permanentemente solo en el sistema de
+archivos del contenedor; se usa el volumen `media_data`.
 
-## 4. Cloudflare Tunnel para la API
+## 4. Cloudflare — API y frontend
 
-Usa una ruta nueva, independiente de túneles que atiendan otras apps. En la consola de Cloudflare crea un túnel nuevo o añade **únicamente** una ruta adicional a un túnel existente después de inspeccionar su configuración.
+Usa el hostname propuesto `api-math.forjavia.site` apuntando mediante un
+Cloudflare Tunnel privado de administración a `127.0.0.1:3001` en Oracle.
+El ejemplo está en `deploy/cloudflared-math.example.yml`. El dominio todavía
+no está creado por este proceso. No reemplaces ni dupliques el túnel de
+ViralForge. Activa HTTPS en el acceso público a la API.
 
-Propuesta de ruta: `api-math.forjavia.site` → `http://127.0.0.1:3001` (solo si `cloudflared` reside en el mismo VPS).
+En Cloudflare Pages crea un proyecto desde la rama `main`:
 
-Para un túnel gestionado mediante archivos, parte de `deploy/cloudflared-math.example.yml`; sustituye UUID y ruta de credenciales localmente, valida las reglas con:
-
-```bash
-cloudflared tunnel ingress validate --config /RUTA/PRIVADA/config-math.yml
-```
-
-Si el túnel ya existe en Cloudflare Zero Trust, configúralo desde el panel; no ejecutes una segunda instancia con la misma configuración por error. El hostname sugerido **aún no está reservado ni creado desde este repo**.
-
-## 5. Frontend Cloudflare Pages — GitHub
-
-Crea el proyecto Pages desde el repositorio `juanxaviercasa/math-video-generator`, rama `main`:
-
-| Campo | Valor |
+| Opción | Valor |
 |---|---|
-| Root directory | `/` (raíz del monorepo) |
-| Framework preset | None / custom |
-| Build command | `npm ci && npm run build:frontend` |
-| Build output | `frontend/dist` |
-| Variable de compilación | `VITE_API_URL=https://api-math.forjavia.site/api` |
+| Root | `/` |
+| Build | `npm ci && npm run build:frontend` |
+| Output | `frontend/dist` |
+| Variable de frontend | `VITE_API_URL=https://api-math.forjavia.site/api` |
+| Dominio | `math.forjavia.site`, después de comprobar que esté disponible |
 
-Asocia después el dominio `math.forjavia.site` si está libre en tu zona de Cloudflare y comprueba TLS. La SPA usa `frontend/public/_redirects` para rutas internas y `_headers` para respuestas de seguridad.
+La aplicación depende de cookies HttpOnly/Secure con `SameSite=Lax`; usa
+los **dos subdominios del mismo sitio** y prueba autenticación en HTTPS. La
+URL temporal de `pages.dev` podría no compartir cookies con la API final.
 
-No subas `.env.personal` a Pages. Vite solo necesita la URL pública de la API, **nunca** tus secretos Gemini/OpenAI/Redis/Supabase privados.
+Los secretos de IA, PostgreSQL y JWT **nunca** deben añadirse a Pages.
 
-**Cookies:** Las cookies actuales son `Secure; SameSite=Lax`. La ruta frontend `math.forjavia.site` y API `api-math.forjavia.site` comparte el sitio registrable `forjavia.site`. Para usar un dominio temporal `*.pages.dev` diferente se requiere reconsiderar la política de cookies; la prueba funcional completa debe hacerse en dominios finales con HTTPS.
+## 5. Pruebas reales de aceptación
 
-## 6. Probar el uso personal
+1. Abre la aplicación sin iniciar sesión: no debe mostrar videos ni editor.
+2. Inicia sesión con tu usuario confirmado; cualquier otro usuario debe ser rechazado.
+3. Comprueba que `POST /api/auth/register` está deshabilitado (403).
+4. Escucha una muestra **real** de Edge TTS y verifica el audio con auriculares.
+5. Sube un PNG de una cuadrática, revisa la transcripción y confirma el ejercicio.
+6. Genera un MP4; comprueba voz, animaciones, subtítulos si aplica y reporte QA.
+7. Revisa que el archivo se mantenga privado y que ninguna tabla Prisma sea
+   consultable con la clave pública de Supabase.
+8. Comprueba `GET /api/ai-infrastructure` de manera autenticada; si no hay
+   puente configurado, debe informar `inferenceReady=false`.
 
-1. Abre el frontend en HTTPS; sin sesión no debe mostrar el generador ni tus videos.
-2. Inicia sesión con **tu usuario Supabase existente**. Intenta otra cuenta de prueba: debe responder `403 OWNER_ONLY`.
-3. Prueba `GET /api/auth/me` mediante el navegador autenticado y el botón de voces neurales.
-4. Sube un ejercicio PNG/PDF, corrige el OCR y confirma el enunciado.
-5. Genera un ejemplo de cuadrática con una sola tarea concurrente.
-6. Reproduce el MP4, verifica voz audible, fórmulas, QA y acceso privado a los archivos.
+Los datasets Kaggle del repositorio `avatars` **no equivalen a una API GPU
+activa**. El panel solo consulta el catálogo mediante un puente privado
+configurado y no gasta sesiones GPU automáticamente.
 
-### Comprobación de seguridad mínima
+## 6. Backups y actualización
 
-- `POST /api/auth/register` debe devolver `403 PRIVATE_INSTALLATION`.
-- `POST /api/preview` y `GET /api/videos` sin autenticación deben devolver `401`.
-- `GET /api/media/:id/:file` sin propietario válido debe devolver `401` o `404`.
-- `GET /mcp` remoto sin token debe permanecer deshabilitado.
-- Confirmar que ni Redis ni PostgreSQL aparecen como puertos públicos.
+La base de datos está en Supabase; gestiona las copias de sus datos en
+[Database Backups](https://supabase.com/dashboard/project/jplhbgyhswvbghhzhjvm/database/backups)
+según las opciones de tu plan. El volumen `media_data` de Oracle **sigue
+requiriendo un backup propio**; los MP4 no están almacenados en Supabase.
+No se automatizan cambios DNS, backups ni despliegue en Oracle desde GitHub.
 
-## 7. ViralForge y los modelos Kaggle ya inventariados
-
-Configura `VIRALFORGE_INTERNAL_URL` en `.env.personal` **solo si tienes una URL privada alcanzable desde el contenedor backend**. La integración hace una consulta de lectura a `/api/kaggle/catalog`, filtra roles útiles para matemáticas y muestra metadatos seguros en «Mis modelos de IA». **Nunca publica tokens, rutas locales ni cuentas Kaggle**, y siempre indica que inferencia GPU no está verificada.
-
-Si ViralForge escucha en `127.0.0.1:8765` **del host**, esa dirección no se comparte automáticamente con los contenedores Docker. Hace falta un gateway autenticado/privado compatible o una red Docker compartida explícitamente configurada. No expongas el API histórico de ViralForge públicamente para conseguirlo.
-
-La conexión al catálogo no significa que Qwen2-VL, Qwen3-TTS, MuseTalk o Wan estén cargados en una GPU activa. La integración de inferencia necesita un servicio accesible, autenticado y con health checks reales.
-
-## 8. Backups, operación y rollback
-
-- Backup programado de PostgreSQL y del volumen de media; conserva una copia fuera del VPS.
-- No elimines `postgres_data` ni `media_data` al actualizar.
-- Limita trabajos simultáneos a 1 y monitoriza CPU/RAM/disco.
-- En caso de fallo de voz, el proceso debe rechazar un MP4 sin audio, no publicar silenciosamente un video defectuoso.
-- Para volver al commit anterior sin eliminar datos: despliega la versión Git anterior de `backend` y `worker` después de verificar compatibilidad de esquema; **no** uses `docker compose down -v`.
-
-## Lo que requiere acceso a cuentas reales
-
-Este repositorio **no** puede crear la instancia Pages, el túnel DNS, el UUID de Supabase, secretos ni alterar servicios de Oracle por sí mismo. Son pasos de despliegue que requieren las cuentas conectadas y verificación del servidor. No compartas claves privadas en el chat.
+Cualquier error de render o de voz debe bloquear la publicación del MP4
+en vez de declarar un trabajo completo.

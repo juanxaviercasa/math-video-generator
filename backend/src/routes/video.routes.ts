@@ -18,7 +18,7 @@ const awaitRawExerciseUpload = express.raw({ type: ['image/png', 'image/jpeg', '
 const router = Router();
 router.use(optionalAuth);
 
-router.get('/voices', (_req: Request, res: Response) => {
+router.get('/voices', requireAuth, (_req: Request, res: Response) => {
   return res.json({ voices: SPANISH_VOICES, defaultVoiceId: SPANISH_VOICES[0].id, voiceTechnology: 'edge-tts', generatedByAI: true });
 });
 

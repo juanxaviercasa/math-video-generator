@@ -335,6 +335,11 @@ export const manim = {
     const { title, steps, content = '', synchronizedScenes = [], pedagogicalScenes = [], lessonTimeline, narrationTimeline = false } = scene;
     const timelineEnabled = narrationTimeline && Boolean(lessonTimeline) && pedagogicalScenes.length > 0;
     const formatProfile = scene.formatProfile || getVideoFormatProfile('16:9', 'medium');
+    const rootLabel = (value: number): string => {
+      const rounded = Number(value.toFixed(3));
+      const relation = Math.abs(value - rounded) <= 1e-9 ? '=' : '\\approx';
+      return `x${relation}${rounded}`;
+    };
     const panelWidth = formatProfile.panelWidth.toFixed(2);
     const panelHeight = formatProfile.panelHeight.toFixed(2);
     const contentWidth = formatProfile.contentWidth.toFixed(2);
@@ -446,8 +451,8 @@ export const manim = {
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
         root_2_${i} = Dot(axes_${i}.c2p(${rootA}, 0), color=GREEN)
         root_3_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)
-        root_2_label_${i} = MathTex("x=${rootA.toFixed(3)}", font_size=26).next_to(root_2_${i}, DOWN)
-        root_3_label_${i} = MathTex("x=${rootB.toFixed(3)}", font_size=26).next_to(root_3_${i}, DOWN)
+        root_2_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=26).next_to(root_2_${i}, DOWN)
+        root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=26).next_to(root_3_${i}, DOWN)
         graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP)
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, root_3_${i}, root_2_label_${i}, root_3_label_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
@@ -570,8 +575,8 @@ export const manim = {
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
         root_a_${i} = Dot(axes_${i}.c2p(${rootA.toFixed(3)}, 0), color=GREEN)
         root_b_${i} = Dot(axes_${i}.c2p(${rootB.toFixed(3)}, 0), color=GREEN)
-        root_a_label_${i} = MathTex("x=${rootA.toFixed(3)}", font_size=24).next_to(root_a_${i}, DOWN)
-        root_b_label_${i} = MathTex("x=${rootB.toFixed(3)}", font_size=24).next_to(root_b_${i}, DOWN)
+        root_a_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=24).next_to(root_a_${i}, DOWN)
+        root_b_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=24).next_to(root_b_${i}, DOWN)
         graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP)
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_a_${i}, root_b_${i}, root_a_label_${i}, root_b_label_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)

@@ -20,7 +20,7 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
   const [voices, setVoices] = useState<VoiceChoice[]>([])
   const [voicePreviewUrl, setVoicePreviewUrl] = useState('')
   const [previewingVoice, setPreviewingVoice] = useState(false)
-  const [aiProvider, setAiProvider] = useState<'openrouter' | 'gemini' | 'openai'>('openrouter')
+  const [aiProvider, setAiProvider] = useState<'openrouter' | 'gemini' | 'openai'>('gemini')
   const [enableComfyUI, setEnableComfyUI] = useState(false)
   const [loading, setLoading] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -79,7 +79,7 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
     }
     setExtracting(true)
     try {
-      const result = await api.extractExercise(sourceFile, pdfPage)
+      const result = await api.extractExercise(sourceFile, pdfPage, aiProvider)
       setExtracted(result)
       setSourceConfirmed(false)
       setContent(result.problem)

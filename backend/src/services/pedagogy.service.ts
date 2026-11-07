@@ -107,7 +107,12 @@ export const buildQuadraticStoryboard = (
   const productTerm = 4 * a * c;
   const discriminantOperation = `\\Delta = ${formatValue(b * b)} ${productTerm < 0 ? '+' : '-'} ${formatValue(Math.abs(productTerm))}`;
   const formulaSubstitution = `x = \\frac{-(${formatValue(b)}) \\pm \\sqrt{${formatValue(delta)}}}{2(${formatValue(a)})}`;
-  const formulaSimplified = `x = \\frac{${formatValue(-b)} \\pm ${formatValue(sqrtDelta)}}{${formatValue(denominator)}}`;
+  // Preserve an exact radical when the square root is not exactly representable.
+  const sqrtExpression = Math.abs(sqrtDelta - Number(formatValue(sqrtDelta))) <= 1e-10
+    ? formatValue(sqrtDelta)
+    : `\\sqrt{${formatValue(delta)}}`;
+  const rootRelation = (value: number): string => Math.abs(value - Number(formatValue(value))) <= 1e-10 ? '=' : '\\approx';
+  const formulaSimplified = `x = \\frac{${formatValue(-b)} \\pm ${sqrtExpression}}{${formatValue(denominator)}}`;
   const x1 = denominator === 0 ? 0 : (-b + sqrtDelta) / denominator;
   const x2 = denominator === 0 ? 0 : (-b - sqrtDelta) / denominator;
   const pedagogicalContract: PedagogicalContract = {
@@ -179,7 +184,7 @@ export const buildQuadraticStoryboard = (
         'equation', 'Discriminante negativo', 8),
       make('recap', 'conclusion',
         'Como el discriminante es menor que cero, esta ecuación no tiene soluciones reales. No dibujamos intersecciones inexistentes con el eje horizontal.',
-        [`\\Delta = ${formatValue(delta)} < 0`, '\\text{No hay raíces reales}'],
+        [`\\Delta = ${formatValue(delta)} < 0`, '\\text{No hay raices reales}'],
         'recap', 'Conclusión en los números reales', 7),
     ];
     return scenes.map((scene) => ({ ...scene, pedagogicalContract: noRealRootsContract }));
@@ -284,16 +289,16 @@ export const buildQuadraticStoryboard = (
     make(
       'solution-branches',
       'step',
-      `${lead}La expresión más o menos produce dos caminos. En el primero sumamos; en el segundo restamos. Así obtenemos x uno igual a ${numberToSpanish(Number(formatValue(x1)))} y x dos igual a ${numberToSpanish(Number(formatValue(x2)))}.`,
-      [`x_1 = \\frac{${formatValue(-b)} + ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x1)}`, `x_2 = \\frac{${formatValue(-b)} - ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x2)}`],
+      `${lead}La expresión más o menos produce dos caminos. En el primero sumamos; en el segundo restamos. Así obtenemos x uno ${rootRelation(x1) === '=' ? 'igual a' : 'aproximadamente'} ${numberToSpanish(Number(formatValue(x1)))} y x dos ${rootRelation(x2) === '=' ? 'igual a' : 'aproximadamente'} ${numberToSpanish(Number(formatValue(x2)))}.`,
+      [`x_1 = \\frac{${formatValue(-b)} + ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x1)} ${formatValue(x1)}`, `x_2 = \\frac{${formatValue(-b)} - ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x2)} ${formatValue(x2)}`],
       'split',
       'Dos soluciones',
       10,
       ['Camino +', 'Camino −'],
       [
         { label: 'Expresión simplificada', latex: formulaSimplified, role: 'context', semanticStep: 'Conservar la expresión simplificada' },
-        { label: 'Camino +', latex: `x_1 = \\frac{${formatValue(-b)} + ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x1)}`, role: 'result', semanticStep: 'Resolver la primera rama' },
-        { label: 'Camino −', latex: `x_2 = \\frac{${formatValue(-b)} - ${formatValue(sqrtDelta)}}{${formatValue(denominator)}} = ${formatValue(x2)}`, role: 'result', semanticStep: 'Resolver la segunda rama' },
+        { label: 'Camino +', latex: `x_1 = \\frac{${formatValue(-b)} + ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x1)} ${formatValue(x1)}`, role: 'result', semanticStep: 'Resolver la primera rama' },
+        { label: 'Camino −', latex: `x_2 = \\frac{${formatValue(-b)} - ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x2)} ${formatValue(x2)}`, role: 'result', semanticStep: 'Resolver la segunda rama' },
       ],
       {
         formulaAnchor: { latex: formulaSimplified, label: 'Expresión de referencia', persistence: 'segment', position: 'top' },

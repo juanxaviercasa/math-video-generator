@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { supabaseAuth } from '../lib/supabase.js';
 import { syncSupabaseProfile } from '../services/profile.service.js';
+import { isOwner } from '../services/personal-mode.service.js';
 
 const ACCESS_COOKIE = 'mvg_access_token';
 const REFRESH_COOKIE = 'mvg_refresh_token';
@@ -72,7 +73,7 @@ const resolveUser = async (req: Request, res: Response) => {
     accessToken = refreshed.data.session.access_token;
   }
 
-  if (!authUser) return undefined;
+  if (!authUser || !isOwner(authUser.id)) return undefined;
   const user = await syncSupabaseProfile(authUser);
   return {
     id: user.id,

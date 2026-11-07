@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d math_video_generator"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -104,6 +104,9 @@ services:
     volumes:
       - media_data:/var/lib/math-video-generator/media
     command: ["node", "dist/worker.js"]
+    # The worker has no HTTP server. Do not apply the API image healthcheck.
+    healthcheck:
+      disable: true
     cpus: ${WORKER_CPUS:-1.0}
     mem_limit: ${WORKER_MEMORY:-3g}
 

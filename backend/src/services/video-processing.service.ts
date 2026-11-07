@@ -12,7 +12,7 @@ import { getVideoFormatProfile, type VideoAspectRatio, type VideoQuality } from 
 import { validateRenderIntegrity } from './render-integrity.service.js';
 import { readAndValidateGeometry } from './manim-geometry-qa.service.js';
 import { auditFinalVideoFrames } from './final-frame-qa.service.js';
-import { extractVoiceCues, buildCueTimingPlan, CUE_INTRO_SECONDS, CUE_OUTRO_SECONDS } from './voice-cue.service.js';
+import { extractVoiceCues, buildCueTimingPlan, CUE_INTRO_SECONDS, CUE_OUTRO_SECONDS, CUE_LEAD_SECONDS } from './voice-cue.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -190,6 +190,7 @@ export const videoProcessing = {
                 clips[index],
                 path.join(outputDir, `${id}-${scene.id}-cue-${index + 1}-aligned.wav`),
                 timing.stageDurations[index],
+                CUE_LEAD_SECONDS,
               ));
             }
             parts.push(await ffmpeg.createSilentAudio(path.join(outputDir, `${id}-${scene.id}-closing.wav`), CUE_OUTRO_SECONDS));
@@ -250,9 +251,9 @@ export const videoProcessing = {
           if (events.length !== cueDurations.length) throw new Error(`VOICE_CUE_EVENT_MISMATCH: ${pedagogical.id}`);
           let offset = CUE_INTRO_SECONDS;
           for (const [index, event] of events.entries()) {
-            event.startOffset = Number(offset.toFixed(3));
-            event.duration = 0.8;
-            event.holdAfter = Number((cueDurations[index] - 0.8).toFixed(3));
+            event.startOffset = Number((offset + CUE_LEAD_SECONDS).toFixed(3));
+            event.duration = 0.40;
+            event.holdAfter = Number((cueDurations[index] - CUE_LEAD_SECONDS - 0.40).toFixed(3));
             offset += cueDurations[index];
           }
         }

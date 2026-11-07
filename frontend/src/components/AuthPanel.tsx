@@ -21,7 +21,7 @@ export function AuthPanel({ user, onAuthenticated, onLogout, onForgotPassword }:
       <div className="flex items-center gap-3 text-right">
         <div>
           <p className="text-sm font-medium text-white">{user.name}</p>
-          <p className="text-xs text-slate-400">Espacio personal</p>
+          <p className="text-xs text-slate-400">{user.authMode === 'supabase' ? 'Supabase verificado · Oracle pendiente' : 'Espacio personal'}</p>
         </div>
         <button
           type="button"
@@ -92,7 +92,7 @@ export function AuthPanel({ user, onAuthenticated, onLogout, onForgotPassword }:
                 } else if (axios.isAxiosError(requestError) && requestError.response?.status === 401) {
                   setError('Correo o contraseña incorrectos. Utiliza tu cuenta confirmada de Supabase.')
                 } else {
-                  setError('Error al iniciar sesión. Comprueba el backend y vuelve a intentarlo.')
+                  setError(requestError instanceof Error ? requestError.message : 'No se pudo iniciar sesión en Supabase.')
                 }
               } finally {
                 setLoading(false)

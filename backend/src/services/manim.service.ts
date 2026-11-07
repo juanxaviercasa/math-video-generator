@@ -509,7 +509,7 @@ export const manim = {
               const caption = textLines[pairIndex] ? `Text(${escapeForPythonString(textLines[pairIndex])}, font_size=${captionFontSize}, color=GREY_B)` : `Text("", font_size=${captionFontSize})`;
               return `VGroup(${formula}, ${caption}).arrange(DOWN, buff=0.18)`;
             });
-            const arrangement = formatProfile.orientation === 'portrait' ? 'DOWN' : 'RIGHT';
+            const arrangement = formatProfile.orientation === 'landscape' ? 'RIGHT' : 'DOWN';
             const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=${formatProfile.orientation === 'portrait' ? '0.35' : '0.55'})`;
             return `
         # Storyboard pedagógico: ${pedScene.id}

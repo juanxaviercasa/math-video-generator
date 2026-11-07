@@ -11,6 +11,7 @@ import { readAndValidateGeometry } from '../src/services/manim-geometry-qa.servi
 import { auditFinalVideoFrames } from '../src/services/final-frame-qa.service.js';
 import { validateRenderIntegrity } from '../src/services/render-integrity.service.js';
 import { buildCueTimingPlan, CUE_LEAD_SECONDS } from '../src/services/voice-cue.service.js';
+import { prepareExerciseImage, verifyExerciseSource } from '../src/services/exercise-extraction.service.js';
 
 const problem = 'x^2 - 5x + 6 = 0';
 const formats: VideoAspectRatio[] = ['16:9', '1:1', '9:16'];
@@ -114,6 +115,29 @@ async function smoke(format: VideoAspectRatio, fullLesson = false, problemInput 
   console.log(fullLesson ? 'APPROVED FULL LESSON' : 'APPROVED', format, profile.width, profile.height, 'duration', integrity.actual.videoDuration, 'snapshots', geometry.stages.length);
 }
 
+async function smokePdfExercise(): Promise<void> {
+  const execFileAsync = promisify(execFile);
+  const root = path.join(path.resolve(process.env.PRECISION_ARTIFACTS_DIR || 'smoke-artifacts'), 'pdf-exercise');
+  fs.mkdirSync(root, { recursive: true });
+  const tex = String.raw`\\documentclass{article}
+\\begin{document}
+\\[x^2-5x+6=0\\]
+\\end{document}
+`;
+  const texPath = path.join(root, 'exercise.tex');
+  fs.writeFileSync(texPath, tex);
+  await execFileAsync('pdflatex', [
+    '-interaction=nonstopmode', '-halt-on-error', '-output-directory', root, texPath,
+  ], { cwd: root, maxBuffer: 1024 * 1024, timeout: 30000 });
+  const pdf = fs.readFileSync(path.join(root, 'exercise.pdf'));
+  verifyExerciseSource(pdf, 'application/pdf');
+  const image = await prepareExerciseImage(pdf, 'application/pdf', 1);
+  verifyExerciseSource(image.data, image.type);
+  fs.writeFileSync(path.join(root, 'rasterized-page.png'), image.data);
+  if (image.data.byteLength < 1000) throw new Error('PDF_SMOKE_PAGE_EMPTY');
+  console.log('APPROVED PDF RASTER', pdf.length, image.data.length);
+}
+
 async function smokeAudioAlignment(): Promise<void> {
   const execFileAsync = promisify(execFile);
   const artifactRoot = process.env.PRECISION_ARTIFACTS_DIR || path.resolve('smoke-artifacts');
@@ -159,6 +183,7 @@ async function smokeAudioAlignment(): Promise<void> {
   await smoke('16:9', true, 'x^2 + 2x + 5 = 0', 'no-real-roots');
   await smoke('16:9', true, 'x^2 - 2x + 1 = 0', 'double-root');
   await smoke('16:9', false, problem, 'voice-locked');
+  await smokePdfExercise();
   await smokeAudioAlignment();
 })().catch((error) => {
   console.error(error);

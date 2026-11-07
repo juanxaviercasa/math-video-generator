@@ -434,6 +434,24 @@ export const manim = {
             const stageArrangement = visualStages.length >= 4
               ? `VGroup(${stageObjects[0]}, VGroup(${stageObjects.slice(1).join(', ')}).arrange(RIGHT, buff=0.28)).arrange(DOWN, buff=0.30)`
               : `VGroup(${stageObjects.join(', ')}).arrange(DOWN, buff=0.30)`;
+            const cueDurations = pedScene.visualCueDurations;
+            const cueLocked = cueDurations?.length === visualStages.length
+              && cueDurations.every((seconds) => Number.isFinite(seconds) && seconds >= 1.2);
+            const cueAnimation = cueLocked
+              ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=1.2)
+${cueDurations.map((seconds, index) => {
+                const stageRef = visualStages.length >= 4
+                  ? index === 0 ? `content_${i}[0]` : `content_${i}[1][${index - 1}]`
+                  : `content_${i}[${index}]`;
+                return `        # Voz neural y resaltado del mismo micro-paso ${index + 1}
+        self.play(FadeIn(${stageRef}), run_time=0.45)
+        self.play(Indicate(${stageRef}[1], color=YELLOW, scale_factor=1.04), run_time=0.40)
+        self.wait(${Math.max(0, seconds - 0.85).toFixed(3)})`;
+              }).join('\n')}
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)`
+              : `        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)`;
             return `
         # Storyboard pedagógico: micro-pasos de ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -442,9 +460,7 @@ export const manim = {
         content_${i}.scale(min(${contentWidth} / content_${i}.width, ${contentHeight} / content_${i}.height))
         content_${i}.move_to(DOWN * ${stageContentY.toFixed(2)})
         content_group_${i} = VGroup(header_${i}, content_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
+${cueAnimation}
 `;
           }
 

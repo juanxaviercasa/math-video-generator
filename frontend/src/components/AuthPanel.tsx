@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import axios from 'axios'
 import { auth, User } from '../services/auth'
 
 type AuthPanelProps = {
@@ -79,7 +80,15 @@ export function AuthPanel({ user, onAuthenticated, onLogout }: AuthPanelProps) {
                 setOpen(false)
                 setPassword('')
               } catch (requestError) {
-                setError('No se pudo completar la operación. Revisa los datos e inténtalo de nuevo.')
+                if (axios.isAxiosError(requestError) && !requestError.response) {
+                  setError('No se puede contactar con la API de Math Video Generator. Debe estar desplegada en api-math.forjavia.site.')
+                } else if (axios.isAxiosError(requestError) && requestError.response?.status === 403) {
+                  setError('Esta instalación admite únicamente la cuenta propietaria autorizada.')
+                } else if (axios.isAxiosError(requestError) && requestError.response?.status === 401) {
+                  setError('Correo o contraseña incorrectos. Utiliza tu cuenta confirmada de Supabase.')
+                } else {
+                  setError('Error al iniciar sesión. Comprueba el backend y vuelve a intentarlo.')
+                }
               } finally {
                 setLoading(false)
               }

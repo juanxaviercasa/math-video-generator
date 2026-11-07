@@ -2,7 +2,7 @@
  * Personal installation policy. Enable PERSONAL_MODE=true and pin the existing
  * Supabase Auth user UUID in OWNER_USER_ID. No passwords or provider secrets here.
  */
-export const personalModeEnabled = (): boolean => process.env.PERSONAL_MODE === 'true';
+export const personalModeEnabled = (): boolean => process.env.PERSONAL_MODE === 'true' || (process.env.NODE_ENV === 'production' && process.env.PERSONAL_MODE !== 'false');
 
 export const ownerUserId = (): string | undefined => process.env.OWNER_USER_ID?.trim() || undefined;
 

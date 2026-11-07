@@ -88,3 +88,20 @@ test('warns on small sync drift but blocks a half-second timeline discrepancy', 
   assert.equal(blocking.passed, false);
   assert.ok(blocking.errors.some((issue) => issue.includes('GEOMETRY_SYNC')));
 });
+
+test('blocks mathematically correct formulas whose rendered pixels are unreadably small', () => {
+  const report = valid();
+  report.stages[0].snapshots[0].objects[0].bbox.height = 0.055;
+  const measured = validateObservedGeometry(report, requirements);
+  assert.equal(measured.passed, false);
+  assert.ok(measured.errors.some((error) => error.includes('GEOMETRY_UNREADABLE')));
+});
+
+test('does not penalize sufficiently large text and formula bounds', () => {
+  const report = valid();
+  report.stages[0].snapshots[0].objects.push({
+    kind: 'Text', content: 'Explicación', bbox: { x: -2, y: -1.5, width: 1, height: 0.2 },
+  });
+  const measured = validateObservedGeometry(report, requirements);
+  assert.equal(measured.passed, true);
+});

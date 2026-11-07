@@ -14,19 +14,19 @@ import { validateRenderIntegrity } from '../src/services/render-integrity.servic
 const problem = 'x^2 - 5x + 6 = 0';
 const formats: VideoAspectRatio[] = ['16:9', '1:1', '9:16'];
 
-async function smoke(format: VideoAspectRatio, fullLesson = false): Promise<void> {
+async function smoke(format: VideoAspectRatio, fullLesson = false, problemInput = problem, variant = ''): Promise<void> {
   const artifactRoot = process.env.PRECISION_ARTIFACTS_DIR || path.resolve('smoke-artifacts');
-  const root = path.join(path.resolve(artifactRoot), format.replace(':', 'x') + (fullLesson ? '-full' : ''));
+  const root = path.join(path.resolve(artifactRoot), format.replace(':', 'x') + (fullLesson ? '-full' : '') + (variant ? '-' + variant : ''));
   fs.mkdirSync(root, { recursive: true });
   const profile = getVideoFormatProfile(format, 'low');
-  const validated = validateMathProblem(problem);
-  const storyboard = buildQuadraticStoryboard(problem, validated);
+  const validated = validateMathProblem(problemInput);
+  const storyboard = buildQuadraticStoryboard(problemInput, validated);
   const scenes = fullLesson ? storyboard : storyboard
     .filter((scene) => scene.id === 'coefficients' || scene.id === 'graph');
   const geometryFile = path.join(root, 'observed-geometry.json');
   const raw = await manim.renderVideo({
     title: fullLesson ? 'Full Quadratic Lesson' : 'Precise Math Smoke',
-    content: problem,
+    content: problemInput,
     steps: validated.steps,
     outputDir: root,
     pedagogicalScenes: scenes,
@@ -107,6 +107,9 @@ async function smokeAudioAlignment(): Promise<void> {
 (async () => {
   for (const format of formats) await smoke(format);
   for (const format of formats) await smoke(format, true);
+  // Mathematical edge cases: no fictitious real roots, and exactly one double root.
+  await smoke('16:9', true, 'x^2 + 2x + 5 = 0', 'no-real-roots');
+  await smoke('16:9', true, 'x^2 - 2x + 1 = 0', 'double-root');
   await smokeAudioAlignment();
 })().catch((error) => {
   console.error(error);

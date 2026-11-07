@@ -489,7 +489,7 @@ export const manim = {
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * ${headerY})
         content_${i} = ${recapContent}
-        content_${i}.scale(min(1, ${contentWidth} / content_${i}.width, ${contentHeight} / content_${i}.height))
+        content_${i}.scale(min(3.0, ${contentWidth} / content_${i}.width, ${contentHeight} / content_${i}.height))
         content_${i}.move_to(DOWN * ${contentY})
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
@@ -803,6 +803,13 @@ class ${className}(Scene):
         self._qa_errors = []
         self.camera.frame_width = ${formatProfile.frameWidth}
         self.camera.frame_height = ${formatProfile.frameHeight}
+        # A persistent editorial canvas prevents full-black inter-scene frames.
+        editorial_background = Rectangle(
+            width=${(formatProfile.frameWidth + 0.2).toFixed(3)},
+            height=${(formatProfile.frameHeight + 0.2).toFixed(3)},
+            fill_color="#101D33", fill_opacity=1, stroke_width=0)
+        editorial_background.set_z_index(-100)
+        self.add(editorial_background)
         # Apertura segura: la ruta experimental evita comenzar sobre fondo negro.
 ${timelineEnabled ? `        opening_panel = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)\n        opening_panel.set_z_index(-10)\n        self.add(opening_panel)\n` : ''}        # The storyboard already contains the introduction; a second title
         # adds unplanned seconds and shifts the narration from every scene.

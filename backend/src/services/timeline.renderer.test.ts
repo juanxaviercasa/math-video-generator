@@ -103,3 +103,37 @@ test('does not fabricate a graph in a steps-only fallback', () => {
   assert.doesNotMatch(script, /lambda x: \(x - 2\) \* \(x - 3\)/);
   assert.doesNotMatch(script, /root_2 = Dot/);
 });
+
+test('renders a single marker for a repeated quadratic root', async () => {
+  const { validateMathProblem } = await import('./math-validation.service.js');
+  const { buildQuadraticStoryboard } = await import('./pedagogy.service.js');
+  const problem = 'x^2 - 2x + 1 = 0';
+  const script = manim.generatePythonScript({
+    title: 'Repeated root',
+    content: problem,
+    steps: [],
+    outputDir: '/tmp',
+    pedagogicalScenes: buildQuadraticStoryboard(problem, validateMathProblem(problem)),
+  }, true);
+  assert.match(script, /root_2_8 = Dot/);
+  assert.doesNotMatch(script, /root_3_8 = Dot/);
+  assert.doesNotMatch(script, /root_3_label_8 = MathTex/);
+});
+
+test('refuses to plot coefficients with mathematically incorrect roots', async () => {
+  const { validateMathProblem } = await import('./math-validation.service.js');
+  const { buildQuadraticStoryboard } = await import('./pedagogy.service.js');
+  const problem = 'x^2 - 5x + 6 = 0';
+  const scenes = buildQuadraticStoryboard(problem, validateMathProblem(problem));
+  const invalidScenes = scenes.map((scene) => scene.id === 'graph'
+    ? { ...scene, graphSpec: { ...scene.graphSpec!, roots: [4, 5] as [number, number] } }
+    : scene);
+
+  assert.throws(() => manim.generatePythonScript({
+    title: 'Invalid graph',
+    content: problem,
+    steps: [],
+    outputDir: '/tmp',
+    pedagogicalScenes: invalidScenes,
+  }, true), /GRAPH_SPEC_INVALID/);
+});

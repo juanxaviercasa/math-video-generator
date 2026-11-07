@@ -72,13 +72,13 @@ export const ffmpeg = {
    * duration as its visual scene. Pad at the end instead of shifting the next voice.
    * Unify sample rate and channels so the concat demuxer is deterministic.
    */
-  async alignNarrationSegment(inputPath: string, outputPath: string, targetDuration: number): Promise<string> {
-    if (!Number.isFinite(targetDuration) || targetDuration <= 0 || !fs.existsSync(inputPath)) {
+  async alignNarrationSegment(inputPath: string, outputPath: string, targetDuration: number, leadSeconds = 0): Promise<string> {
+    if (!Number.isFinite(targetDuration) || targetDuration <= 0 || !fs.existsSync(inputPath) || !Number.isFinite(leadSeconds) || leadSeconds < 0 || leadSeconds >= targetDuration || leadSeconds > 5) {
       throw new Error('AUDIO_ALIGNMENT_INVALID: Archivo o duración de audio inválidos.');
     }
     const args = [
       '-hide_banner', '-loglevel', 'error', '-nostdin',
-      '-i', inputPath, '-af', 'apad',
+      '-i', inputPath, '-af', leadSeconds ? `adelay=${Math.round(leadSeconds * 1000)}:all=1,apad` : 'apad',
       '-t', String(targetDuration), '-ar', '24000', '-ac', '1',
       '-c:a', 'pcm_s16le', '-y', outputPath,
     ];

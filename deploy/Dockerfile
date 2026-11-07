@@ -21,6 +21,8 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     python3 python3-pip python3-dev build-essential pkg-config \
     libcairo2-dev libpango1.0-dev ffmpeg poppler-utils \
+    libavcodec-dev libavdevice-dev libavfilter-dev libavformat-dev \
+    libavutil-dev libswresample-dev libswscale-dev \
     texlive-latex-base texlive-latex-extra texlive-fonts-recommended \
     dvisvgm ghostscript \
   && python3 -m pip install --break-system-packages --no-cache-dir manim edge-tts \

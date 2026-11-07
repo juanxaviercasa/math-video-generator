@@ -26,7 +26,7 @@ export function buildCueTimingPlan(actualSpeechDurations: number[]): CueTimingPl
     throw new Error('VOICE_CUES_INVALID: Cada transformación necesita un audio válido.');
   }
   // Use 1/100s because FFmpeg samples at 24 kHz and Manim runs at 30 fps.
-  const stageDurations = actualSpeechDurations.map((seconds) => Math.ceil(Math.max(MIN_CUE_SECONDS, seconds + 0.18) * 100) / 100);
+  const stageDurations = actualSpeechDurations.map((seconds) => Math.ceil(Math.max(MIN_CUE_SECONDS, seconds + 0.18) * 100 - 1e-9) / 100);
   let cursor = CUE_INTRO_SECONDS;
   const stageStarts = stageDurations.map((duration) => {
     const start = Math.round(cursor * 100) / 100;

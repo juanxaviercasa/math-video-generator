@@ -4,12 +4,19 @@ import { AuthPanel } from './components/AuthPanel'
 import { VideoGenerator } from './components/VideoGenerator'
 import { VideoLibrary } from './components/VideoLibrary'
 import { AiModelsPanel } from './components/AiModelsPanel'
+import { PasswordRecovery } from './components/PasswordRecovery'
+import { consumePasswordRecoveryUrl } from './services/password-recovery'
 import { auth, User } from './services/auth'
+
+// Process recovery tokens exactly once, before React StrictMode can remount components.
+// Their URL fragment is immediately cleared and never written to local storage.
+const incomingRecovery = consumePasswordRecoveryUrl()
 
 function App() {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [libraryRefresh, setLibraryRefresh] = useState(0)
+  const [recovery, setRecovery] = useState<{ session?: { accessToken: string }; error?: string } | null>(incomingRecovery)
 
   useEffect(() => {
     auth
@@ -38,6 +45,7 @@ function App() {
                   user={user}
                   onAuthenticated={setUser}
                   onLogout={() => setUser(null)}
+                  onForgotPassword={() => setRecovery({})}
                 />
               )}
             </div>
@@ -46,7 +54,9 @@ function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-12">
-        {authLoading ? (
+        {recovery ? (
+          <PasswordRecovery key={recovery.session?.accessToken ? 'token' : 'request'} recovery={recovery} onClose={() => setRecovery(null)} />
+        ) : authLoading ? (
           <div className="rounded-lg border border-slate-700 bg-slate-800 p-8 text-center text-slate-300">Verificando mi sesión…</div>
         ) : !user ? (
           <div className="mx-auto max-w-xl rounded-lg border border-slate-700 bg-slate-800 p-8 text-center">

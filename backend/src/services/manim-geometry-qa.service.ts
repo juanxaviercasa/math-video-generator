@@ -97,8 +97,10 @@ export function validateObservedGeometry(report: ManimGeometryReport, requiremen
     const expected = requirements.expectedDurations?.[stage.id];
     if (expected !== undefined && Number.isFinite(expected) && expected > 0 && duration > 0) {
       const drift = Math.abs(duration - expected);
-      if (drift > Math.max(1, 0.1 * expected)) {
-        warnings.push('GEOMETRY_SYNC: ' + stage.id + ' difiere ' + round(drift) + ' s del audio planificado.');
+      if (drift > 0.50) {
+        errors.push('GEOMETRY_SYNC: ' + stage.id + ' difiere ' + round(drift) + ' s del reloj audiovisual.');
+      } else if (drift > 0.15) {
+        warnings.push('GEOMETRY_SYNC: ' + stage.id + ' presenta ' + round(drift) + ' s de diferencia temporal.');
       }
     }
     if (!Array.isArray(stage.snapshots) || stage.snapshots.length === 0) {

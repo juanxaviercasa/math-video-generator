@@ -138,14 +138,13 @@ export const videoProcessing = {
       progress.message = 'Generando descripción con IA...';
       report();
 
-      const generatedSteps = requestedSteps?.length
-        ? requestedSteps
-        : await openai.generateSolutionSteps(content);
+      // A verified solver is authoritative. Do not call an LLM to regenerate
+      // already-validated mathematics or expose the workflow to an avoidable API failure.
       const steps = requestedSteps?.length
         ? requestedSteps
         : validation.supported && validation.valid
-          ? validation.steps
-          : generatedSteps;
+          ? [...validation.steps]
+          : await openai.generateSolutionSteps(content);
       if (!steps.length) {
         steps.push(content);
       }
@@ -168,13 +167,16 @@ export const videoProcessing = {
             `${id}-${scene.id}`,
             { style: narrationStyle },
           );
-          if (!segmentPath) continue;
-          audioSegments.push(segmentPath);
+          if (!segmentPath) {
+            throw new Error(`AUDIO_SEGMENT_MISSING: No se generó la narración de la escena ${scene.id}. Se cancela el video para evitar desincronización.`);
+          }
           const audioInfo = await ffmpeg.getVideoInfo(segmentPath);
           const audioDuration = Number(audioInfo.format?.duration);
-          if (Number.isFinite(audioDuration) && audioDuration > 0) {
-            scene.duration = Math.max(2, audioDuration);
+          if (!Number.isFinite(audioDuration) || audioDuration <= 0) {
+            throw new Error(`AUDIO_SEGMENT_INVALID: Duración de narración inválida en ${scene.id}.`);
           }
+          audioSegments.push(segmentPath);
+          scene.duration = Math.max(2, audioDuration);
         }
 
         const timelineScenes = pedagogicalScenes.length ? pedagogicalScenes : synchronizedScenes;

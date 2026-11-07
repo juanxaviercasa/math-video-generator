@@ -9,7 +9,7 @@ export const CUE_LEAD_SECONDS = 0.45;
 export function extractVoiceCues(scene: PedagogicalScene): string[] {
   if (scene.layout !== 'equation' || !scene.visualStages?.length) return [];
   if (!scene.visualStages.every((stage) => typeof stage.voiceText === 'string' && stage.voiceText.trim().length >= 5)) return [];
-  return scene.visualStages.map((stage) => stage.voiceText!.trim());
+  return scene.visualStages.map((stage) => (stage.voiceText || '').trim());
 }
 
 export interface CueTimingPlan {

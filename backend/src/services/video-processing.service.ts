@@ -358,7 +358,16 @@ export const videoProcessing = {
       if (!integrity.passed || !fs.existsSync(processedPath) || !fs.existsSync(thumbnailPath)) {
         throw new Error(`Los artefactos finales no superaron la validación audiovisual: ${integrity.errors.join(' | ') || 'archivos faltantes'}`);
       }
-      const frameQa = await auditFinalVideoFrames(processedPath, outputDir, integrity.actual.videoDuration ?? 0);
+      // Sample each measured pedagogical scene in the encoded MP4, not only
+      // uniform timestamps which may skip short scenes.
+      const measuredStages = !remotionEnabled && pedagogicalScenes.length
+        ? (JSON.parse(fs.readFileSync(manimScene.geometryReportPath, 'utf8')) as {
+          stages: Array<{ id: string; start: number; end: number }>;
+        }).stages
+        : [];
+      const frameQa = await auditFinalVideoFrames(
+        processedPath, outputDir, integrity.actual.videoDuration ?? 0, 8, measuredStages,
+      );
       fs.writeFileSync(path.join(outputDir, `${id}-frame-qa.json`), JSON.stringify(frameQa, null, 2), 'utf8');
       for (const warning of frameQa.warnings) console.warn('⚠️  Fotogramas:', warning);
       if (!frameQa.passed) {

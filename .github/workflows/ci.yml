@@ -31,3 +31,38 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Validate personal Docker Compose without real secrets
+        env:
+          DB_PASSWORD: ci-only-password
+          JWT_SECRET: 0123456789abcdef0123456789abcdef
+          OWNER_USER_ID: e233caa1-3a71-4c2c-a731-71af5e6d84b0
+          SUPABASE_URL: https://ci-placeholder.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          APP_URL: https://math.forjavia.site
+        run: |
+          docker compose -f deploy/docker-compose.yml config --quiet
+          docker compose -f deploy/docker-compose.yml config --format json > /tmp/math-compose-ci.json
+          node - <<'NODE'
+          const fs = require('node:fs')
+          const cfg = JSON.parse(fs.readFileSync('/tmp/math-compose-ci.json', 'utf8'))
+          for (const name of ['postgres', 'redis']) {
+            if (cfg.services[name].ports?.length) throw Error(name + ' must not publish ports')
+          }
+          const apiPorts = cfg.services.backend.ports || []
+          if (apiPorts.length !== 1 || apiPorts[0].host_ip !== '127.0.0.1') {
+            throw Error('Backend API must bind only to localhost')
+          }
+          if (cfg.services.backend.environment.PERSONAL_MODE !== 'true') {
+            throw Error('Personal owner mode must be enabled')
+          }
+          if (cfg.services.worker.environment.VIDEO_WORKER_CONCURRENCY !== '1') {
+            throw Error('Personal worker concurrency must be 1')
+          }
+          console.log('Private Compose config validated: no DB/Redis exposure, single-owner mode, localhost API.')
+          NODE
+
+      - name: Verify Cloudflare Pages files
+        run: |
+          test -s frontend/dist/_redirects
+          test -s frontend/dist/_headers

@@ -55,3 +55,16 @@ test('builds a complete quadratic teaching storyboard', () => {
   assert.equal(graph?.layout, 'graph');
   assert.deepEqual(graph?.graphSpec, { a: 1, b: -5, c: 6, roots: [2, 3] });
 });
+
+test('negative discriminant never yields fictitious roots or a real-intercept graph', () => {
+  const validation = validateMathProblem('x^2 + 2x + 5 = 0');
+  const scenes = buildQuadraticStoryboard('x^2 + 2x + 5 = 0', validation);
+
+  assert.equal(validation.valid, true);
+  assert.equal(validation.result, 'No hay soluciones reales');
+  assert.equal(scenes.some((scene) => scene.layout === 'graph'), false);
+  assert.equal(scenes.some((scene) => scene.id === 'solution-branches'), false);
+  assert.ok(scenes.some((scene) => scene.visualLatex?.some((latex) => latex.includes('-16') && latex.includes('< 0'))));
+  assert.deepEqual(scenes[0]?.pedagogicalContract?.requiredSteps, ['hook', 'identify', 'compute', 'interpret']);
+  assert.match(scenes.at(-1)?.narrationText ?? '', /no tiene soluciones reales/i);
+});

@@ -119,10 +119,10 @@ async function smokePdfExercise(): Promise<void> {
   const execFileAsync = promisify(execFile);
   const root = path.join(path.resolve(process.env.PRECISION_ARTIFACTS_DIR || 'smoke-artifacts'), 'pdf-exercise');
   fs.mkdirSync(root, { recursive: true });
-  const tex = String.raw`\\documentclass{article}
-\\begin{document}
-\\[x^2-5x+6=0\\]
-\\end{document}
+  const tex = String.raw`\documentclass{article}
+\begin{document}
+\[x^2-5x+6=0\]
+\end{document}
 `;
   const texPath = path.join(root, 'exercise.tex');
   fs.writeFileSync(texPath, tex);

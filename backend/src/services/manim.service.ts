@@ -56,6 +56,7 @@ interface ManimScene {
     visualLatex?: string[];
     visualTextLines?: string[];
     visualStages?: Array<{ label: string; latex: string; detail?: string; role?: string; semanticStep?: string; formulaAnchorId?: string }>;
+    visualCueDurations?: number[];
     formulaAnchor?: { latex: string; label?: string; persistence: 'segment' | 'lesson'; position: 'top' | 'side' };
     checkpoints?: Array<{ kind: 'predict' | 'practice' | 'reflect'; prompt: string; pauseSeconds: number }>;
     graphSpec?: { a: number; b: number; c: number; roots: [number, number] };

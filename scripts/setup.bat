@@ -45,20 +45,22 @@ echo.
 REM Install neural voice library for narrated videos
 echo [Voice] Installing Edge TTS voices...
 where py >nul 2>nul
-if %ERRORLEVEL% EQU 0 (
+if not errorlevel 1 (
     py -m pip install --upgrade edge-tts
+    if errorlevel 1 exit /b 1
     py -m edge_tts --version
 ) else (
     where python >nul 2>nul
-    if %ERRORLEVEL% EQU 0 (
-        python -m pip install --upgrade edge-tts
-        python -m edge_tts --version
-    ) else (
+    if errorlevel 1 (
         echo ERROR: Python is required for Manim and neural voices.
         exit /b 1
+    ) else (
+        python -m pip install --upgrade edge-tts
+        if errorlevel 1 exit /b 1
+        python -m edge_tts --version
     )
 )
-if %ERRORLEVEL% NEQ 0 (
+if errorlevel 1 (
     echo ERROR: Neural voice installation failed.
     exit /b 1
 )

@@ -52,11 +52,26 @@ const makeSampleTimes = (durationSeconds: number, count: number): number[] => (
   Array.from({ length: count }, (_, index) => Number(Math.max(0, Math.min(durationSeconds - 0.1, durationSeconds * (index + 0.5) / count)).toFixed(3)))
 );
 
+export interface FrameStageInterval { id: string; start: number; end: number }
+
+/** One actual output-frame sample per storyboard scene, plus representative uniform samples. */
+export function buildStageSampleTimes(durationSeconds: number, stages: FrameStageInterval[], uniformCount = 8): number[] {
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return [];
+  const stageTimes = stages.map((stage) => {
+    if (!Number.isFinite(stage.start) || !Number.isFinite(stage.end) || stage.start < 0 || stage.end <= stage.start || stage.start >= durationSeconds) {
+      throw new Error('FRAME_STAGE_INVALID: Invalid measured scene interval ' + stage.id);
+    }
+    return Math.max(0, Math.min(durationSeconds - 0.1, (stage.start + stage.end) / 2));
+  });
+  return [...new Set([...makeSampleTimes(durationSeconds, Math.max(1, Math.min(12, Math.floor(uniformCount)))), ...stageTimes].map((time) => Number(time.toFixed(3))))].sort((a, b) => a - b);
+}
+
 export async function auditFinalVideoFrames(
   videoPath: string,
   outputDir: string,
   durationSeconds: number,
   frameCount = 8,
+  stages: FrameStageInterval[] = [],
 ): Promise<FinalFrameQAReport> {
   const report: FinalFrameQAReport = { passed: false, errors: [], warnings: [], blackIntervals: [], sampleFrames: [], sampledAtSeconds: [] };
   if (!fs.existsSync(videoPath) || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
@@ -79,8 +94,14 @@ export async function auditFinalVideoFrames(
   }
   const samplesDir = path.join(outputDir, 'qa-frames');
   fs.mkdirSync(samplesDir, { recursive: true });
-  const count = Math.max(1, Math.min(12, Math.floor(frameCount)));
-  for (const [index, time] of makeSampleTimes(durationSeconds, count).entries()) {
+  let sampleTimes: number[];
+  try {
+    sampleTimes = buildStageSampleTimes(durationSeconds, stages, frameCount);
+  } catch (error) {
+    report.errors.push(error instanceof Error ? error.message : String(error));
+    return report;
+  }
+  for (const [index, time] of sampleTimes.entries()) {
     const target = path.join(samplesDir, 'final-' + String(index + 1).padStart(2, '0') + '.jpg');
     try {
       await execFileAsync(ffmpegExecutable(), [

@@ -362,30 +362,9 @@ export const manim = {
       ? `Tex(${escapeForPythonString(latexText(safeFinal))}, font_size=48, color=GREEN)`
       : `Text(${escapeForPythonString(safeFinal)}, font_size=48, color=GREEN, font='DejaVu Serif')`;
 
-    const hasQuadraticGraph = /x\s*\^?\s*2/i.test(normalizeForText(content));
-    const graphBlock = hasQuadraticGraph && synchronizedScenes.length === 0 ? `
-        # Grafica didactica de la parabola y sus raices
-        axes = Axes(
-            x_range=[-1, 6, 1],
-            y_range=[-4, 5, 1],
-            x_length=9,
-            y_length=5,
-            axis_config={"include_tip": True},
-        )
-        curve = axes.plot(lambda x: (x - 2) * (x - 3), x_range=[-0.5, 5.5], color=YELLOW)
-        x_label = axes.get_x_axis_label(MathTex("x"))
-        y_label = axes.get_y_axis_label(MathTex("y"))
-        root_2 = Dot(axes.c2p(2, 0), color=GREEN)
-        root_3 = Dot(axes.c2p(3, 0), color=GREEN)
-        root_2_label = MathTex("x=2", font_size=24).next_to(root_2, DOWN)
-        root_3_label = MathTex("x=3", font_size=24).next_to(root_3, DOWN)
-        graph_title = Text("Raices de la parabola", font_size=28, color=BLUE).to_edge(UP)
-        graph_group = VGroup(axes, curve, x_label, y_label, root_2, root_3, root_2_label, root_3_label, graph_title)
-        self.play(Create(axes), Create(curve), FadeIn(x_label), FadeIn(y_label), run_time=3)
-        self.play(FadeIn(root_2), FadeIn(root_3), Write(root_2_label), Write(root_3_label), FadeIn(graph_title), run_time=2)
-        self.wait(3)
-        self.play(FadeOut(graph_group))
-` : '';
+    // Never draw a demonstration graph for an arbitrary user equation.
+    // Verified quadratic plots must be supplied via pedagogicalScenes.graphSpec.
+    const graphBlock = '';
 
     const introDuration = pedagogicalScenes.length
       ? 1.8
@@ -568,7 +547,8 @@ export const manim = {
             };
           });
           if (pedScene.layout === 'graph') {
-            const graphSpec = pedScene.graphSpec ?? { a: 1, b: -5, c: 6, roots: [2, 3] as [number, number] };
+            const graphSpec = pedScene.graphSpec;
+            if (!graphSpec) throw new Error('GRAPH_SPEC_MISSING: Falta el modelo matemático validado para la gráfica.');
             const [rootA, rootB] = graphSpec.roots;
             const vertexX = graphSpec.a === 0 ? 0 : -graphSpec.b / (2 * graphSpec.a);
             const sampleLeft = Math.min(rootA, rootB, vertexX) - 1;
@@ -646,23 +626,7 @@ ${referenceAnchorCode}${eventCode}
           const isQuadraticFormula = /(formula|fórmula).*x.*=/i.test(safeStep) && (safeStep.includes('/') || safeStep.includes('√'));
 
           if (syncScene.kind === 'graph') {
-            return `
-        # Escena sincronizada: gráfica
-        axes_${i} = Axes(x_range=[-1, 6, 1], y_range=[-4, 5, 1], x_length=9, y_length=5, axis_config={"include_tip": True})
-        curve_${i} = axes_${i}.plot(lambda x: (x - 2) * (x - 3), x_range=[-0.5, 5.5], color=YELLOW)
-        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x"))
-        y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
-        root_2_${i} = Dot(axes_${i}.c2p(2, 0), color=GREEN)
-        root_3_${i} = Dot(axes_${i}.c2p(3, 0), color=GREEN)
-        root_2_label_${i} = MathTex("x=2", font_size=24).next_to(root_2_${i}, DOWN)
-        root_3_label_${i} = MathTex("x=3", font_size=24).next_to(root_3_${i}, DOWN)
-        graph_title_${i} = Text("Raices de la parabola", font_size=28, color=BLUE).to_edge(UP)
-        graph_group_${i} = VGroup(axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, root_3_${i}, root_2_label_${i}, root_3_label_${i}, graph_title_${i})
-        self.play(Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=3)
-        self.play(FadeIn(root_2_${i}), FadeIn(root_3_${i}), Write(root_2_label_${i}), Write(root_3_label_${i}), FadeIn(graph_title_${i}), run_time=2)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 6))
-        self.play(FadeOut(graph_group_${i}), run_time=1)
-`;
+            throw new Error('GRAPH_SPEC_MISSING: Una escena gráfica requiere una función validada; no se permite usar una parábola de ejemplo.');
           }
 
           if (syncScene.kind === 'conclusion') {
@@ -784,7 +748,7 @@ ${sceneBlock}
       const manimCommand = this.getCommand();
       const mediaDir = path.resolve(scene.outputDir);
       const { stdout, stderr } = await execAsync(
-        `"${manimCommand}" --media_dir "${mediaDir}" -ql -r ${formatProfile.width},${formatProfile.height} -o ${safeName}.mp4 "${scriptPath}" ${className}`,
+        `"${manimCommand}" --media_dir "${mediaDir}" -qm -r ${formatProfile.width},${formatProfile.height} --fps 30 -o ${safeName}.mp4 "${scriptPath}" ${className}`,
         { cwd: scene.outputDir, maxBuffer: 1024 * 1024 * 10, env: buildProcessEnv() }
       );
 

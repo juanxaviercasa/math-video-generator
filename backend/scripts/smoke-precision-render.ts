@@ -10,6 +10,7 @@ import { getVideoFormatProfile, type VideoAspectRatio } from '../src/services/vi
 import { readAndValidateGeometry } from '../src/services/manim-geometry-qa.service.js';
 import { auditFinalVideoFrames } from '../src/services/final-frame-qa.service.js';
 import { validateRenderIntegrity } from '../src/services/render-integrity.service.js';
+import { buildCueTimingPlan, CUE_LEAD_SECONDS } from '../src/services/voice-cue.service.js';
 
 const problem = 'x^2 - 5x + 6 = 0';
 const formats: VideoAspectRatio[] = ['16:9', '1:1', '9:16'];
@@ -65,6 +66,46 @@ async function smoke(format: VideoAspectRatio, fullLesson = false, problemInput 
   });
   fs.writeFileSync(path.join(root, 'integrity-qa.json'), JSON.stringify(integrity, null, 2));
   if (!integrity.passed) throw new Error('Media integrity failed: ' + integrity.errors.join(' | '));
+
+  if (variant === 'voice-locked') {
+    // Offline audio integration: emulate neural speech clips with different pitches.
+    // This certifies cue timing and MP4 muxing without external TTS credentials.
+    const execFileAsync = promisify(execFile);
+    const stage = scenes[0];
+    const speechSeconds = [1.57, 1.57, 1.57, 1.57];
+    const timing = buildCueTimingPlan(speechSeconds);
+    if (JSON.stringify(stage.visualCueDurations) !== JSON.stringify(timing.stageDurations)) {
+      throw new Error('VOICE_CUE_SMOKE_TIMING_MISMATCH');
+    }
+    const clips = [await ffmpeg.createSilentAudio(path.join(root, 'cue-opening.wav'), timing.introSeconds)];
+    for (const [index, duration] of timing.stageDurations.entries()) {
+      const source = path.join(root, `cue-source-${index}.wav`);
+      const aligned = path.join(root, `cue-aligned-${index}.wav`);
+      await execFileAsync(ffmpeg.getCommand(), [
+        '-hide_banner', '-loglevel', 'error', '-f', 'lavfi',
+        '-i', `sine=frequency=${440 + index * 110}:duration=${speechSeconds[index]}`,
+        '-ac', '1', '-ar', '24000', '-c:a', 'pcm_s16le', '-y', source,
+      ]);
+      clips.push(await ffmpeg.alignNarrationSegment(source, aligned, duration, CUE_LEAD_SECONDS));
+    }
+    clips.push(await ffmpeg.createSilentAudio(path.join(root, 'cue-closing.wav'), timing.outroSeconds));
+    const audioPath = await ffmpeg.concatenateAudio(clips, path.join(root, 'cue-voice-track.wav'));
+    const final = await ffmpeg.mergeAudioWithVideo({
+      videoPath: exported,
+      audioPath,
+      outputPath: path.join(root, 'voice-locked-final.mp4'),
+    });
+    const encoded = validateRenderIntegrity(await ffmpeg.getVideoInfo(final), {
+      width: profile.width, height: profile.height, fps: 30, narrationRequired: true,
+      plannedDurationSeconds: timing.sceneDuration,
+    });
+    fs.writeFileSync(path.join(root, 'voice-lock-qa.json'), JSON.stringify(encoded, null, 2));
+    if (!encoded.passed
+      || Math.abs((encoded.actual.videoDuration ?? 0) - (encoded.actual.audioDuration ?? 0)) > 0.15) {
+      throw new Error('VOICE_LOCK_MP4_FAILED: ' + encoded.errors.join(' | '));
+    }
+    console.log('APPROVED VOICE-LOCKED MP4', timing.sceneDuration, encoded.actual.videoDuration);
+  }
 
   const observed = JSON.parse(fs.readFileSync(geometryFile, 'utf8')) as { stages: Array<{ id: string; start: number; end: number }> };
   const frames = await auditFinalVideoFrames(exported, root, integrity.actual.videoDuration || 0, 6, observed.stages);

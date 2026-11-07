@@ -449,17 +449,26 @@ export const manim = {
           }
 
           if (pedScene.layout === 'graph') {
+            const graphSpec = pedScene.graphSpec;
+            if (!graphSpec) throw new Error('GRAPH_SPEC_MISSING: No se puede dibujar una parábola sin coeficientes validados.');
+            const [rootA, rootB] = graphSpec.roots;
+            const vertexX = -graphSpec.b / (2 * graphSpec.a);
+            const left = Math.min(rootA, rootB, vertexX) - 1.5;
+            const right = Math.max(rootA, rootB, vertexX) + 1.5;
+            const yAt = (x: number) => graphSpec.a * x * x + graphSpec.b * x + graphSpec.c;
+            const ymin = Math.floor(Math.min(yAt(left), yAt(right), yAt(vertexX), 0) - 1);
+            const ymax = Math.ceil(Math.max(yAt(left), yAt(right), yAt(vertexX), 0) + 1);
             return `
         # Storyboard pedagógico: gráfica a pantalla completa
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
-        axes_${i} = Axes(x_range=[-1, 6, 1], y_range=[-4, 5, 1], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).shift(DOWN * 0.2)
-        curve_${i} = axes_${i}.plot(lambda x: (x - 2) * (x - 3), x_range=[-0.5, 5.5], color=YELLOW)
+        axes_${i} = Axes(x_range=[${left}, ${right}, 1], y_range=[${ymin}, ${ymax}, 1], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).shift(DOWN * 0.2)
+        curve_${i} = axes_${i}.plot(lambda x: ${graphSpec.a} * x**2 + (${graphSpec.b}) * x + (${graphSpec.c}), x_range=[${left}, ${right}], color=YELLOW)
         x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x"))
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y"))
-        root_2_${i} = Dot(axes_${i}.c2p(2, 0), color=GREEN)
-        root_3_${i} = Dot(axes_${i}.c2p(3, 0), color=GREEN)
-        root_2_label_${i} = MathTex("x=2", font_size=26).next_to(root_2_${i}, DOWN)
-        root_3_label_${i} = MathTex("x=3", font_size=26).next_to(root_3_${i}, DOWN)
+        root_2_${i} = Dot(axes_${i}.c2p(${rootA}, 0), color=GREEN)
+        root_3_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)
+        root_2_label_${i} = MathTex("x=${rootA.toFixed(3)}", font_size=26).next_to(root_2_${i}, DOWN)
+        root_3_label_${i} = MathTex("x=${rootB.toFixed(3)}", font_size=26).next_to(root_3_${i}, DOWN)
         graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP)
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, root_3_${i}, root_2_label_${i}, root_3_label_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)

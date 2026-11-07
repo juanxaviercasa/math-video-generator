@@ -9,6 +9,20 @@ El editor admite extracción de ejercicios desde PNG, JPG, WEBP o una página PD
 
 Requisitos, límites y pruebas del flujo: [Pipeline de imagen/PDF a matemática narrada](docs/IMAGE_TO_NARRATED_MATH_PIPELINE.md).
 
+## Voces neurales y MCP
+
+El editor incorpora un catálogo de voces en español (Perú, México, Colombia,
+España) y una **muestra audible** antes de renderizar. El MP4 con narración
+habilitada se rechaza si su pista de audio es silenciosa o demasiado tenue.
+Los videos anteriores deben regenerarse para incorporar la nueva voz.
+
+- [Instalar y probar las voces](docs/NEURAL_VOICES.md)
+- [Conectar Antigravity, Gemini CLI o ChatGPT con MCP](docs/MCP_CONNECTORS.md)
+
+Las herramientas MCP son de solo lectura y no permiten publicar videos ni
+acceder a los archivos privados de otros usuarios. Para ChatGPT se necesita
+un servidor remoto autenticado detrás de HTTPS y una conexión explícita.
+
 ## Descripción
 
 Este proyecto convierte problemas matemáticos en videos explicativos con:

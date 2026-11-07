@@ -75,8 +75,8 @@ test('irrational roots retain exact radicals and use approximate equality for de
   const simplify = scenes.find((scene) => scene.id === 'formula-simplify');
   const branches = scenes.find((scene) => scene.id === 'solution-branches');
 
-  assert.match(simplify?.visualLatex?.[0] ?? '', /\\\\sqrt\{8\}/);
-  assert.match(branches?.visualLatex?.[0] ?? '', /\\\\approx/);
+  assert.match(simplify?.visualLatex?.[0] ?? '', /\\sqrt\{8\}/);
+  assert.match(branches?.visualLatex?.[0] ?? '', /\\approx/);
   assert.match(branches?.narrationText ?? '', /aproximadamente/);
 });
 
@@ -85,5 +85,5 @@ test('repeated quadratic roots are mathematically exact', () => {
   const scenes = buildQuadraticStoryboard(input, validateMathProblem(input));
   const branches = scenes.find((scene) => scene.id === 'solution-branches');
   assert.deepEqual(scenes.find((scene) => scene.id === 'graph')?.graphSpec?.roots, [1, 1]);
-  assert.ok(branches?.visualLatex?.every((latex) => !latex.includes('\\\\approx')));
+  assert.ok(branches?.visualLatex?.every((latex) => !latex.includes('\\approx')));
 });

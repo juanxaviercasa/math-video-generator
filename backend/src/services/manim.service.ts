@@ -529,7 +529,12 @@ export const manim = {
         # Storyboard pedagógico: ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * ${headerY})
-        content_${i} = ${contentGroup}.scale_to_fit_height(${contentHeight}).scale(${compactScale}).move_to(DOWN * ${compactY})
+        content_${i} = ${contentGroup}
+        # The VGroup is already fitted to the available width; never re-grow
+        # it to fill the height and overflow a narrow portrait camera.
+        content_${i}.scale(min(1, ${contentHeight} / content_${i}.height))
+        content_${i}.scale(${compactScale})
+        content_${i}.move_to(DOWN * ${compactY})
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
         self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))

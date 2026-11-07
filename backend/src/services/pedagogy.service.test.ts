@@ -102,5 +102,5 @@ test('rounded roots use approximate relation even in the recap', () => {
   const problem = '3x^2 + 2x - 8 = 0';
   const scenes = buildQuadraticStoryboard(problem, validateMathProblem(problem));
   const recap = scenes.find((scene) => scene.id === 'recap');
-  assert.ok(recap?.visualLatex?.some((formula) => formula.includes('\\\\approx')));
+  assert.ok(recap?.visualLatex?.some((formula) => formula.includes('\\approx')));
 });

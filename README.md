@@ -2,6 +2,13 @@
 
 Generador local de videos educativos de matemáticas usando IA, Manim, LaTeX, FFmpeg y voz en off.
 
+
+## De foto o PDF a video narrado
+
+El editor admite extracción de ejercicios desde PNG, JPG, WEBP o una página PDF (incluidas fotografías de escritura a mano). La transcripción se revisa y confirma antes de generar; los pasos presentes en la imagen no se consideran matemáticamente comprobados hasta pasar la validación. Las escenas de resolución cuadrática pueden narrarse con clips neurales por transformación, coordinando aparición, resaltado y explicación.
+
+Requisitos, límites y pruebas del flujo: [Pipeline de imagen/PDF a matemática narrada](docs/IMAGE_TO_NARRATED_MATH_PIPELINE.md).
+
 ## Descripción
 
 Este proyecto convierte problemas matemáticos en videos explicativos con:

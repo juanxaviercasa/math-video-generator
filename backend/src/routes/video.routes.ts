@@ -139,7 +139,7 @@ router.post('/generate-video', requireAuth, async (req: AuthenticatedRequest, re
   }
 });
 
-router.post('/preview', (req: Request, res: Response) => {
+router.post('/preview', requireAuth, (req: Request, res: Response) => {
   const parsed = videoGenerationSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ code: 'VALIDATION_ERROR', error: 'La solicitud de previsualización no es válida', fields: parsed.error.flatten().fieldErrors });

@@ -7,9 +7,10 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
+        // Express mounts its endpoints under /api; stripping this prefix
+        // breaks sign-in and video generation when developing locally.
         target: 'http://localhost:3001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        changeOrigin: true
       }
     }
   },

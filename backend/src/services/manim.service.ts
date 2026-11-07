@@ -412,11 +412,13 @@ export const manim = {
                 ? '0.88'
                 : '1';
           const compactY = contentY;
+          // A portrait video has much more vertical real estate than a 16:9
+          // slide. Use it for legible mathematics instead of a tiny center strip.
           const contentHeight = pedScene.layout === 'equation'
-            ? Math.min(formatProfile.orientation === 'portrait' ? 4.5 : 2.35, formatProfile.contentHeight).toFixed(2)
+            ? Math.min(formatProfile.orientation === 'portrait' ? 7.0 : formatProfile.orientation === 'square' ? 4.5 : 3.25, formatProfile.contentHeight).toFixed(2)
             : pedScene.layout === 'hero'
-              ? Math.min(3.7, formatProfile.contentHeight).toFixed(2)
-              : Math.min(4.0, formatProfile.contentHeight).toFixed(2);
+              ? Math.min(formatProfile.orientation === 'portrait' ? 7.0 : 4.5, formatProfile.contentHeight).toFixed(2)
+              : Math.min(formatProfile.orientation === 'portrait' ? 9.0 : formatProfile.orientation === 'square' ? 6.0 : 5.0, formatProfile.contentHeight).toFixed(2);
           const visualStages = pedScene.visualStages || [];
 
           if (pedScene.layout === 'equation' && visualStages.length > 0) {
@@ -514,7 +516,7 @@ export const manim = {
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).move_to(UP * ${headerY})
         content_${i} = ${compactGroup}
-        content_${i}.scale(min(1, ${contentWidth} / content_${i}.width, ${contentHeight} / content_${i}.height))
+        content_${i}.scale(min(3.0, ${contentWidth} / content_${i}.width, ${contentHeight} / content_${i}.height))
         content_${i}.move_to(DOWN * ${contentY})
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)

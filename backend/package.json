@@ -14,7 +14,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "smoke:precision": "tsx scripts/smoke-precision-render.ts"
+    "smoke:precision": "tsx scripts/smoke-precision-render.ts",
+    "mcp": "node dist/mcp/stdio.js",
+    "mcp:dev": "tsx src/mcp/stdio.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",

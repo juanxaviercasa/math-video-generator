@@ -123,6 +123,15 @@ export function validateObservedGeometry(report: ManimGeometryReport, requiremen
           pixelSafe.right - (px.x + px.width), pixelSafe.bottom - (px.y + px.height));
         margin = Math.min(margin, m);
         objects++;
+        // Small but technically contained formulas are not production-readable.
+        // The threshold scales with the encoded canvas, not abstract Manim units.
+        const minimumHeight = object.kind === 'Text'
+          ? Math.max(9, c.pixelHeight * 0.010)
+          : Math.max(12, c.pixelHeight * 0.014);
+        if (px.height + 0.2 < minimumHeight) {
+          addOnce('GEOMETRY_UNREADABLE: ' + stage.id + ' contiene ' + object.kind
+            + ' de ' + round(px.height) + ' px (mínimo ' + round(minimumHeight) + ' px).');
+        }
         if (m < -epsilon) {
           addOnce('GEOMETRY_CLIPPING: ' + stage.id + ' contiene texto/fórmula fuera del área segura (' + round(m) + ' px).');
         }

@@ -10,6 +10,7 @@ import { getVideoFormatProfile, type VideoAspectRatio } from '../src/services/vi
 import { readAndValidateGeometry } from '../src/services/manim-geometry-qa.service.js';
 import { auditFinalVideoFrames } from '../src/services/final-frame-qa.service.js';
 import { validateRenderIntegrity } from '../src/services/render-integrity.service.js';
+import { validateAudibleAudio } from '../src/services/audio-qa.service.js';
 import { buildCueTimingPlan, CUE_LEAD_SECONDS } from '../src/services/voice-cue.service.js';
 import { prepareExerciseImage, verifyExerciseSource } from '../src/services/exercise-extraction.service.js';
 
@@ -173,6 +174,13 @@ async function smokeAudioAlignment(): Promise<void> {
   });
   fs.writeFileSync(path.join(root, 'muxed-audio-qa.json'), JSON.stringify(muxed, null, 2));
   if (!muxed.passed) throw new Error('ENCODED_AUDIO_FAILED: ' + muxed.errors.join(' | '));
+  const audibility = await validateAudibleAudio(muxedPath);
+  fs.writeFileSync(path.join(root, 'audible-track-qa.json'), JSON.stringify(audibility, null, 2));
+  if (!audibility.passed) throw new Error('SPEECH_AUDIO_NOT_AUDIBLE: ' + audibility.reason);
+  const silent = await ffmpeg.createSilentAudio(path.join(root, 'deliberately-silent.wav'), 1.5);
+  const silentReport = await validateAudibleAudio(silent);
+  if (silentReport.passed) throw new Error('SILENCE_CHECK_FAILED: Accepted silent audio.');
+  console.log('APPROVED AUDIBILITY GATE', audibility.maxDb, silentReport.reason);
   console.log('APPROVED AUDIO MP4', report.targetSeconds, report.measuredSeconds);
 }
 

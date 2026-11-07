@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { api, PreviewResponse } from '../services/api'
+import { api, PreviewResponse, type ExtractedExercise } from '../services/api'
 import { useVideoStore } from '../store/video.store'
 const InteractiveMathEditor = lazy(() => import('./InteractiveMathEditor').then((module) => ({ default: module.InteractiveMathEditor })))
 import { InteractiveLessonPreview } from './InteractiveLessonPreview'
@@ -23,6 +23,11 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
   const [preview, setPreview] = useState<PreviewResponse | null>(null)
   const [steps, setSteps] = useState<string[]>([])
   const [error, setError] = useState('')
+  const [sourceFile, setSourceFile] = useState<File | null>(null)
+  const [pdfPage, setPdfPage] = useState(1)
+  const [extracted, setExtracted] = useState<ExtractedExercise | null>(null)
+  const [sourceConfirmed, setSourceConfirmed] = useState(false)
+  const [extracting, setExtracting] = useState(false)
 
   const addVideo = useVideoStore((state) => state.addVideo)
   const pollingTimers = useRef(new Map<string, number>())
@@ -31,6 +36,39 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
     pollingTimers.current.forEach((timer) => window.clearTimeout(timer))
     pollingTimers.current.clear()
   }, [])
+
+  const handleExtract = async () => {
+    setError('')
+    if (!sourceFile) {
+      setError('Selecciona una imagen o una página PDF.')
+      return
+    }
+    if (sourceFile.size > 10 * 1024 * 1024) {
+      setError('El archivo supera 10 MB.')
+      return
+    }
+    setExtracting(true)
+    try {
+      const result = await api.extractExercise(sourceFile, pdfPage)
+      setExtracted(result)
+      setSourceConfirmed(false)
+      setContent(result.problem)
+      setPreview(null)
+      setSteps([])
+      if (!title.trim()) setTitle('Explicación de ejercicio matemático')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo reconocer la imagen.')
+    } finally {
+      setExtracting(false)
+    }
+  }
+
+  const updateContent = (value: string) => {
+    setContent(value)
+    setPreview(null)
+    setSteps([])
+    if (extracted) setSourceConfirmed(false)
+  }
 
   const handlePreview = async () => {
     setError('')
@@ -63,6 +101,10 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
       return
     }
 
+    if (extracted && !sourceConfirmed) {
+      setError('Confirma que el ejercicio reconocido coincide con el original antes de generar.')
+      return
+    }
     setLoading(true)
     const requestToken = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const videoId = `video_${requestToken.replace(/-/g, '')}`
@@ -161,6 +203,9 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
       setContent('')
       setSteps([])
       setPreview(null)
+      setExtracted(null)
+      setSourceConfirmed(false)
+      setSourceFile(null)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error desconocido'
       useVideoStore.getState().updateVideo(videoId, { status: 'failed', progress: 100, error: message, errorCode: 'CLIENT_GENERATION_FAILED', message })
@@ -196,6 +241,50 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
           />
         </div>
 
+        {/* Archivo origen: el reconocimiento nunca publica automáticamente. */}
+        <div className="rounded border border-slate-600 bg-slate-900/50 p-4 space-y-3">
+          <label htmlFor="exercise-source" className="block text-sm font-medium text-white">Ejercicio en foto, captura, manuscrito o PDF</label>
+          <input
+            id="exercise-source"
+            type="file"
+            accept="image/png,image/jpeg,image/webp,application/pdf"
+            onChange={(event) => {
+              setSourceFile(event.target.files?.[0] || null)
+              setExtracted(null)
+              setSourceConfirmed(false)
+            }}
+            disabled={loading || extracting}
+            className="block w-full text-xs text-slate-200 file:mr-3 file:rounded file:border-0 file:bg-blue-700 file:px-3 file:py-2 file:text-white"
+          />
+          {sourceFile?.type === 'application/pdf' && (
+            <label className="block text-xs text-slate-300">
+              Página del PDF (1-50)
+              <input type="number" min={1} max={50} value={pdfPage} onChange={(e) => setPdfPage(Number(e.target.value))}
+                className="ml-2 w-20 rounded border border-slate-600 bg-slate-800 px-2 py-1 text-white" disabled={extracting || loading} />
+            </label>
+          )}
+          <button type="button" onClick={() => void handleExtract()} disabled={!sourceFile || extracting || loading}
+            className="rounded border border-blue-500 px-3 py-2 text-sm text-blue-300 disabled:opacity-50">
+            {extracting ? 'Reconociendo ejercicio...' : 'Extraer ejercicio para revisión'}
+          </button>
+          {extracted && (
+            <div className="space-y-2 rounded border border-amber-500/40 p-3 text-xs text-slate-200">
+              <p>Confianza de lectura: <strong>{extracted.confidence}</strong>. El ejercicio está en el editor y puedes corregirlo.</p>
+              {extracted.observedSolutionSteps.length > 0 && (
+                <div>
+                  <p className="font-semibold">Pasos observados en el original (no verificados):</p>
+                  <ol className="list-decimal pl-5">{extracted.observedSolutionSteps.map((step, i) => <li key={i}>{step}</li>)}</ol>
+                </div>
+              )}
+              {extracted.warnings.map((warning, i) => <p className="text-amber-300" key={i}>{warning}</p>)}
+              <label className="flex gap-2 items-start">
+                <input type="checkbox" checked={sourceConfirmed} onChange={(event) => setSourceConfirmed(event.target.checked)} />
+                He comprobado que el enunciado del editor coincide con el ejercicio original.
+              </label>
+            </div>
+          )}
+        </div>
+
         {/* Contenido */}
         <div>
           <label className="block text-sm font-medium text-white mb-2">
@@ -203,13 +292,13 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
           </label>
           <textarea
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={(e) => updateContent(e.target.value)}
             placeholder="Ej: x² - 5x + 6 = 0&#10;Factorizar: (x-2)(x-3)=0"
             className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 transition min-h-32"
             disabled={loading}
           />
           <Suspense fallback={<p className="mt-2 text-xs text-slate-400">Cargando editor matemático...</p>}>
-            <InteractiveMathEditor value={content} onChange={setContent} disabled={loading} />
+            <InteractiveMathEditor value={content} onChange={updateContent} disabled={loading} />
           </Suspense>
           <button
             type="button"

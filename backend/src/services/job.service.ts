@@ -13,6 +13,7 @@ export interface GenerationRequestSnapshot {
   layoutDensity?: 'comfortable' | 'compact';
   narrationStyle?: 'warm_teacher' | 'neutral_teacher';
   enableNarration?: boolean;
+  narratorVoiceId?: string;
   aiProvider?: 'openrouter' | 'gemini' | 'openai';
   enableComfyUI?: boolean;
   idempotencyKey?: string;

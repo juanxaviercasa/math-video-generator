@@ -1,21 +1,6 @@
 # Math Video Generator personal deployment. Frontend hosted separately on Cloudflare Pages.
 # Usage: docker compose -f deploy/docker-compose.yml --env-file .env.personal up -d --build
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: math-video-db
-    environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set a private DB_PASSWORD}
-      POSTGRES_DB: math_video_generator
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d math_video_generator"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     container_name: math-video-redis
@@ -33,8 +18,8 @@ services:
       dockerfile: deploy/Dockerfile
     container_name: math-video-backend
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:?Set DB_PASSWORD}@postgres:5432/math_video_generator
-      DIRECT_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:?Set DB_PASSWORD}@postgres:5432/math_video_generator
+      DATABASE_URL: ${DATABASE_URL:?Set Supabase session pooler DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL:?Set Supabase direct or session pooler DIRECT_URL}
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
       JWT_SECRET: ${JWT_SECRET:?Set a long random JWT_SECRET}
@@ -59,13 +44,12 @@ services:
     ports:
       - "127.0.0.1:3001:3001"
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
       - media_data:/var/lib/math-video-generator/media
-    command: ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+    # Schema was applied through Supabase migration 20261107185018; do not replay Prisma bootstrap migrations.
+    command: ["node", "dist/index.js"]
     cpus: ${API_CPUS:-0.5}
     mem_limit: ${API_MEMORY:-768m}
 
@@ -75,8 +59,8 @@ services:
       dockerfile: deploy/Dockerfile
     container_name: math-video-worker
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:?Set DB_PASSWORD}@postgres:5432/math_video_generator
-      DIRECT_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:?Set DB_PASSWORD}@postgres:5432/math_video_generator
+      DATABASE_URL: ${DATABASE_URL:?Set Supabase session pooler DATABASE_URL}
+      DIRECT_URL: ${DIRECT_URL:?Set Supabase direct or session pooler DIRECT_URL}
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
       PERSONAL_MODE: "true"
@@ -98,8 +82,6 @@ services:
       backend:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      postgres:
         condition: service_healthy
     volumes:
       - media_data:/var/lib/math-video-generator/media
@@ -124,6 +106,5 @@ services:
       - backend
 
 volumes:
-  postgres_data:
   redis_data:
   media_data:

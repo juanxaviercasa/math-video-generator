@@ -168,9 +168,9 @@ export const api = {
     }
   },
 
-  async extractExercise(file: File, page = 1): Promise<ExtractedExercise> {
+  async extractExercise(file: File, page = 1, provider: 'openrouter' | 'gemini' | 'openai' = 'gemini'): Promise<ExtractedExercise> {
     try {
-      const response = await axios.post<ExtractedExercise>(`${API_URL}/extract-exercise?page=${encodeURIComponent(page)}`, file, {
+      const response = await axios.post<ExtractedExercise>(`${API_URL}/extract-exercise?page=${encodeURIComponent(page)}&provider=${encodeURIComponent(provider)}`, file, {
         withCredentials: true,
         headers: { 'Content-Type': file.type },
         timeout: 60000,

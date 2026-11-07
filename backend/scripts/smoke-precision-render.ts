@@ -13,7 +13,8 @@ const problem = 'x^2 - 5x + 6 = 0';
 const formats: VideoAspectRatio[] = ['16:9', '1:1', '9:16'];
 
 async function smoke(format: VideoAspectRatio): Promise<void> {
-  const root = path.resolve('smoke-artifacts', format.replace(':', 'x'));
+  const artifactRoot = process.env.PRECISION_ARTIFACTS_DIR || path.resolve('smoke-artifacts');
+  const root = path.join(path.resolve(artifactRoot), format.replace(':', 'x'));
   fs.mkdirSync(root, { recursive: true });
   const profile = getVideoFormatProfile(format, 'low');
   const validated = validateMathProblem(problem);

@@ -9,6 +9,24 @@ El editor admite extracción de ejercicios desde PNG, JPG, WEBP o una página PD
 
 Requisitos, límites y pruebas del flujo: [Pipeline de imagen/PDF a matemática narrada](docs/IMAGE_TO_NARRATED_MATH_PIPELINE.md).
 
+## Despliegue privado para una sola persona
+
+La instalación Oracle se ha adaptado al **modo personal**: sin registro abierto,
+con acceso exclusivo al UUID existente del propietario en Supabase, frontend
+protegido por sesión, PostgreSQL/Redis sin puertos públicos y worker de video
+limitado a una ejecución simultánea.
+
+- [Manual de despliegue privado Cloudflare Pages + Oracle](docs/PERSONAL_ORACLE_DEPLOYMENT.md)
+- [Variables privadas del servidor](.env.personal.example)
+- [Compose aislado del resto de servicios](deploy/docker-compose.yml)
+
+El panel privado ofrece la consulta opcional del catálogo de IA ya mantenido
+por ViralForge/avatars. **Consultar pesos Kaggle no prueba una sesión GPU
+activa**; el puente no inicia notebooks ni consume cuotas.
+
+La configuración está lista en el repositorio, pero el DNS, Cloudflare Pages,
+los secretos y el arranque efectivo de Oracle requieren acceso a esos servicios.
+
 ## Voces neurales y MCP
 
 El editor incorpora un catálogo de voces en español (Perú, México, Colombia,

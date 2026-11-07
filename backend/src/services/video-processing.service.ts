@@ -201,7 +201,7 @@ export const videoProcessing = {
             }
             scene.duration = timing.sceneDuration;
             scene.narrationText = cues.join(' ');
-            pedagogical!.visualCueDurations = timing.stageDurations;
+            if (pedagogical) pedagogical.visualCueDurations = timing.stageDurations;
             audioSegments.push(segmentPath);
             continue;
           }

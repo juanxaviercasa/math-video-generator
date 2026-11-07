@@ -87,3 +87,20 @@ test('repeated quadratic roots are mathematically exact', () => {
   assert.deepEqual(scenes.find((scene) => scene.id === 'graph')?.graphSpec?.roots, [1, 1]);
   assert.ok(branches?.visualLatex?.every((latex) => !latex.includes('\\approx')));
 });
+
+test('small nonzero decimal coefficients are never rounded to zero in displayed equations', () => {
+  const problem = '0.0001x^2 + 0.02x - 1 = 0';
+  const scenes = buildQuadraticStoryboard(problem, validateMathProblem(problem));
+  const coefficients = scenes.find((scene) => scene.id === 'coefficients');
+  const discriminant = scenes.find((scene) => scene.id === 'discriminant-calculate');
+  assert.ok(coefficients?.visualLatex?.includes('a = 0.0001'));
+  assert.ok(discriminant?.visualLatex?.some((formula) => formula.includes('0.0001')));
+  assert.ok(discriminant?.visualLatex?.some((formula) => formula.includes('0.0008')));
+});
+
+test('rounded roots use approximate relation even in the recap', () => {
+  const problem = '3x^2 + 2x - 8 = 0';
+  const scenes = buildQuadraticStoryboard(problem, validateMathProblem(problem));
+  const recap = scenes.find((scene) => scene.id === 'recap');
+  assert.ok(recap?.visualLatex?.some((formula) => formula.includes('\\\\approx')));
+});

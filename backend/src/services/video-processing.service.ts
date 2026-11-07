@@ -2,6 +2,7 @@ import { manim } from './manim.service.js';
 import { ffmpeg } from './ffmpeg.service.js';
 import { openai } from './openai.service.js';
 import { tts } from './tts.service.js';
+import { resolveVoiceId } from './voice-catalog.service.js';
 import { validateMathProblem, type MathValidation } from './math-validation.service.js';
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
 import { buildLessonTimeline, validateLessonTimeline } from './timeline.service.js';
@@ -46,6 +47,7 @@ interface VideoGenerationRequest {
   userId: string;
   outputDir: string;
   enableNarration?: boolean;
+  narratorVoiceId?: string;
   aiProvider?: 'openrouter' | 'gemini' | 'openai';
     enableComfyUI?: boolean;
   allowSimulation?: boolean;
@@ -79,6 +81,7 @@ export const videoProcessing = {
       narrationStyle = 'warm_teacher',
       outputDir,
       enableNarration = true,
+      narratorVoiceId,
       aiProvider = 'openrouter',
       enableComfyUI = false,
       allowSimulation = process.env.ALLOW_SIMULATION === 'true',
@@ -89,6 +92,7 @@ export const videoProcessing = {
       progress: 0,
       message: 'Iniciando procesamiento...',
     };
+    const selectedVoice = resolveVoiceId(narratorVoiceId);
     const report = () => request.onProgress?.({ ...progress });
     report();
 
@@ -162,7 +166,7 @@ export const videoProcessing = {
       let narrationAudioPath = '';
       let lessonTimeline: LessonTimeline | undefined;
       if (enableNarration) {
-        console.log(`🎙️ Generando narración sincronizada con ${aiProvider}...`);
+        console.log(`🎙️ Generando narración con voz neural ${selectedVoice}; proveedor IA: ${aiProvider}`);
         const audioSegments: string[] = [];
         for (const scene of synchronizedScenes) {
           const pedagogical = pedagogicalScenes.find((item) => item.id === scene.id);
@@ -171,7 +175,7 @@ export const videoProcessing = {
             const clips: string[] = [];
             const actualDurations: number[] = [];
             for (const [cueIndex, speech] of cues.entries()) {
-              const clip = await tts.generateNarrationAudio(speech, outputDir, `${id}-${scene.id}-cue-${cueIndex + 1}`, { style: narrationStyle });
+              const clip = await tts.generateNarrationAudio(speech, outputDir, `${id}-${scene.id}-cue-${cueIndex + 1}`, { style: narrationStyle, voiceId: selectedVoice });
               if (!clip) throw new Error(`VOICE_CUE_MISSING: La voz neural falló en ${scene.id}, transformación ${cueIndex + 1}.`);
               const info = await ffmpeg.getVideoInfo(clip);
               const measured = Number(info.format?.duration);
@@ -211,7 +215,7 @@ export const videoProcessing = {
             scene.narrationText,
             outputDir,
             `${id}-${scene.id}`,
-            { style: narrationStyle },
+            { style: narrationStyle, voiceId: selectedVoice },
           );
           if (!segmentPath) {
             throw new Error(`AUDIO_SEGMENT_MISSING: No se generó la narración de la escena ${scene.id}. Se cancela el video para evitar desincronización.`);

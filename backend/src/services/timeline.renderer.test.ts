@@ -126,7 +126,7 @@ test('refuses to plot coefficients with mathematically incorrect roots', async (
   const problem = 'x^2 - 5x + 6 = 0';
   const scenes = buildQuadraticStoryboard(problem, validateMathProblem(problem));
   const invalidScenes = scenes.map((scene) => scene.id === 'graph'
-    ? { ...scene, graphSpec: { ...scene.graphSpec!, roots: [4, 5] as [number, number] } }
+    ? { ...scene, graphSpec: { a: 1, b: -5, c: 6, roots: [4, 5] as [number, number] } }
     : scene);
 
   assert.throws(() => manim.generatePythonScript({

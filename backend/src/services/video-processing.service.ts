@@ -12,6 +12,7 @@ import { getVideoFormatProfile, type VideoAspectRatio, type VideoQuality } from 
 import { validateRenderIntegrity } from './render-integrity.service.js';
 import { readAndValidateGeometry } from './manim-geometry-qa.service.js';
 import { auditFinalVideoFrames } from './final-frame-qa.service.js';
+import { extractVoiceCues, buildCueTimingPlan, CUE_INTRO_SECONDS, CUE_OUTRO_SECONDS } from './voice-cue.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -164,6 +165,47 @@ export const videoProcessing = {
         console.log(`🎙️ Generando narración sincronizada con ${aiProvider}...`);
         const audioSegments: string[] = [];
         for (const scene of synchronizedScenes) {
+          const pedagogical = pedagogicalScenes.find((item) => item.id === scene.id);
+          const cues = pedagogical ? extractVoiceCues(pedagogical) : [];
+          if (cues.length) {
+            const clips: string[] = [];
+            const actualDurations: number[] = [];
+            for (const [cueIndex, speech] of cues.entries()) {
+              const clip = await tts.generateNarrationAudio(speech, outputDir, `${id}-${scene.id}-cue-${cueIndex + 1}`, { style: narrationStyle });
+              if (!clip) throw new Error(`VOICE_CUE_MISSING: La voz neural falló en ${scene.id}, transformación ${cueIndex + 1}.`);
+              const info = await ffmpeg.getVideoInfo(clip);
+              const measured = Number(info.format?.duration);
+              if (!Number.isFinite(measured) || measured <= 0) {
+                throw new Error(`VOICE_CUE_INVALID: Duración de voz inválida en ${scene.id}, transformación ${cueIndex + 1}.`);
+              }
+              clips.push(clip);
+              actualDurations.push(measured);
+            }
+            const timing = buildCueTimingPlan(actualDurations);
+            const parts: string[] = [
+              await ffmpeg.createSilentAudio(path.join(outputDir, `${id}-${scene.id}-opening.wav`), CUE_INTRO_SECONDS),
+            ];
+            for (let index = 0; index < clips.length; index += 1) {
+              parts.push(await ffmpeg.alignNarrationSegment(
+                clips[index],
+                path.join(outputDir, `${id}-${scene.id}-cue-${index + 1}-aligned.wav`),
+                timing.stageDurations[index],
+              ));
+            }
+            parts.push(await ffmpeg.createSilentAudio(path.join(outputDir, `${id}-${scene.id}-closing.wav`), CUE_OUTRO_SECONDS));
+            const segmentPath = await ffmpeg.concatenateAudio(parts, path.join(outputDir, `${id}-${scene.id}-narrated.wav`));
+            const segmentInfo = await ffmpeg.getVideoInfo(segmentPath);
+            const actualSceneDuration = Number(segmentInfo.format?.duration);
+            if (!Number.isFinite(actualSceneDuration) || Math.abs(actualSceneDuration - timing.sceneDuration) > 0.06) {
+              throw new Error(`VOICE_CUE_DRIFT: El audio y el storyboard difieren en ${scene.id}.`);
+            }
+            scene.duration = timing.sceneDuration;
+            scene.narrationText = cues.join(' ');
+            pedagogical!.visualCueDurations = timing.stageDurations;
+            audioSegments.push(segmentPath);
+            continue;
+          }
+
           const segmentPath = await tts.generateNarrationAudio(
             scene.narrationText,
             outputDir,
@@ -178,8 +220,6 @@ export const videoProcessing = {
           if (!Number.isFinite(audioDuration) || audioDuration <= 0) {
             throw new Error(`AUDIO_SEGMENT_INVALID: Duración de narración inválida en ${scene.id}.`);
           }
-          // Reserve enough time for Manim transitions (graph scenes need six
-          // seconds minimum), then insert silence at the segment tail.
           const visualDuration = Math.max(scene.kind === 'graph' ? 6 : 4, audioDuration + 0.15);
           const alignedSegment = await ffmpeg.alignNarrationSegment(
             segmentPath,
@@ -201,6 +241,21 @@ export const videoProcessing = {
         lessonTimeline.segments.forEach((segment, index) => {
           segment.audioPath = audioSegments[index];
         });
+        // Bind actual neural speech clips to their on-screen transformation,
+        // rather than distributing events across an estimated text duration.
+        for (const pedagogical of pedagogicalScenes) {
+          const cueDurations = pedagogical.visualCueDurations;
+          if (!cueDurations?.length) continue;
+          const events = lessonTimeline.events.filter((event) => event.segmentId === `segment-${pedagogical.id}`);
+          if (events.length !== cueDurations.length) throw new Error(`VOICE_CUE_EVENT_MISMATCH: ${pedagogical.id}`);
+          let offset = CUE_INTRO_SECONDS;
+          for (const [index, event] of events.entries()) {
+            event.startOffset = Number(offset.toFixed(3));
+            event.duration = 0.8;
+            event.holdAfter = Number((cueDurations[index] - 0.8).toFixed(3));
+            offset += cueDurations[index];
+          }
+        }
         const timelineReport = validateLessonTimeline(lessonTimeline);
         if (!timelineReport.passed) {
           throw new Error(`La línea de tiempo pedagógica es inválida: ${timelineReport.issues.map((issue) => issue.message).join(' | ')}`);
@@ -240,7 +295,10 @@ export const videoProcessing = {
         layoutDensity,
         narrationStyle,
         lessonTimeline,
-        narrationTimeline: process.env.NARRATION_TIMELINE === 'true',
+        // Voice-locked stages use the stable audited renderer, which consumes
+        // the exact cue durations. The experimental timeline renderer cannot
+        // independently certify those same timestamps.
+        narrationTimeline: process.env.NARRATION_TIMELINE === 'true' && !pedagogicalScenes.some((scene) => scene.visualCueDurations?.length),
         geometryReportPath: path.join(outputDir, `${id}-manim-geometry.json`),
       };
 

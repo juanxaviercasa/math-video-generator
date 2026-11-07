@@ -34,7 +34,7 @@ services:
     container_name: math-video-backend
     environment:
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:?Set DB_PASSWORD}@postgres:5432/math_video_generator
-      DIRECT_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/math_video_generator
+      DIRECT_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:?Set DB_PASSWORD}@postgres:5432/math_video_generator
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
       JWT_SECRET: ${JWT_SECRET:?Set a long random JWT_SECRET}
@@ -69,12 +69,12 @@ services:
 
   worker:
     build:
-      context: .
+      context: ..
       dockerfile: deploy/Dockerfile
     container_name: math-video-worker
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/math_video_generator
-      DIRECT_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/math_video_generator
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:?Set DB_PASSWORD}@postgres:5432/math_video_generator
+      DIRECT_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:?Set DB_PASSWORD}@postgres:5432/math_video_generator
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
       PERSONAL_MODE: "true"
@@ -83,14 +83,14 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_VISION_MODEL: ${OPENROUTER_VISION_MODEL:-}
-      JWT_SECRET: ${JWT_SECRET:-replace-with-a-32-character-secret}
-      SUPABASE_URL: ${SUPABASE_URL:-https://placeholder.supabase.co}
-      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-placeholder}
+      JWT_SECRET: ${JWT_SECRET:?Set a long random JWT_SECRET}
+      SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:?Set SUPABASE_PUBLISHABLE_KEY}
       MEDIA_ROOT: /var/lib/math-video-generator/media
       VIDEO_QUEUE_NAME: math-video-generation
-      VIDEO_WORKER_CONCURRENCY: ${VIDEO_WORKER_CONCURRENCY:-1}
+      VIDEO_WORKER_CONCURRENCY: 1
       TTS_PROVIDER: ${TTS_PROVIDER:-edge}
-      TTS_NEURAL_VOICE: ${TTS_NEURAL_VOICE:-es-MX-DaliaNeural}
+      TTS_NEURAL_VOICE: ${TTS_NEURAL_VOICE:-es-PE-CamilaNeural}
       TTS_ALLOW_LOCAL_FALLBACK: ${TTS_ALLOW_LOCAL_FALLBACK:-false}
     depends_on:
       backend:

@@ -73,7 +73,8 @@ const numberToSpanish = (value: number): string => {
   return String(value);
 };
 
-const formatValue = (value: number): string => Number.isInteger(value) ? String(value) : value.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
+const formatValue = (value: number): string => Number.isFinite(value) ? String(Number(value.toPrecision(12))) : String(value);
+const formatRoot = (value: number): string => Number.isInteger(value) ? String(value) : value.toFixed(3).replace(/0+$/, '').replace(/\.$/, '');
 
 export const buildQuadraticStoryboard = (
   problem: string,
@@ -108,10 +109,10 @@ export const buildQuadraticStoryboard = (
   const discriminantOperation = `\\Delta = ${formatValue(b * b)} ${productTerm < 0 ? '+' : '-'} ${formatValue(Math.abs(productTerm))}`;
   const formulaSubstitution = `x = \\frac{-(${formatValue(b)}) \\pm \\sqrt{${formatValue(delta)}}}{2(${formatValue(a)})}`;
   // Preserve an exact radical when the square root is not exactly representable.
-  const sqrtExpression = Math.abs(sqrtDelta - Number(formatValue(sqrtDelta))) <= 1e-10
+  const sqrtExpression = Number(formatValue(sqrtDelta)) ** 2 === delta
     ? formatValue(sqrtDelta)
     : `\\sqrt{${formatValue(delta)}}`;
-  const rootRelation = (value: number): string => Math.abs(value - Number(formatValue(value))) <= 1e-10 ? '=' : '\\approx';
+  const rootRelation = (value: number): string => Math.abs(value - Number(formatRoot(value))) <= 1e-10 ? '=' : '\\approx';
   const formulaSimplified = `x = \\frac{${formatValue(-b)} \\pm ${sqrtExpression}}{${formatValue(denominator)}}`;
   const x1 = denominator === 0 ? 0 : (-b + sqrtDelta) / denominator;
   const x2 = denominator === 0 ? 0 : (-b - sqrtDelta) / denominator;
@@ -289,16 +290,16 @@ export const buildQuadraticStoryboard = (
     make(
       'solution-branches',
       'step',
-      `${lead}La expresión más o menos produce dos caminos. En el primero sumamos; en el segundo restamos. Así obtenemos x uno ${rootRelation(x1) === '=' ? 'igual a' : 'aproximadamente'} ${numberToSpanish(Number(formatValue(x1)))} y x dos ${rootRelation(x2) === '=' ? 'igual a' : 'aproximadamente'} ${numberToSpanish(Number(formatValue(x2)))}.`,
-      [`x_1 = \\frac{${formatValue(-b)} + ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x1)} ${formatValue(x1)}`, `x_2 = \\frac{${formatValue(-b)} - ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x2)} ${formatValue(x2)}`],
+      `${lead}La expresión más o menos produce dos caminos. En el primero sumamos; en el segundo restamos. Así obtenemos x uno ${rootRelation(x1) === '=' ? 'igual a' : 'aproximadamente'} ${numberToSpanish(Number(formatRoot(x1)))} y x dos ${rootRelation(x2) === '=' ? 'igual a' : 'aproximadamente'} ${numberToSpanish(Number(formatRoot(x2)))}.`,
+      [`x_1 = \\frac{${formatValue(-b)} + ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x1)} ${formatRoot(x1)}`, `x_2 = \\frac{${formatValue(-b)} - ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x2)} ${formatRoot(x2)}`],
       'split',
       'Dos soluciones',
       10,
       ['Camino +', 'Camino −'],
       [
         { label: 'Expresión simplificada', latex: formulaSimplified, role: 'context', semanticStep: 'Conservar la expresión simplificada' },
-        { label: 'Camino +', latex: `x_1 = \\frac{${formatValue(-b)} + ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x1)} ${formatValue(x1)}`, role: 'result', semanticStep: 'Resolver la primera rama' },
-        { label: 'Camino −', latex: `x_2 = \\frac{${formatValue(-b)} - ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x2)} ${formatValue(x2)}`, role: 'result', semanticStep: 'Resolver la segunda rama' },
+        { label: 'Camino +', latex: `x_1 = \\frac{${formatValue(-b)} + ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x1)} ${formatRoot(x1)}`, role: 'result', semanticStep: 'Resolver la primera rama' },
+        { label: 'Camino −', latex: `x_2 = \\frac{${formatValue(-b)} - ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x2)} ${formatRoot(x2)}`, role: 'result', semanticStep: 'Resolver la segunda rama' },
       ],
       {
         formulaAnchor: { latex: formulaSimplified, label: 'Expresión de referencia', persistence: 'segment', position: 'top' },
@@ -307,8 +308,8 @@ export const buildQuadraticStoryboard = (
     make(
       'graph',
       'graph',
-      `${lead}Finalmente, la gráfica confirma la respuesta: la parábola corta el eje horizontal en ${numberToSpanish(Number(formatValue(x2)))} y ${numberToSpanish(Number(formatValue(x1)))}.`,
-      ['y = ax² + bx + c', `raíces: ${formatValue(x2)} y ${formatValue(x1)}`],
+      `${lead}Finalmente, la gráfica confirma la respuesta: la parábola corta el eje horizontal en ${numberToSpanish(Number(formatRoot(x2)))} y ${numberToSpanish(Number(formatRoot(x1)))}.`,
+      [`y = (${formatValue(a)})x^2 + (${formatValue(b)})x + (${formatValue(c)})`, `raíces: ${formatRoot(x2)} y ${formatRoot(x1)}`],
       'graph',
       'Comprobación gráfica',
       10,
@@ -320,7 +321,7 @@ export const buildQuadraticStoryboard = (
       'recap',
       'conclusion',
       `${warm ? 'Excelente. ' : ''}Recapitulamos: identificamos a, b y c; sustituimos sus valores; calculamos el discriminante; aplicamos la fórmula y comprobamos las dos raíces en la gráfica.`,
-      [`\\begin{aligned}x_1 &= ${formatValue(x1)} \\\\ x_2 &= ${formatValue(x2)}\\end{aligned}`],
+      [`\\begin{aligned}x_1 &${rootRelation(x1)} ${formatRoot(x1)} \\\\ x_2 &${rootRelation(x2)} ${formatRoot(x2)}\\end{aligned}`],
       'recap',
       'Solución comprobada',
       8,

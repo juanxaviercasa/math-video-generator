@@ -21,20 +21,25 @@ público multiusuario, no cobra ni modifica ViralForge.
 | Videos MP4 | Volumen persistente `media_data` en Oracle |
 | Kaggle/ViralForge | Catálogo opcional de lectura, inferencia GPU aún no conectada |
 
-## 1. Crear tu única cuenta autorizada (imprescindible)
+## 1. Cuenta personal confirmada
 
-Al crear el proyecto se verificó que **`auth.users` está vacío**. No existe
-un propietario aún. El complemento de Supabase disponible no administra
-directamente usuarios Auth y no debe fabricarlos con SQL.
+**Estado verificado:** Supabase Auth tiene exactamente **un** usuario, con
+correo confirmado y contraseña configurada. Además, su perfil ya fue
+sincronizado con `public.users`. No crees un segundo usuario ni reenvíes el
+enlace de confirmación ya consumido.
 
-1. Abre [Supabase — Authentication/Users](https://supabase.com/dashboard/project/jplhbgyhswvbghhzhjvm/auth/users).
-2. Selecciona **Add user** para crear tu propia cuenta por correo y contraseña, preferentemente marcada como confirmada o confirmándola por correo.
-3. Copia el **UUID** que Supabase asigna a ese usuario.
-4. Configura `OWNER_USER_ID` con ese UUID **solo en el archivo privado del VPS**.
-5. En [Authentication — URL Configuration](https://supabase.com/dashboard/project/jplhbgyhswvbghhzhjvm/auth/url-configuration), establece el Site URL definitivo `https://math.forjavia.site` y agrega los redirect URLs que sean necesarios una vez publicado.
-6. En Authentication > Providers, desactiva el registro público si está disponible. De cualquier modo, el backend ya bloquea `/api/auth/register` y las tablas Prisma no son accesibles vía la Data API.
+1. Abre [Authentication → Users](https://supabase.com/dashboard/project/jplhbgyhswvbghhzhjvm/auth/users).
+2. Copia el UUID del único usuario confirmado y configúralo en el VPS como
+   `OWNER_USER_ID` (no uses su correo, el ID del proyecto ni el de la organización).
+3. La URL principal de Auth ya se configuró en
+   `https://math.forjavia.site`. Cuando despleguemos Cloudflare Pages,
+   comprueba que esa URL realmente abra la web.
+4. No se habilitará registro público. El backend bloquea
+   `POST /api/auth/register` y valida el UUID propietario en cada petición.
 
-Nunca guardes la contraseña, el UUID de otros usuarios ni un token secreto en el código. **`OWNER_USER_ID` no es una clave de API, pero conviene mantenerlo en el entorno privado**.
+La confirmación previa con `localhost:3000` ya no importa:
+la cuenta está confirmada. Para entrar, usa el formulario privado de correo y
+contraseña una vez que la API y el frontend estén publicados.
 
 ## 2. Credenciales de Supabase y PostgreSQL
 
@@ -44,15 +49,15 @@ suele requerir IPv6; no inventes el hostname regional del pooler. Usa la
 cadena exacta que muestre Supabase.
 
 En [API Keys](https://supabase.com/dashboard/project/jplhbgyhswvbghhzhjvm/settings/api-keys)
-copia la clave **publishable** activa (nunca service-role/secret).
+la clave **publishable** activa ya está precargada en `.env.personal.example` (no es secreta); verifica que siga activa. Nunca uses `service_role` ni una clave de servicio en el frontend.
 
 Variables obligatorias en `.env.personal` del servidor:
 
 ```dotenv
 PERSONAL_MODE=true
-OWNER_USER_ID=UUID_DE_TU_CUENTA_CONFIRMADA
+OWNER_USER_ID=UUID_QUE_MUESTRA_AUTH_USERS
 SUPABASE_URL=https://jplhbgyhswvbghhzhjvm.supabase.co
-SUPABASE_PUBLISHABLE_KEY=CLAVE_PUBLICABLE_DE_SUPABASE
+SUPABASE_PUBLISHABLE_KEY=YA_CONFIGURADA_EN_EL_EJEMPLO
 DATABASE_URL=POSTGRES_SESSION_POOLER_URL_CON_CONTRASENA
 DIRECT_URL=POSTGRES_SESSION_POOLER_URL_CON_CONTRASENA
 JWT_SECRET=CADENA_ALEATORIA_LARGA
@@ -115,12 +120,10 @@ credenciales de otras apps.
 Validación y arranque:
 
 ```bash
-docker compose --env-file .env.personal -f deploy/docker-compose.yml config --quiet
-docker compose --env-file .env.personal -f deploy/docker-compose.yml config --services
-docker compose --env-file .env.personal -f deploy/docker-compose.yml up -d --build
-docker compose --env-file .env.personal -f deploy/docker-compose.yml ps
-curl --fail http://127.0.0.1:3001/health
-curl --fail http://127.0.0.1:3001/readyz
+# Comprueba permisos, recursos, dominio y compatibilidad de Compose:
+bash scripts/deploy-oracle-personal.sh --check
+# Solo si el preflight aprueba y existe capacidad libre:
+bash scripts/deploy-oracle-personal.sh --apply
 ```
 
 Servicios por defecto: `redis`, `backend`, `worker`. Los contenedores

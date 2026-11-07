@@ -1,0 +1,8 @@
+# TEMPLATE ONLY: do not replace an existing cloudflared service or live tunnel.
+# Copy to a new config and fill with a tunnel UUID/credentials from your own account.
+tunnel: YOUR_NEW_TUNNEL_UUID
+credentials-file: /home/ubuntu/.cloudflared/YOUR_NEW_TUNNEL_UUID.json
+ingress:
+  - hostname: api-math.forjavia.site
+    service: http://127.0.0.1:3001
+  - service: http_status:404

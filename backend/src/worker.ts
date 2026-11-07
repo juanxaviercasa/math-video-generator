@@ -4,11 +4,13 @@ import path from 'node:path';
 import { videoProcessing } from './services/video-processing.service.js';
 import { cleanupFailedArtifacts } from './services/artifact-cleanup.service.js';
 import { generationJobs, videoQueue } from './services/job.service.js';
+import { assertPersonalModeConfigured, isOwner } from './services/personal-mode.service.js';
 
 const workerId = `${os.hostname()}-${process.pid}`;
 const concurrency = Math.max(1, Number(process.env.VIDEO_WORKER_CONCURRENCY || 1));
 
 const run = async () => {
+  assertPersonalModeConfigured();
   const recovered = await generationJobs.recoverStaleJobs();
   if (recovered > 0) console.log(`[Worker ${workerId}] Reencolados ${recovered} jobs detenidos.`);
   const removedArtifacts = await cleanupFailedArtifacts();
@@ -24,6 +26,7 @@ const run = async () => {
     const videoId = job.data.videoId;
     const stored = await generationJobs.getRequest(videoId);
     if (!stored) throw new Error(`No existe una solicitud persistida para el job ${videoId}`);
+    if (!isOwner(stored.userId)) throw new Error('OWNER_ONLY: tarea no autorizada para esta instalación personal.');
 
     await generationJobs.markProcessing(videoId, workerId);
     const outputDir = path.join(process.env.MEDIA_ROOT || path.join(os.tmpdir(), 'math-video-generator'), `mvg-${videoId}`);

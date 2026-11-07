@@ -154,6 +154,7 @@ Luego ajusta tus claves de IA si quieres usar OpenRouter, Gemini o OpenAI.
 - [docs/API.md](./docs/API.md)
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 - [docs/MANIM_FFMPEG_SETUP.md](./docs/MANIM_FFMPEG_SETUP.md)
+- [docs/PRECISION_VISUAL_QA_RUNBOOK.md](./docs/PRECISION_VISUAL_QA_RUNBOOK.md)
 
 ## Licencia
 

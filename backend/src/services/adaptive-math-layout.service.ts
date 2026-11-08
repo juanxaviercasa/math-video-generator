@@ -348,6 +348,19 @@ export function buildAdaptiveManimHelpers(profile: VideoFormatProfile): string {
     def _arrange_equation_stages(self, stages):
         if not len(stages):
             raise ValueError("LAYOUT_EMPTY_STAGES")
+        # A single mathematical result should use the large working area, not
+        # the conservative scale designed for stacks of derivations.
+        if len(stages) == 1:
+            only = stages[0]
+            if len(only) < 2:
+                raise ValueError("LAYOUT_STAGE_UNREADABLE: falta la fórmula")
+            pixel_ratio = @@PIXELHEIGHT@@ / @@FRAMEHEIGHT@@
+            min_px = @@MINFORMULAPX@@
+            required = min_px / max(self._math_min_height(only[1]) * pixel_ratio, 0.001)
+            self._fit_work(only, max_upscale=max(1.75, min(2.60, required * 1.06)), min_scale=0.55)
+            if self._math_min_height(only[1]) * pixel_ratio + 0.2 < min_px:
+                raise ValueError("LAYOUT_STAGE_UNREADABLE: fórmula única demasiado pequeña")
+            return True
         # Measure actual MathTex widths after TeX has built fractions and roots.
         stages.arrange(DOWN, aligned_edge=LEFT, buff=0.23)
         bounds = self._work_bounds()

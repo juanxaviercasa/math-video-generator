@@ -446,14 +446,15 @@ ${waitBefore}        self.play(Indicate(${stageRef}[1], color=YELLOW, scale_fact
         else:
             self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.3)`
               : `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+        # Split available scene time across verified steps; no long static pause.
+        stage_slot_${i} = (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1)
+        for step_index in range(len(content_${i})):
+            self._animate_equation_step(content_${i}, step_index, focus_${i}, run_time=0.25)
+            self._focus_math(content_${i}[step_index][1], run_time=0.30)
+            self.wait(max(0.05, stage_slot_${i} - 0.55))
         if focus_${i}:
-            for step_index in range(len(content_${i})):
-                self._animate_equation_step(content_${i}, step_index, True, run_time=0.25)
-                self.wait(max(0.05, (${duration.toFixed(2)} - 0.8) / len(content_${i}) - 0.25))
             self.play(FadeOut(content_${i}[-1]), FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.4)
         else:
-            self.play(FadeIn(content_${i}), run_time=0.25)
-            self.wait(max(0.05, ${duration.toFixed(2)} - 1.05))
             self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)`;
             return `
         # Storyboard pedagógico: micro-pasos de ${pedScene.id}
@@ -512,12 +513,16 @@ ${cueAnimation}
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
         self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=1.2)
         self.play(FadeIn(root_2_${i}), ${repeatedRoot ? '' : `FadeIn(root_3_${i}), `}Write(root_2_label_${i}), ${repeatedRoot ? '' : `Write(root_3_label_${i}), `}FadeIn(concavity_lbl_${i}), FadeIn(graph_title_${i}), run_time=1.2)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 4.3))
+        # The narration points first to the vertex and then to each real root.
+        self.play(Indicate(vertex_pt_${i}, color=RED, scale_factor=1.55), run_time=0.55)
+        self.play(Indicate(root_2_${i}, color=GREEN, scale_factor=1.55), run_time=0.55)
+        ${repeatedRoot ? '' : `self.play(Indicate(root_3_${i}, color=GREEN, scale_factor=1.55), run_time=0.55)`}
+        self.wait(max(0.5, ${duration.toFixed(2)} - 4.3 - ${repeatedRoot ? '1.10' : '1.65'}))
         self.play(FadeOut(graph_group_${i}), run_time=0.4)
 `;
           }
 
-          if (pedScene.layout === 'recap') {
+          if (pedScene.layout === 'recap' && latexLines.length >= 2) {
             const recapMath = latexLines.map((line) => `self._math(${escapeForPythonString(line)}, font_size=53, color=YELLOW)`);
             const recapLabels = textLines.map((line) => `Text(${escapeForPythonString(line)}, font_size=20, color=GREY_B)`);
             const pairCount = Math.max(recapMath.length, recapLabels.length);
@@ -526,23 +531,36 @@ ${cueAnimation}
               const l = recapLabels[k] || `Text("", font_size=18)`;
               return `VGroup(${l}, ${m}).arrange(DOWN, buff=0.12)`;
             });
-            // Dense recap lists render tiny glyphs. Reveal one verified formula
-            // at a time, keeping the original problem anchored at the top.
             const recapContent = `VGroup(${pairs.join(', ')})`;
+            // Final takeaway uses the last two *verified* expressions; the
+            // original exercise remains independently pinned above the canvas.
+            const answerLatex = latexLines[latexLines.length - 2];
+            const proofLatex = latexLines[latexLines.length - 1];
             return `
-        # Storyboard pedagógico: recapitulación legible por etapas
+        # Storyboard pedagógico: recapitulación progresiva y respuesta final permanente
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=34, color=BLUE))
         content_${i} = ${recapContent}
-        for pair in content_${i}:
+        for pair in content_${i}[:-2]:
             self._fit_recap_pair(pair)
+        final_math_${i} = self._make_final_recap_formula(${escapeForPythonString(answerLatex)}, 62, GREEN)
+        final_proof_${i} = self._make_final_recap_formula(${escapeForPythonString(proofLatex)}, 48, YELLOW)
+        final_answer_${i} = VGroup(final_math_${i}, final_proof_${i})
+        self._fit_final_recap(final_answer_${i})
         self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
-        recap_hold_${i} = max(0.05, (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1) - 0.4)
-        for pair in content_${i}:
-            self.play(FadeIn(pair), run_time=0.2)
-            self.wait(recap_hold_${i})
-            self.play(FadeOut(pair), run_time=0.2)
-        self.play(FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.4)
+        earlier_${i} = len(content_${i}) - 2
+        closing_hold_${i} = (min(3.0, max(1.8, ${duration.toFixed(2)} * 0.36))
+                             if earlier_${i} else ${duration.toFixed(2)} - 0.85)
+        if earlier_${i}:
+            recap_slot_${i} = (${duration.toFixed(2)} - 0.85 - closing_hold_${i}) / earlier_${i}
+            for pair in content_${i}[:-2]:
+                self.play(FadeIn(pair), run_time=0.22)
+                self._focus_math(pair[1], run_time=0.25)
+                self.wait(max(0.05, recap_slot_${i} - 0.69))
+                self.play(FadeOut(pair), run_time=0.22)
+        self.play(FadeIn(final_answer_${i}), run_time=0.45)
+        self.wait(max(0.10, closing_hold_${i}))
+        # No FadeOut: retain the problem, the solution and its validation until the last frame.
 `;
           }
 
@@ -571,17 +589,18 @@ ${cueAnimation}
         content_${i} = ${compactGroup}
         focus_${i} = self._arrange_card_pairs(content_${i})
         content_group_${i} = VGroup(header_${i}, content_${i})
+        # Reveal each coefficient or substitution when the explanation reaches it.
+        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+        card_slot_${i} = (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1)
+        for pair in content_${i}:
+            self.play(FadeIn(pair), run_time=0.20)
+            self._focus_math(pair[0], run_time=0.30)
+            self.wait(max(0.05, card_slot_${i} - (0.70 if focus_${i} else 0.50)))
+            if focus_${i}:
+                self.play(FadeOut(pair), run_time=0.20)
         if focus_${i}:
-            self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
-            card_hold_${i} = max(0.05, (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1) - 0.4)
-            for pair in content_${i}:
-                self.play(FadeIn(pair), run_time=0.2)
-                self.wait(card_hold_${i})
-                self.play(FadeOut(pair), run_time=0.2)
             self.play(FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.4)
         else:
-            self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=0.4)
-            self.wait(max(0.5, ${duration.toFixed(2)} - 0.8))
             self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)
 `;
           }
@@ -593,9 +612,14 @@ ${cueAnimation}
         content_${i} = ${contentGroup}
         self._fit_fallback_group(content_${i})
         content_group_${i} = VGroup(header_${i}, content_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=0.4)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 0.8))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)
+        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+        self.play(FadeIn(content_${i}), run_time=0.6)
+        # Two non-destructive spotlights make the introduction follow the voice.
+        self._focus_math(content_${i}[0] if isinstance(content_${i}, VGroup) else content_${i}, run_time=0.55)
+        self.wait(max(0.05, (${duration.toFixed(2)} - 2.70) / 2))
+        self._focus_math(content_${i}[-1] if isinstance(content_${i}, VGroup) else content_${i}, run_time=0.55)
+        self.wait(max(0.05, (${duration.toFixed(2)} - 2.70) / 2))
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.6)
 `;
         }).join('\n')
       : '';

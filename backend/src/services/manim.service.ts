@@ -446,14 +446,15 @@ ${waitBefore}        self.play(Indicate(${stageRef}[1], color=YELLOW, scale_fact
         else:
             self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.3)`
               : `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+        # Split available scene time across verified steps; no long static pause.
+        stage_slot_${i} = (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1)
+        for step_index in range(len(content_${i})):
+            self._animate_equation_step(content_${i}, step_index, focus_${i}, run_time=0.25)
+            self._focus_math(content_${i}[step_index][1], run_time=0.30)
+            self.wait(max(0.05, stage_slot_${i} - 0.55))
         if focus_${i}:
-            for step_index in range(len(content_${i})):
-                self._animate_equation_step(content_${i}, step_index, True, run_time=0.25)
-                self.wait(max(0.05, (${duration.toFixed(2)} - 0.8) / len(content_${i}) - 0.25))
             self.play(FadeOut(content_${i}[-1]), FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.4)
         else:
-            self.play(FadeIn(content_${i}), run_time=0.25)
-            self.wait(max(0.05, ${duration.toFixed(2)} - 1.05))
             self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)`;
             return `
         # Storyboard pedagógico: micro-pasos de ${pedScene.id}
@@ -512,7 +513,11 @@ ${cueAnimation}
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
         self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=1.2)
         self.play(FadeIn(root_2_${i}), ${repeatedRoot ? '' : `FadeIn(root_3_${i}), `}Write(root_2_label_${i}), ${repeatedRoot ? '' : `Write(root_3_label_${i}), `}FadeIn(concavity_lbl_${i}), FadeIn(graph_title_${i}), run_time=1.2)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 4.3))
+        # The narration points first to the vertex and then to each real root.
+        self.play(Indicate(vertex_pt_${i}, color=RED, scale_factor=1.55), run_time=0.55)
+        self.play(Indicate(root_2_${i}, color=GREEN, scale_factor=1.55), run_time=0.55)
+        ${repeatedRoot ? '' : `self.play(Indicate(root_3_${i}, color=GREEN, scale_factor=1.55), run_time=0.55)`}
+        self.wait(max(0.5, ${duration.toFixed(2)} - 4.3 - ${repeatedRoot ? '1.10' : '1.65'}))
         self.play(FadeOut(graph_group_${i}), run_time=0.4)
 `;
           }
@@ -571,17 +576,18 @@ ${cueAnimation}
         content_${i} = ${compactGroup}
         focus_${i} = self._arrange_card_pairs(content_${i})
         content_group_${i} = VGroup(header_${i}, content_${i})
+        # Reveal each coefficient or substitution when the explanation reaches it.
+        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+        card_slot_${i} = (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1)
+        for pair in content_${i}:
+            self.play(FadeIn(pair), run_time=0.20)
+            self._focus_math(pair[0], run_time=0.30)
+            self.wait(max(0.05, card_slot_${i} - (0.70 if focus_${i} else 0.50)))
+            if focus_${i}:
+                self.play(FadeOut(pair), run_time=0.20)
         if focus_${i}:
-            self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
-            card_hold_${i} = max(0.05, (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1) - 0.4)
-            for pair in content_${i}:
-                self.play(FadeIn(pair), run_time=0.2)
-                self.wait(card_hold_${i})
-                self.play(FadeOut(pair), run_time=0.2)
             self.play(FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.4)
         else:
-            self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=0.4)
-            self.wait(max(0.5, ${duration.toFixed(2)} - 0.8))
             self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)
 `;
           }
@@ -593,9 +599,14 @@ ${cueAnimation}
         content_${i} = ${contentGroup}
         self._fit_fallback_group(content_${i})
         content_group_${i} = VGroup(header_${i}, content_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=0.4)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 0.8))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)
+        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+        self.play(FadeIn(content_${i}), run_time=0.6)
+        # Two non-destructive spotlights make the introduction follow the voice.
+        self._focus_math(content_${i}[0] if isinstance(content_${i}, VGroup) else content_${i}, run_time=0.55)
+        self.wait(max(0.05, (${duration.toFixed(2)} - 2.70) / 2))
+        self._focus_math(content_${i}[-1] if isinstance(content_${i}, VGroup) else content_${i}, run_time=0.55)
+        self.wait(max(0.05, (${duration.toFixed(2)} - 2.70) / 2))
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.6)
 `;
         }).join('\n')
       : '';

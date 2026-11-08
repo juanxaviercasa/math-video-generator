@@ -36,9 +36,12 @@ def main():
     polynomial = a * x ** 2 + b * x + c
     discriminant = b ** 2 - 4 * a * c
     roots = solveset(polynomial, x, domain=S.Reals)
-    if not isinstance(roots, FiniteSet):
+    if roots is S.EmptySet:
+        ordered = []
+    elif isinstance(roots, FiniteSet):
+        ordered = sorted(roots, key=lambda value: float(value.evalf(15)))
+    else:
         raise ValueError("UNSUPPORTED_SOLUTION_SET")
-    ordered = sorted(roots, key=lambda value: float(value.evalf(15)))
     if len(ordered) > 2:
         raise ValueError("INVALID_ROOT_COUNT")
     for root in ordered:

@@ -43,6 +43,7 @@ export interface PedagogicalScene extends SynchronizedScene {
   checkpoints?: PedagogicalCheckpoint[];
   graphSpec?: QuadraticGraphSpec;
   visualCueDurations?: number[];
+  visualCueHighlightOffsets?: number[];
   pedagogicalStep?: PedagogicalStep;
   pedagogicalContract?: PedagogicalContract;
   emphasis?: string;

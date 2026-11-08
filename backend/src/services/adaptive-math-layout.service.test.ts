@@ -64,3 +64,12 @@ test('prioritizes original math over decorative caption and measures pixel legib
     assert.match(code, /LAYOUT_STAGE_UNREADABLE/);
   }
 });
+
+test('focused stages can enlarge real formula glyphs before declaring layout unreadable', () => {
+  for (const ratio of ['16:9', '1:1', '9:16'] as const) {
+    const helper = buildAdaptiveManimHelpers(getVideoFormatProfile(ratio, 'high'));
+    assert.match(helper, /required_scale = min_formula_pixels/);
+    assert.match(helper, /max_upscale=max\(1\.14, min\(2\.60, required_scale \* 1\.02\)\)/);
+    assert.match(helper, /stage\[1\]\.height \* pixel_ratio < min_formula_pixels/);
+  }
+});

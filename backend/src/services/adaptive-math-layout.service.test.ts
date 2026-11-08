@@ -50,3 +50,14 @@ test('stable renderer never removes original problem during calculation or recap
   const args = process.platform === 'win32' ? ['-3', '-c', 'import ast,sys; ast.parse(sys.stdin.read())'] : ['-c', 'import ast,sys; ast.parse(sys.stdin.read())'];
   execFileSync(command, args, { input: script, encoding: 'utf8', timeout: 10000 });
 });
+
+test('prioritizes original math over decorative caption and measures pixel legibility', () => {
+  for (const ratio of ['16:9', '1:1', '9:16'] as const) {
+    const code = buildAdaptiveManimHelpers(getVideoFormatProfile(ratio, 'high'));
+    assert.match(code, /decorated_scale/);
+    assert.match(code, /group = VGroup\(formula\)/);
+    assert.match(code, /formula\.height \* factor \* pixels_per_unit < min_pixels/);
+    assert.match(code, /readable_together = all\(/);
+    assert.match(code, /LAYOUT_STAGE_UNREADABLE/);
+  }
+});

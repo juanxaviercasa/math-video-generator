@@ -537,7 +537,7 @@ ${cueAnimation}
             const answerLatex = latexLines[latexLines.length - 2];
             const proofLatex = latexLines[latexLines.length - 1];
             return `
-        # Recap: show the method progressively, then leave roots and check visible.
+        # Storyboard pedagógico: recapitulación progresiva y respuesta final permanente
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=34, color=BLUE))
         content_${i} = ${recapContent}

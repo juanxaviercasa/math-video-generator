@@ -379,10 +379,12 @@ export const buildQuadraticStoryboard = (
       'split',
       'Comprobación algebraica',
       9,
-      repeatedRoot && !approximateRoots
-        ? [`Comprobación con x = ${formatRoot(x1)}: 0 = 0`]
+      repeatedRoot
+        ? (approximateRoots
+          ? [`Para x ≈ ${formatRoot(x1)}: P(x) ≈ 0`]
+          : [`Comprobación con x = ${formatRoot(x1)}: 0 = 0`])
         : approximateRoots
-          ? ['Comprobación numérica: raíces aproximadas, residuo cercano a cero']
+          ? [`Para x_1 ≈ ${formatRoot(x1)}: P(x) ≈ 0`, `Para x_2 ≈ ${formatRoot(x2)}: P(x) ≈ 0`]
           : [`Para x_1 = ${formatRoot(x1)}: 0 = 0`, `Para x_2 = ${formatRoot(x2)}: 0 = 0`],
     ),
     make(

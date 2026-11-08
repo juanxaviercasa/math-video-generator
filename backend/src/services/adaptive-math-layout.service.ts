@@ -328,11 +328,13 @@ export function buildAdaptiveManimHelpers(profile: VideoFormatProfile): string {
             return text_obj
         raw_text = str(getattr(text_obj, "text", getattr(text_obj, "original_text", ""))).strip()
         words = raw_text.split()
-        if len(words) >= 3:
-            mid = (len(words) + 1) // 2
-            wrapped_str = " ".join(words[:mid]) + "\\n" + " ".join(words[mid:])
-            font_size = getattr(text_obj, "font_size", 22)
-            color = text_obj.get_color()
+        font_size = getattr(text_obj, "font_size", 22)
+        color = text_obj.get_color()
+        if len(words) >= 2:
+            import textwrap
+            char_w = 0.16 * (font_size / 22.0)
+            max_chars = max(14, int((max_width / max(target_scale, 1.0)) / max(char_w, 0.01)))
+            wrapped_str = "\\n".join(textwrap.wrap(raw_text, width=max_chars))
             candidate = Text(wrapped_str, font_size=font_size, color=color)
             if candidate.width < text_obj.width:
                 text_obj = candidate
@@ -497,7 +499,11 @@ export function buildAdaptiveManimHelpers(profile: VideoFormatProfile): string {
                 cap_min = min_text_pixels if isinstance(caption, Text) else min_other_math_pixels
                 cap_h_px = caption.height * pixel_ratio
                 if cap_h_px < cap_min:
-                    raise ValueError("LAYOUT_CARD_UNREADABLE: subtítulo ilegible")
+                    needed_up = cap_min / max(cap_h_px, 0.001)
+                    if needed_up <= 1.35 and pair.height * needed_up <= bounds["height"]:
+                        caption.scale(needed_up)
+                    else:
+                        raise ValueError("LAYOUT_CARD_UNREADABLE: subtítulo ilegible")
         return True
 
     def _fit_recap_pair(self, pair):

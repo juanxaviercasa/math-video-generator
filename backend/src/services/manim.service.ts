@@ -495,7 +495,7 @@ ${cueAnimation}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         axes_${i} = Axes(x_range=[${left}, ${right}, 1], y_range=[${ymin}, ${ymax}, 1], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).move_to(UP * self._work_bounds()["center_y"])
         curve_${i} = axes_${i}.plot(lambda x: ${graphSpec.a} * x**2 + (${graphSpec.b}) * x + (${graphSpec.c}), x_range=[${left}, ${right}], color=YELLOW)
-        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=50))
+        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=${formatProfile.orientation === 'square' ? 62 : 50}))
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y", font_size=50))
         axis_line_${i} = DashedLine(axes_${i}.c2p(${vertexX}, ${ymin}), axes_${i}.c2p(${vertexX}, ${ymax}), dash_length=0.1, color=TEAL)
         axis_lbl_${i} = MathTex(${escapeForPythonString(axisLabelStr)}, font_size=44, color=TEAL).next_to(axes_${i}.c2p(${vertexX}, ${ymax}), UP, buff=0.1)
@@ -505,7 +505,7 @@ ${cueAnimation}
         ${repeatedRoot ? '' : `root_3_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)`}
         root_2_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=44).next_to(root_2_${i}, ${rootPosA}, buff=0.18)
         ${repeatedRoot ? '' : `root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=44).next_to(root_3_${i}, ${rootPosB}, buff=0.18)`}
-        concavity_lbl_${i} = Text(${escapeForPythonString(concavityStr)}, font_size=22, color=YELLOW).to_edge(DOWN, buff=${(formatProfile.safeMargin + 0.12).toFixed(3)})
+        concavity_lbl_${i} = Text(${escapeForPythonString(concavityStr)}, font_size=22, color=YELLOW).move_to(UP * self._work_bounds()["bottom"])
         graph_title_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE))
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, axis_line_${i}, axis_lbl_${i}, vertex_pt_${i}, vertex_lbl_${i}, root_2_${i}, ${repeatedRoot ? '' : `root_3_${i}, `}root_2_label_${i}, ${repeatedRoot ? '' : `root_3_label_${i}, `}concavity_lbl_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)

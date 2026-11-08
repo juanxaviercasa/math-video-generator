@@ -48,6 +48,7 @@ async function smoke(format: VideoAspectRatio, fullLesson = false, problemInput 
     width: profile.width,
     height: profile.height,
     sceneIds: scenes.map((scene) => scene.id),
+    requirePersistentProblem: fullLesson,
     expectedDurations: Object.fromEntries(scenes.map((scene) => [scene.id, scene.duration ?? scene.estimatedDuration])),
     tolerancePixels: 2,
   });

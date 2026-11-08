@@ -26,6 +26,8 @@ test('measures actual LaTeX boxes and divides long derivations into focused step
     assert.match(code, /stages\.arrange\(DOWN, aligned_edge=LEFT/);
     assert.match(code, /if factor >= 0\.78/);
     assert.match(code, /LAYOUT_UNREADABLE/);
+    assert.match(code, /needed_upscale = \(min_formula_pixels \+ 4\.0\) \/ max\(stage\[1\]\.height \* pixel_ratio, 0\.001\)/);
+    assert.match(code, /max_upscale=max\(1\.14, needed_upscale\)/);
     assert.doesNotMatch(code, /@@FRAMEHEIGHT@@|@@CONTENTWIDTH@@/);
   }
 });

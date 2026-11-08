@@ -633,15 +633,6 @@ ${spokenRecap || `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run
             self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.35)` : null;
             const arrangement = 'DOWN';
             const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=${arrangement === 'DOWN' ? '0.35' : (formatProfile.orientation === 'portrait' ? '0.35' : '0.55')})`;
-            const spokenHero = pedScene.layout === 'hero' && wordBeats.length === textLines.length && textLines.length > 0
-            ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.32)
-        self.play(FadeIn(VGroup(*list(content_${i})[:-${textLines.length}])), run_time=0.35)
-        for beat_index in range(${textLines.length}):
-            self._wait_spoken_beat(beat_index, ${JSON.stringify(wordBeats)}[beat_index])
-            self.play(FadeIn(content_${i}[beat_index - ${textLines.length}]), run_time=0.22)
-        self._finish_spoken_scene(${duration.toFixed(2)}, 0.38)
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.38)`
-            : null;
           return `
         # Storyboard pedagógico: ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -665,6 +656,15 @@ ${wordCardAnimation || `        # Reveal each coefficient or substitution when t
 `;
           }
 
+            const spokenHero = pedScene.layout === 'hero' && wordBeats.length === textLines.length && textLines.length > 0
+            ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.32)
+        self.play(FadeIn(VGroup(*list(content_${i})[:-${textLines.length}])), run_time=0.35)
+        for beat_index in range(${textLines.length}):
+            self._wait_spoken_beat(beat_index, ${JSON.stringify(wordBeats)}[beat_index])
+            self.play(FadeIn(content_${i}[beat_index - ${textLines.length}]), run_time=0.22)
+        self._finish_spoken_scene(${duration.toFixed(2)}, 0.38)
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.38)`
+            : null;
           return `
         # Storyboard pedagógico: ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)

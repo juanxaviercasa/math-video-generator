@@ -564,15 +564,24 @@ ${graphBeats || `        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create
             const proofLatex = latexLines[latexLines.length - 1];
             const spokenRecap = wordBeats.length === pairCount - 1 ? `
         self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.32)
+        # Hold the active math on screen throughout its spoken explanation.
+        active_recap_${i} = None
         for beat_index, pair in enumerate(content_${i}[:-2]):
             self._wait_spoken_beat(beat_index, ${JSON.stringify(wordBeats)}[beat_index])
-            self.play(FadeIn(pair), run_time=0.18)
+            if active_recap_${i} is None:
+                self.play(FadeIn(pair), run_time=0.18)
+            else:
+                # Crossfade at the NEXT spoken beat, never immediately after spotlight.
+                self.play(FadeOut(active_recap_${i}), FadeIn(pair), run_time=0.18)
+            active_recap_${i} = pair
             self._focus_math(pair[1], run_time=0.20)
-            self.play(FadeOut(pair), run_time=0.18)
         self._wait_spoken_beat(${pairCount - 2}, ${wordBeats[wordBeats.length - 1]})
-        self.play(FadeIn(final_answer_${i}), run_time=0.35)
+        if active_recap_${i} is None:
+            self.play(FadeIn(final_answer_${i}), run_time=0.35)
+        else:
+            self.play(FadeOut(active_recap_${i}), FadeIn(final_answer_${i}), run_time=0.35)
         self._finish_spoken_scene(${duration.toFixed(2)})
-        # The verified roots and individual substitutions remain in the last frame.` : null;
+                # The verified roots and individual substitutions remain in the last frame.` : null;
             return `
         # Storyboard pedagógico: recapitulación progresiva y respuesta final permanente
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -588,16 +597,24 @@ ${spokenRecap || `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run
         earlier_${i} = len(content_${i}) - 2
         closing_hold_${i} = (min(3.0, max(1.8, ${duration.toFixed(2)} * 0.36))
                              if earlier_${i} else ${duration.toFixed(2)} - 0.85)
+        active_recap_${i} = None
         if earlier_${i}:
             recap_slot_${i} = (${duration.toFixed(2)} - 0.85 - closing_hold_${i}) / earlier_${i}
             for pair in content_${i}[:-2]:
-                self.play(FadeIn(pair), run_time=0.22)
+                if active_recap_${i} is None:
+                    self.play(FadeIn(pair), run_time=0.22)
+                else:
+                    # Without WordBoundary, keep the prior formula until its replacement.
+                    self.play(FadeOut(active_recap_${i}), FadeIn(pair), run_time=0.22)
+                active_recap_${i} = pair
                 self._focus_math(pair[1], run_time=0.25)
-                self.wait(max(0.05, recap_slot_${i} - 0.69))
-                self.play(FadeOut(pair), run_time=0.22)
-        self.play(FadeIn(final_answer_${i}), run_time=0.45)
+                self.wait(max(0.05, recap_slot_${i} - 0.47))
+        if active_recap_${i} is None:
+            self.play(FadeIn(final_answer_${i}), run_time=0.45)
+        else:
+            self.play(FadeOut(active_recap_${i}), FadeIn(final_answer_${i}), run_time=0.45)
         self.wait(max(0.10, closing_hold_${i}))
-        # No FadeOut: retain the problem, the solution and its validation until the last frame.`}
+                # No FadeOut: retain the problem, the solution and its validation until the last frame.`}
 `;
           }
 

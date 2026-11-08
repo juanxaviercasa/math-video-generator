@@ -90,6 +90,7 @@ export function validateObservedGeometry(report: ManimGeometryReport, requiremen
   const seenErrors = new Set<string>();
   const addOnce = (message: string) => { if (!seenErrors.has(message)) { errors.push(message); seenErrors.add(message); } };
 
+  let initialAnchor: ObservedBox | null = null;
   for (const stage of report.stages) {
     const duration = stage.end - stage.start;
     if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(stage.start) || !Number.isFinite(stage.end)) {
@@ -109,7 +110,6 @@ export function validateObservedGeometry(report: ManimGeometryReport, requiremen
     }
     let objects = 0;
     let margin = Number.POSITIVE_INFINITY;
-    let initialAnchor: ObservedBox | null = null;
     for (const [snapshotIndex, snapshot] of (stage.snapshots || []).entries()) {
       if (!Number.isFinite(snapshot.time) || snapshot.time < stage.start - 0.05 || snapshot.time > stage.end + 0.05) {
         addOnce('GEOMETRY_TIMESTAMP: Fotograma lógico fuera de la escena ' + stage.id);

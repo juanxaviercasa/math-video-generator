@@ -521,14 +521,14 @@ export function buildAdaptiveManimHelpers(profile: VideoFormatProfile): string {
         return pair
 
 
-    def _focus_math(self, obj, run_time=0.35, color=YELLOW):
+    def _focus_math(self, obj, run_time=0.35, color=None):
         # Highlight the verified right-hand side without moving the equation.
         # A wrapped equation remains a semantic MathTex group.
         math = self._iter_math(obj, role=None)
         target = math[-1] if math else obj
         if isinstance(target, MathTex) and len(target) == 3:
             target = target[2]
-        self.play(Indicate(target, color=color, scale_factor=1.035), run_time=run_time)
+        self.play(Indicate(target, color=(color if color is not None else YELLOW), scale_factor=1.035), run_time=run_time)
 
     def _make_final_recap_formula(self, expression, font_size, color):
         bounds = self._work_bounds()

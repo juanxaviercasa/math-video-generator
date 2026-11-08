@@ -1,5 +1,6 @@
 import type { MathValidation } from './math-validation.service.js';
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
+import { prepareSpanishMathNarration } from './spanish-math-speech.service.js';
 import type { CheckpointKind, FormulaPersistence, PedagogicalContract, PedagogicalRole, PedagogicalStep } from './timeline.types.js';
 
 export interface VisualStage {
@@ -206,7 +207,7 @@ export const buildQuadraticStoryboard = (
     if (scene.id === 'hook' && delta >= 0) {
       phrases = ['Primero identificaremos', 'Después sustituiremos', 'Finalmente calcularemos'];
     } else if (scene.id === 'coefficients') {
-      phrases = ['a es', 'b es', 'c es'];
+      phrases = ['a es', 'be labial es', 'ce es'];
     } else if (scene.id === 'discriminant-setup') {
       phrases = ['definición del discriminante', 'reemplazamos'];
     } else if (scene.id === 'formula-symbolic') {
@@ -220,7 +221,15 @@ export const buildQuadraticStoryboard = (
     } else if (scene.id === 'recap' && delta >= 0) {
       phrases = ['Recapitulamos', 'identificamos', 'calculamos', 'aplicamos', 'obtuvimos'];
     }
-    return phrases.length ? { ...scene, visualBeatPhrases: phrases } : scene;
+    const prepared = {
+      ...scene,
+      narrationText: prepareSpanishMathNarration(scene.narrationText),
+      visualStages: scene.visualStages?.map((stage) => ({
+        ...stage,
+        voiceText: stage.voiceText ? prepareSpanishMathNarration(stage.voiceText) : stage.voiceText,
+      })),
+    };
+    return phrases.length ? { ...prepared, visualBeatPhrases: phrases } : prepared;
   };
 
   // A negative discriminant has no real roots. Never build fictitious

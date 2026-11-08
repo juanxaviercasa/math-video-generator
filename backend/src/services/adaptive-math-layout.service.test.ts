@@ -213,3 +213,12 @@ test('adaptive helpers preserve certified minimum pixels on the final blackboard
     assert.match(helper, /LAYOUT_FINAL_RECAP_UNREADABLE/);
   }
 });
+
+test('a single active equation grows into unused board space without bypassing QA', () => {
+  for (const ratio of ['16:9', '1:1', '9:16'] as const) {
+    const helper = buildAdaptiveManimHelpers(getVideoFormatProfile(ratio, 'low'));
+    assert.match(helper, /if len\(stages\) == 1:/);
+    assert.match(helper, /max_upscale=max\(1\.75, min\(2\.60, required \* 1\.06\)\)/);
+    assert.match(helper, /_math_min_height\(only\[1\]\) \* pixel_ratio \+ 0\.2 < min_px/);
+  }
+});

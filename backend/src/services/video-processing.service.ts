@@ -18,6 +18,7 @@ import { auditFinalVideoFrames } from './final-frame-qa.service.js';
 import { extractVoiceCues, buildCueTimingPlan, CUE_INTRO_SECONDS, CUE_OUTRO_SECONDS, CUE_LEAD_SECONDS } from './voice-cue.service.js';
 import { readWordBoundaries, cueHighlightOffset, assertWordBoundariesMatchNarration, type SpokenWordBoundary } from './voice-boundary.service.js';
 import { renderWithBoundedVisualRecovery, type VisualRecoveryAttempt } from './visual-render-recovery.service.js';
+import { resolveSemanticBeats, auditSemanticBeatTiming } from './semantic-beat.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -252,11 +253,37 @@ export const videoProcessing = {
           if (!Number.isFinite(audioDuration) || audioDuration <= 0) {
             throw new Error(`AUDIO_SEGMENT_INVALID: Duración de narración inválida en ${scene.id}.`);
           }
-          const visualDuration = Math.max(scene.kind === 'graph' ? 6 : 4, audioDuration + 0.15);
+          // Start speech after the panel is visible, so the first spoken word
+          // can be synchronized with a real on-screen event.
+          const leadSeconds = 0.40;
+          const visualDuration = Math.max(scene.kind === 'graph' ? 6 : 4, audioDuration + leadSeconds + 0.55);
+          const srtPath = segmentPath.replace(/-narration\.(?:mp3|wav)$/i, '-narration.srt');
+          const words = readWordBoundaries(srtPath, audioDuration);
+          assertWordBoundariesMatchNarration(scene.narrationText, words);
+          const phrases = pedagogical?.visualBeatPhrases || [];
+          if (phrases.length && !words.length && (process.env.TTS_PROVIDER || 'edge').toLowerCase() === 'edge') {
+            throw new Error('VOICE_BEATS_MISSING: Edge TTS no entregó WordBoundary para ' + scene.id);
+          }
+          if (phrases.length && words.length && pedagogical) {
+            const beats = resolveSemanticBeats(phrases, words, leadSeconds, visualDuration);
+            pedagogical.visualBeatOffsets = beats.map((beat) => beat.atSeconds);
+            fs.writeFileSync(
+              path.join(outputDir, `${id}-${scene.id}-spoken-beats.json`),
+              JSON.stringify({ source: 'edge-tts-word-boundary', sceneId: scene.id, beats }, null, 2),
+              'utf8',
+            );
+          }
+          spokenWordAudit.push({
+            sceneId: scene.id, cueIndex: -1,
+            source: words.length ? 'edge-tts' : 'duration-fallback',
+            words, highlightOffsetSeconds: pedagogical?.visualBeatOffsets?.[0] ?? 0,
+            sceneOffsetSeconds: 0,
+          });
           const alignedSegment = await ffmpeg.alignNarrationSegment(
             segmentPath,
             path.join(outputDir, `${id}-${scene.id}-aligned.wav`),
             visualDuration,
+            leadSeconds,
           );
           audioSegments.push(alignedSegment);
           scene.duration = visualDuration;
@@ -361,6 +388,16 @@ export const videoProcessing = {
               tolerancePixels: 2,
             });
             fs.writeFileSync(path.join(outputDir, `${id}-geometry-qa.json`), JSON.stringify(geometry, null, 2), 'utf8');
+            const expectedBeats = Object.fromEntries(pedagogicalScenes
+              .filter((scene) => scene.visualBeatOffsets?.length)
+              .map((scene) => [scene.id, scene.visualBeatOffsets!]));
+            const observed = JSON.parse(fs.readFileSync(manimScene.geometryReportPath, 'utf8')) as {
+              stages: Array<{ id: string; beats?: Array<{ index: number; expectedSeconds: number; actualSeconds: number }> }>;
+            };
+            const wordSync = auditSemanticBeatTiming(observed.stages, expectedBeats);
+            fs.writeFileSync(path.join(outputDir, `${id}-spoken-beat-qa.json`),
+              JSON.stringify({ version: 1, ...wordSync }, null, 2), 'utf8');
+            if (!wordSync.passed) throw new Error('VOICE_BEAT_QA_FAILED: ' + wordSync.errors.join(' | '));
             for (const warning of geometry.warnings) console.warn('⚠️  Geometría:', warning);
             if (!geometry.passed) throw new Error(`VISUAL_QA_FAILED: ${geometry.errors.join(' | ')}`);
           }

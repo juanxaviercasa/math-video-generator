@@ -59,6 +59,7 @@ interface ManimScene {
     visualStages?: Array<{ label: string; latex: string; detail?: string; role?: string; semanticStep?: string; formulaAnchorId?: string }>;
     visualCueDurations?: number[];
     visualCueHighlightOffsets?: number[];
+    visualBeatOffsets?: number[];
     formulaAnchor?: { latex: string; label?: string; persistence: 'segment' | 'lesson'; position: 'top' | 'side' };
     checkpoints?: Array<{ kind: 'predict' | 'practice' | 'reflect'; prompt: string; pauseSeconds: number }>;
     graphSpec?: { a: number; b: number; c: number; roots: [number, number] };
@@ -414,6 +415,7 @@ export const manim = {
           // A portrait video has much more vertical real estate than a 16:9
           // slide. Use it for legible mathematics instead of a tiny center strip.
           const visualStages = pedScene.visualStages || [];
+          const wordBeats = pedScene.visualBeatOffsets || [];
 
           if (pedScene.layout === 'equation' && visualStages.length > 0) {
             const stageLabelSize = scene.formulaFirst ? 18 : 23;
@@ -428,6 +430,19 @@ export const manim = {
             const cueDurations = pedScene.visualCueDurations;
             const cueLocked = cueDurations?.length === visualStages.length
               && cueDurations.every((seconds) => Number.isFinite(seconds) && seconds >= 0.8);
+            const wordLocked = !cueLocked && wordBeats.length === visualStages.length;
+            const wordAnimation = wordLocked ? [
+              '        self.play(FadeIn(panel_' + i + '), FadeIn(header_' + i + '), run_time=0.32)',
+              '        for step_index in range(len(content_' + i + ')):',
+              '            self._wait_spoken_beat(step_index, ' + JSON.stringify(wordBeats) + '[step_index])',
+              '            self._animate_equation_step(content_' + i + ', step_index, focus_' + i + ', run_time=0.22)',
+              '            self._focus_math(content_' + i + '[step_index][1], run_time=0.24)',
+              '        self._finish_spoken_scene(' + duration.toFixed(2) + ', 0.35)',
+              '        if focus_' + i + ':',
+              '            self.play(FadeOut(content_' + i + '[-1]), FadeOut(header_' + i + '), FadeOut(panel_' + i + '), run_time=0.35)',
+              '        else:',
+              '            self.play(FadeOut(content_group_' + i + '), FadeOut(panel_' + i + '), run_time=0.35)',
+            ].join('\n') : null;
             const cueAnimation = cueLocked
               ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
 ${cueDurations.map((seconds, index) => {
@@ -445,7 +460,7 @@ ${waitBefore}        self.play(Indicate(${stageRef}[1], color=YELLOW, scale_fact
             self.play(FadeOut(content_${i}[-1]), FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.3)
         else:
             self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.3)`
-              : `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+              : wordAnimation || `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
         # Split available scene time across verified steps; no long static pause.
         stage_slot_${i} = (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1)
         for step_index in range(len(content_${i})):
@@ -491,6 +506,17 @@ ${cueAnimation}
               ? (rootB === smallerRoot ? 'UP + LEFT * 0.25' : 'UP + RIGHT * 0.25')
               : (rootB === smallerRoot ? 'DOWN + LEFT * 0.25' : 'DOWN + RIGHT * 0.25');
             const vertexPos = graphSpec.a > 0 ? 'DOWN' : 'UP';
+            const graphBeats = wordBeats.length === 2
+              ? `        # Stable graph and labels appear before the narrated landmarks.
+        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=0.42)
+        self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=0.35)
+        self.play(FadeIn(root_2_${i}), ${repeatedRoot ? '' : `FadeIn(root_3_${i}), `}Write(root_2_label_${i}), ${repeatedRoot ? '' : `Write(root_3_label_${i}), `}FadeIn(concavity_lbl_${i}), FadeIn(graph_title_${i}), run_time=0.38)
+        self._wait_spoken_beat(0, ${wordBeats[0]})
+        self.play(Indicate(vertex_pt_${i}, color=RED, scale_factor=1.55), run_time=0.34)
+        self._wait_spoken_beat(1, ${wordBeats[1]})
+        self.play(Indicate(root_2_${i}, color=GREEN, scale_factor=1.55)${repeatedRoot ? '' : `, Indicate(root_3_${i}, color=GREEN, scale_factor=1.55)`}, run_time=0.34)
+        self._finish_spoken_scene(${duration.toFixed(2)}, 0.35)
+        self.play(FadeOut(graph_group_${i}), run_time=0.35)` : null;
             return `
         # Storyboard pedagógico: gráfica a pantalla completa
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -510,7 +536,7 @@ ${cueAnimation}
         graph_title_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE))
         self._sanitize_graph_labels(graph_title_${i}, concavity_lbl_${i}, x_label_${i}, y_label_${i}, axis_lbl_${i}, vertex_lbl_${i}, root_2_label_${i}${repeatedRoot ? '' : `, root_3_label_${i}`})
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, axis_line_${i}, axis_lbl_${i}, vertex_pt_${i}, vertex_lbl_${i}, root_2_${i}, ${repeatedRoot ? '' : `root_3_${i}, `}root_2_label_${i}, ${repeatedRoot ? '' : `root_3_label_${i}, `}concavity_lbl_${i}, graph_title_${i})
-        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
+${graphBeats || `        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
         self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=1.2)
         self.play(FadeIn(root_2_${i}), ${repeatedRoot ? '' : `FadeIn(root_3_${i}), `}Write(root_2_label_${i}), ${repeatedRoot ? '' : `Write(root_3_label_${i}), `}FadeIn(concavity_lbl_${i}), FadeIn(graph_title_${i}), run_time=1.2)
         # The narration points first to the vertex and then to each real root.
@@ -518,7 +544,7 @@ ${cueAnimation}
         self.play(Indicate(root_2_${i}, color=GREEN, scale_factor=1.55), run_time=0.55)
         ${repeatedRoot ? '' : `self.play(Indicate(root_3_${i}, color=GREEN, scale_factor=1.55), run_time=0.55)`}
         self.wait(max(0.5, ${duration.toFixed(2)} - 4.3 - ${repeatedRoot ? '1.10' : '1.65'}))
-        self.play(FadeOut(graph_group_${i}), run_time=0.4)
+        self.play(FadeOut(graph_group_${i}), run_time=0.4)`}
 `;
           }
 
@@ -536,6 +562,17 @@ ${cueAnimation}
             // original exercise remains independently pinned above the canvas.
             const answerLatex = latexLines[latexLines.length - 2];
             const proofLatex = latexLines[latexLines.length - 1];
+            const spokenRecap = wordBeats.length === pairCount - 1 ? `
+        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.32)
+        for beat_index, pair in enumerate(content_${i}[:-2]):
+            self._wait_spoken_beat(beat_index, ${JSON.stringify(wordBeats)}[beat_index])
+            self.play(FadeIn(pair), run_time=0.18)
+            self._focus_math(pair[1], run_time=0.20)
+            self.play(FadeOut(pair), run_time=0.18)
+        self._wait_spoken_beat(${pairCount - 2}, ${wordBeats[wordBeats.length - 1]})
+        self.play(FadeIn(final_answer_${i}), run_time=0.35)
+        self._finish_spoken_scene(${duration.toFixed(2)})
+        # The verified roots and individual substitutions remain in the last frame.` : null;
             return `
         # Storyboard pedagógico: recapitulación progresiva y respuesta final permanente
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -547,7 +584,7 @@ ${cueAnimation}
         final_proof_${i} = self._make_final_recap_formula(${escapeForPythonString(proofLatex)}, 48, YELLOW)
         final_answer_${i} = VGroup(final_math_${i}, final_proof_${i})
         self._fit_final_recap(final_answer_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+${spokenRecap || `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
         earlier_${i} = len(content_${i}) - 2
         closing_hold_${i} = (min(3.0, max(1.8, ${duration.toFixed(2)} * 0.36))
                              if earlier_${i} else ${duration.toFixed(2)} - 0.85)
@@ -560,7 +597,7 @@ ${cueAnimation}
                 self.play(FadeOut(pair), run_time=0.22)
         self.play(FadeIn(final_answer_${i}), run_time=0.45)
         self.wait(max(0.10, closing_hold_${i}))
-        # No FadeOut: retain the problem, the solution and its validation until the last frame.
+        # No FadeOut: retain the problem, the solution and its validation until the last frame.`}
 `;
           }
 
@@ -580,16 +617,30 @@ ${cueAnimation}
                   : `Text("", font_size=${captionFontSize})`;
               return (textLines[pairIndex] || !latexLines[pairIndex]) ? `VGroup(${formula}, ${caption}).arrange(DOWN, buff=0.18)` : `VGroup(${formula})`;
             });
+            const wordCardAnimation = wordBeats.length === pairCount ? `
+        # Each coefficient/proof appears exactly when the corresponding phrase is spoken.
+        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.32)
+        for pair_index, pair in enumerate(content_${i}):
+            self._wait_spoken_beat(pair_index, ${JSON.stringify(wordBeats)}[pair_index])
+            self.play(FadeIn(pair), run_time=0.18)
+            self._focus_math(pair[0], run_time=0.20)
+            if focus_${i}:
+                self.play(FadeOut(pair), run_time=0.16)
+        self._finish_spoken_scene(${duration.toFixed(2)}, 0.35)
+        if focus_${i}:
+            self.play(FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.35)
+        else:
+            self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.35)` : null;
             const arrangement = 'DOWN';
             const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=${arrangement === 'DOWN' ? '0.35' : (formatProfile.orientation === 'portrait' ? '0.35' : '0.55')})`;
-            return `
+          return `
         # Storyboard pedagógico: ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=34, color=BLUE))
         content_${i} = ${compactGroup}
         focus_${i} = self._arrange_card_pairs(content_${i})
         content_group_${i} = VGroup(header_${i}, content_${i})
-        # Reveal each coefficient or substitution when the explanation reaches it.
+${wordCardAnimation || `        # Reveal each coefficient or substitution when the explanation reaches it.
         self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
         card_slot_${i} = (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1)
         for pair in content_${i}:
@@ -601,10 +652,19 @@ ${cueAnimation}
         if focus_${i}:
             self.play(FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.4)
         else:
-            self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)
+            self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)`}
 `;
           }
 
+            const spokenHero = pedScene.layout === 'hero' && wordBeats.length === textLines.length && textLines.length > 0
+            ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.32)
+        self.play(FadeIn(VGroup(*list(content_${i})[:-${textLines.length}])), run_time=0.35)
+        for beat_index in range(${textLines.length}):
+            self._wait_spoken_beat(beat_index, ${JSON.stringify(wordBeats)}[beat_index])
+            self.play(FadeIn(content_${i}[beat_index - ${textLines.length}]), run_time=0.22)
+        self._finish_spoken_scene(${duration.toFixed(2)}, 0.38)
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.38)`
+            : null;
           return `
         # Storyboard pedagógico: ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -612,14 +672,14 @@ ${cueAnimation}
         content_${i} = ${contentGroup}
         self._fit_fallback_group(content_${i})
         content_group_${i} = VGroup(header_${i}, content_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+${spokenHero || `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
         self.play(FadeIn(content_${i}), run_time=0.6)
         # Two non-destructive spotlights make the introduction follow the voice.
         self._focus_math(content_${i}[0] if isinstance(content_${i}, VGroup) else content_${i}, run_time=0.55)
         self.wait(max(0.05, (${duration.toFixed(2)} - 2.70) / 2))
         self._focus_math(content_${i}[-1] if isinstance(content_${i}, VGroup) else content_${i}, run_time=0.55)
         self.wait(max(0.05, (${duration.toFixed(2)} - 2.70) / 2))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.6)
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.6)`}
 `;
         }).join('\n')
       : '';
@@ -853,8 +913,34 @@ ${adaptiveHelpers}
 
     def _qa_start(self, stage_id):
         self._qa_finish()
-        self._qa_current = {"id": stage_id, "start": self._qa_now(), "snapshots": []}
+        self._qa_current = {"id": stage_id, "start": self._qa_now(), "snapshots": [], "beats": []}
         self._qa_capture()
+
+    def _wait_spoken_beat(self, index, offset_seconds):
+        if self._qa_current is None:
+            raise ValueError("VOICE_BEAT_WITHOUT_SCENE")
+        elapsed = self._qa_now() - self._qa_current["start"]
+        if elapsed > offset_seconds + 0.17:
+            raise ValueError("VOICE_BEAT_LATE: animación " + str(index)
+                             + " llegó " + str(round(elapsed - offset_seconds, 3)) + " s después de la palabra")
+        if offset_seconds - elapsed > 0.012:
+            self.wait(offset_seconds - elapsed)
+        actual = self._qa_now() - self._qa_current["start"]
+        self._qa_current["beats"].append({
+            "index": index, "expectedSeconds": offset_seconds,
+            "actualSeconds": float(actual)
+        })
+
+    def _finish_spoken_scene(self, duration, closing=0.0):
+        if self._qa_current is None:
+            raise ValueError("VOICE_SCENE_MISSING")
+        elapsed = self._qa_now() - self._qa_current["start"]
+        remainder = duration - closing - elapsed
+        if remainder < -0.17:
+            raise ValueError("VOICE_SCENE_OVERRUN: " + self._qa_current["id"]
+                             + " se excedió " + str(round(-remainder, 3)) + " segundos")
+        if remainder > 0.012:
+            self.wait(remainder)
 
     def _qa_finish(self):
         if self._qa_current is not None:

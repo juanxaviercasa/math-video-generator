@@ -44,6 +44,10 @@ export interface PedagogicalScene extends SynchronizedScene {
   graphSpec?: QuadraticGraphSpec;
   visualCueDurations?: number[];
   visualCueHighlightOffsets?: number[];
+  /** Exact spoken phrases that trigger ordered visual reveals. */
+  visualBeatPhrases?: string[];
+  /** Seconds from the start of this scene, derived from Edge TTS SRT. */
+  visualBeatOffsets?: number[];
   pedagogicalStep?: PedagogicalStep;
   pedagogicalContract?: PedagogicalContract;
   emphasis?: string;
@@ -196,6 +200,29 @@ export const buildQuadraticStoryboard = (
     layout,
   });
 
+  // Declare phrases that are actually pronounced, not estimated scene fractions.
+  const withSpokenBeats = (scene: PedagogicalScene): PedagogicalScene => {
+    let phrases: string[] = [];
+    if (scene.id === 'hook' && delta >= 0) {
+      phrases = ['Primero identificaremos', 'Después sustituiremos', 'Finalmente calcularemos'];
+    } else if (scene.id === 'coefficients') {
+      phrases = ['a es', 'b es', 'c es'];
+    } else if (scene.id === 'discriminant-setup') {
+      phrases = ['definición del discriminante', 'reemplazamos'];
+    } else if (scene.id === 'formula-symbolic') {
+      phrases = ['fórmula general'];
+    } else if (scene.id === 'verification' && repeatedRoot && !approximateRoots) {
+      phrases = ['Sustituimos equis'];
+    } else if (scene.id === 'verification' && !approximateRoots) {
+      phrases = ['Para equis igual a', 'Para equis igual a'];
+    } else if (scene.id === 'graph') {
+      phrases = ['vértice', 'corta el eje horizontal'];
+    } else if (scene.id === 'recap' && delta >= 0) {
+      phrases = ['Recapitulamos', 'identificamos', 'calculamos', 'obtuvimos'];
+    }
+    return phrases.length ? { ...scene, visualBeatPhrases: phrases } : scene;
+  };
+
   // A negative discriminant has no real roots. Never build fictitious
   // real-root branches or a graph with x-axis intercepts.
   if (delta < 0) {
@@ -221,14 +248,14 @@ export const buildQuadraticStoryboard = (
         [`\\Delta = ${formatValue(delta)} < 0`, '\\text{No hay raices reales}'],
         'recap', 'Conclusión en los números reales', 7),
     ];
-    return scenes.map((scene) => ({ ...scene, pedagogicalContract: noRealRootsContract }));
+    return scenes.map((scene) => withSpokenBeats({ ...scene, pedagogicalContract: noRealRootsContract }));
   }
 
   return [
     make(
       'hook',
       'intro',
-      `${lead}Hoy resolveremos ${oralProblem}.${calm} Primero veremos el mapa completo del procedimiento y después comprobaremos cada resultado.`,
+      `${lead}Hoy resolveremos ${oralProblem}.${calm} Primero identificaremos los coeficientes. Después sustituiremos los valores. Finalmente calcularemos y comprobaremos cada resultado.`,
       [`${validation.normalizedInput}`, `a x^2 + b x + c = 0`],
       'hero',
       'Ruta de solución',
@@ -379,12 +406,12 @@ export const buildQuadraticStoryboard = (
         `a = ${formatValue(a)},\\; b = ${formatValue(b)},\\; c = ${formatValue(c)}`,
         `\\Delta = ${formatValue(delta)}`,
         `x_1 ${rootRelation(x1)} ${formatRoot(x1)},\\; x_2 ${rootRelation(x2)} ${formatRoot(x2)}`,
-        approximateRoots ? `\\text{Comprobación numérica: } P(x) \\approx 0` : `\\text{Comprobación: } 0 = 0`,
+        approximateRoots ? `\\text{Comprobación numérica: } P(x) \\approx 0` : repeatedRoot ? `P(${formatRoot(x1)})=0` : `P(${formatRoot(x1)})=0,\\;P(${formatRoot(x2)})=0`,
       ],
       'recap',
       'Solución comprobada',
       8,
       ['Ecuación original', 'Coeficientes', 'Discriminante', 'Raíces', 'Comprobado'],
     ),
-  ];
+  ].map(withSpokenBeats);
 };

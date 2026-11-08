@@ -12,6 +12,7 @@ import { auditFinalVideoFrames } from '../src/services/final-frame-qa.service.js
 import { validateRenderIntegrity } from '../src/services/render-integrity.service.js';
 import { validateAudibleAudio } from '../src/services/audio-qa.service.js';
 import { buildCueTimingPlan, CUE_LEAD_SECONDS } from '../src/services/voice-cue.service.js';
+import { auditSemanticBeatTiming } from '../src/services/semantic-beat.service.js';
 import { prepareExerciseImage, verifyExerciseSource } from '../src/services/exercise-extraction.service.js';
 
 const problem = 'x^2 - 5x + 6 = 0';
@@ -25,9 +26,27 @@ async function smoke(format: VideoAspectRatio, fullLesson = false, problemInput 
   const profile = getVideoFormatProfile(format, 'low');
   const validated = validateMathProblem(problemInput);
   const storyboard = buildQuadraticStoryboard(problemInput, validated);
+  const spokenSmoke: Record<string, { duration: number; beats: number[] }> = {
+    hook: { duration: 12, beats: [2.2, 4.7, 7.3] },
+    coefficients: { duration: 12, beats: [2.1, 4.0, 5.9] },
+    graph: { duration: 12, beats: [3.7, 8.3] },
+    recap: { duration: 16, beats: [0.8, 2.2, 5.1, 9.9] },
+  };
   const scenes = variant === 'voice-locked'
     ? storyboard.filter((scene) => scene.id === 'discriminant-calculate')
-    : fullLesson ? storyboard : storyboard.filter((scene) => scene.id === 'coefficients' || scene.id === 'graph');
+    : variant === 'spoken-beats'
+      ? storyboard.filter((scene) => Boolean(spokenSmoke[scene.id]))
+      : fullLesson ? storyboard : storyboard.filter((scene) => scene.id === 'coefficients' || scene.id === 'graph');
+  if (variant === 'spoken-beats') {
+    for (const scene of scenes) {
+      const sample = spokenSmoke[scene.id];
+      if (scene.visualBeatPhrases?.length !== sample.beats.length) {
+        throw new Error('VOICE_BEAT_SMOKE_INVALID: ' + scene.id);
+      }
+      scene.visualBeatOffsets = sample.beats;
+      scene.duration = sample.duration;
+    }
+  }
   if (variant === 'voice-locked') {
     const stage = scenes[0];
     if (!stage || stage.visualStages?.length !== 4) throw new Error('VOICE_CUE_SMOKE_INVALID');
@@ -56,6 +75,16 @@ async function smoke(format: VideoAspectRatio, fullLesson = false, problemInput 
   });
   fs.writeFileSync(path.join(root, 'geometry-qa.json'), JSON.stringify(geometry, null, 2));
   if (!geometry.passed) throw new Error('Manim pixel geometry failed: ' + geometry.errors.join(' | '));
+  if (variant === 'spoken-beats') {
+    const measured = JSON.parse(fs.readFileSync(geometryFile, 'utf8')) as {
+      stages: Array<{ id: string; beats?: Array<{ index: number; expectedSeconds: number; actualSeconds: number }> }>;
+    };
+    const expected = Object.fromEntries(scenes.map((scene) => [scene.id, scene.visualBeatOffsets || []]));
+    const spoken = auditSemanticBeatTiming(measured.stages, expected);
+    fs.writeFileSync(path.join(root, 'spoken-beat-qa.json'), JSON.stringify(spoken, null, 2));
+    if (!spoken.passed) throw new Error('VOICE_BEAT_SMOKE_FAILED: ' + spoken.errors.join(' | '));
+    console.log('APPROVED SPOKEN WORD BEATS', format, spoken.checked);
+  }
 
   const exported = await ffmpeg.processVideo({
     inputPath: raw,
@@ -195,6 +224,9 @@ async function smokeAudioAlignment(): Promise<void> {
   await smoke('16:9', true, 'x^2 - 2x + 1 = 0', 'double-root');
   await smoke('16:9', true, 'x^2 - 2x - 1 = 0', 'irrational-roots');
   await smoke('16:9', false, problem, 'voice-locked');
+  // Real Manim paths for semantic word-based timing without cloud TTS credentials.
+  await smoke('16:9', false, problem, 'spoken-beats');
+  await smoke('9:16', false, problem, 'spoken-beats');
   await smokePdfExercise();
   await smokeAudioAlignment();
 })().catch((error) => {

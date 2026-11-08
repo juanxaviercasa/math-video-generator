@@ -593,6 +593,20 @@ ${cueAnimation}
                   : `Text("", font_size=${captionFontSize})`;
               return (textLines[pairIndex] || !latexLines[pairIndex]) ? `VGroup(${formula}, ${caption}).arrange(DOWN, buff=0.18)` : `VGroup(${formula})`;
             });
+            const wordCardAnimation = wordBeats.length === pairCount ? `
+        # Each coefficient/proof appears exactly when the corresponding phrase is spoken.
+        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.32)
+        for pair_index, pair in enumerate(content_${i}):
+            self._wait_spoken_beat(pair_index, ${JSON.stringify(wordBeats)}[pair_index])
+            self.play(FadeIn(pair), run_time=0.18)
+            self._focus_math(pair[0], run_time=0.20)
+            if focus_${i}:
+                self.play(FadeOut(pair), run_time=0.16)
+        self._finish_spoken_scene(${duration.toFixed(2)}, 0.35)
+        if focus_${i}:
+            self.play(FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.35)
+        else:
+            self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.35)` : null;
             const arrangement = 'DOWN';
             const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=${arrangement === 'DOWN' ? '0.35' : (formatProfile.orientation === 'portrait' ? '0.35' : '0.55')})`;
             return `
@@ -602,7 +616,7 @@ ${cueAnimation}
         content_${i} = ${compactGroup}
         focus_${i} = self._arrange_card_pairs(content_${i})
         content_group_${i} = VGroup(header_${i}, content_${i})
-        # Reveal each coefficient or substitution when the explanation reaches it.
+${wordCardAnimation || `        # Reveal each coefficient or substitution when the explanation reaches it.
         self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
         card_slot_${i} = (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1)
         for pair in content_${i}:
@@ -614,7 +628,7 @@ ${cueAnimation}
         if focus_${i}:
             self.play(FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.4)
         else:
-            self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)
+            self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)`}
 `;
           }
 

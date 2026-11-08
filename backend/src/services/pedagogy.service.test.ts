@@ -110,3 +110,23 @@ test('rounded roots use approximate relation even in the recap', () => {
   const recap = scenes.find((scene) => scene.id === 'recap');
   assert.ok(recap?.visualLatex?.some((formula) => formula.includes('\\approx')));
 });
+
+test('rounded irrational roots never masquerade as exact polynomial substitutions', () => {
+  const problem = 'x^2 - 2x - 1 = 0';
+  const scenes = buildQuadraticStoryboard(problem, validateMathProblem(problem));
+  const verification = scenes.find((scene) => scene.id === 'verification');
+  const recap = scenes.find((scene) => scene.id === 'recap');
+  assert.ok(verification?.visualLatex?.every((value) => value.includes('\\\\approx')));
+  assert.ok(verification?.visualLatex?.every((value) => !value.endsWith('= 0')));
+  assert.match(verification?.narrationText || '', /no necesariamente cero exacto/);
+  assert.match(recap?.narrationText || '', /residuo numérico/);
+  assert.ok(recap?.visualLatex?.some((value) => value.includes('\\\\approx')));
+});
+
+test('repeated non-terminating rational root is also a numerical approximation', () => {
+  const problem = '9x^2 + 6x + 1 = 0';
+  const scenes = buildQuadraticStoryboard(problem, validateMathProblem(problem));
+  const verification = scenes.find((scene) => scene.id === 'verification');
+  assert.match(verification?.narrationText || '', /no necesariamente cero exacto/);
+  assert.ok(verification?.visualLatex?.[0]?.includes('\\\\approx'));
+});

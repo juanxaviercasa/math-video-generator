@@ -482,6 +482,14 @@ ${cueAnimation}
             const vertexLabelStr = `V(${formatNum(vertexX)}, ${formatNum(vertexY)})`;
             const axisLabelStr = `x = ${formatNum(vertexX)}`;
             const concavityStr = graphSpec.a > 0 ? 'a > 0: cóncava hacia arriba' : 'a < 0: cóncava hacia abajo';
+            const smallerRoot = Math.min(rootA, rootB);
+            const rootPosA = graphSpec.a > 0
+              ? (repeatedRoot ? 'UP' : (rootA === smallerRoot ? 'UP + LEFT * 0.25' : 'UP + RIGHT * 0.25'))
+              : (repeatedRoot ? 'DOWN' : (rootA === smallerRoot ? 'DOWN + LEFT * 0.25' : 'DOWN + RIGHT * 0.25'));
+            const rootPosB = graphSpec.a > 0
+              ? (rootB === smallerRoot ? 'UP + LEFT * 0.25' : 'UP + RIGHT * 0.25')
+              : (rootB === smallerRoot ? 'DOWN + LEFT * 0.25' : 'DOWN + RIGHT * 0.25');
+            const vertexPos = graphSpec.a > 0 ? 'DOWN' : 'UP';
             return `
         # Storyboard pedagógico: gráfica a pantalla completa
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -490,15 +498,15 @@ ${cueAnimation}
         x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=50))
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y", font_size=50))
         axis_line_${i} = DashedLine(axes_${i}.c2p(${vertexX}, ${ymin}), axes_${i}.c2p(${vertexX}, ${ymax}), dash_length=0.1, color=TEAL)
-        axis_lbl_${i} = MathTex(${escapeForPythonString(axisLabelStr)}, font_size=28, color=TEAL).next_to(axes_${i}.c2p(${vertexX}, ${ymax}), UP, buff=0.1)
+        axis_lbl_${i} = MathTex(${escapeForPythonString(axisLabelStr)}, font_size=26, color=TEAL).next_to(axes_${i}.c2p(${vertexX}, ${ymax}), UP, buff=0.1)
         vertex_pt_${i} = Dot(axes_${i}.c2p(${vertexX}, ${vertexY}), color=RED)
-        vertex_lbl_${i} = MathTex(${escapeForPythonString(vertexLabelStr)}, font_size=30, color=RED).next_to(vertex_pt_${i}, ${graphSpec.a > 0 ? 'DOWN' : 'UP'}, buff=0.15)
+        vertex_lbl_${i} = MathTex(${escapeForPythonString(vertexLabelStr)}, font_size=26, color=RED).next_to(vertex_pt_${i}, ${vertexPos}, buff=0.18)
         root_2_${i} = Dot(axes_${i}.c2p(${rootA}, 0), color=GREEN)
         ${repeatedRoot ? '' : `root_3_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)`}
-        root_2_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=36).next_to(root_2_${i}, DOWN, buff=0.15)
-        ${repeatedRoot ? '' : `root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=36).next_to(root_3_${i}, UP, buff=0.15)`}
-        concavity_lbl_${i} = Text(${escapeForPythonString(concavityStr)}, font_size=22, color=YELLOW).to_corner(UR, buff=0.5).shift(LEFT * 0.5)
-        graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP, buff=${(formatProfile.safeMargin + 0.20).toFixed(3)})
+        root_2_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=28).next_to(root_2_${i}, ${rootPosA}, buff=0.18)
+        ${repeatedRoot ? '' : `root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=28).next_to(root_3_${i}, ${rootPosB}, buff=0.18)`}
+        concavity_lbl_${i} = Text(${escapeForPythonString(concavityStr)}, font_size=20, color=YELLOW).to_corner(UR, buff=${(formatProfile.safeMargin + 0.22).toFixed(3)})
+        graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=30, color=BLUE).to_edge(UP, buff=${(formatProfile.safeMargin + 0.18).toFixed(3)})
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, axis_line_${i}, axis_lbl_${i}, vertex_pt_${i}, vertex_lbl_${i}, root_2_${i}, ${repeatedRoot ? '' : `root_3_${i}, `}root_2_label_${i}, ${repeatedRoot ? '' : `root_3_label_${i}, `}concavity_lbl_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
         self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=1.2)
@@ -630,6 +638,14 @@ ${cueAnimation}
             const vertexLabelStr = `V(${formatNum(vertexX)}, ${formatNum(vertexY)})`;
             const axisLabelStr = `x = ${formatNum(vertexX)}`;
             const concavityStr = graphSpec.a > 0 ? 'a > 0: cóncava hacia arriba' : 'a < 0: cóncava hacia abajo';
+            const smallerRoot = Math.min(rootA, rootB);
+            const rootPosA = graphSpec.a > 0
+              ? (repeatedRoot ? 'UP' : (rootA === smallerRoot ? 'UP + LEFT * 0.25' : 'UP + RIGHT * 0.25'))
+              : (repeatedRoot ? 'DOWN' : (rootA === smallerRoot ? 'DOWN + LEFT * 0.25' : 'DOWN + RIGHT * 0.25'));
+            const rootPosB = graphSpec.a > 0
+              ? (rootB === smallerRoot ? 'UP + LEFT * 0.25' : 'UP + RIGHT * 0.25')
+              : (rootB === smallerRoot ? 'DOWN + LEFT * 0.25' : 'DOWN + RIGHT * 0.25');
+            const vertexPos = graphSpec.a > 0 ? 'DOWN' : 'UP';
             return `
         # Timeline pedagógico: gráfica de verificación ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -638,15 +654,15 @@ ${cueAnimation}
         x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=50))
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y", font_size=50))
         axis_line_${i} = DashedLine(axes_${i}.c2p(${vertexX}, ${graphYMin}), axes_${i}.c2p(${vertexX}, ${graphYMax}), dash_length=0.1, color=TEAL)
-        axis_lbl_${i} = MathTex(${escapeForPythonString(axisLabelStr)}, font_size=28, color=TEAL).next_to(axes_${i}.c2p(${vertexX}, ${graphYMax}), UP, buff=0.1)
+        axis_lbl_${i} = MathTex(${escapeForPythonString(axisLabelStr)}, font_size=26, color=TEAL).next_to(axes_${i}.c2p(${vertexX}, ${graphYMax}), UP, buff=0.1)
         vertex_pt_${i} = Dot(axes_${i}.c2p(${vertexX}, ${vertexY}), color=RED)
-        vertex_lbl_${i} = MathTex(${escapeForPythonString(vertexLabelStr)}, font_size=30, color=RED).next_to(vertex_pt_${i}, ${graphSpec.a > 0 ? 'DOWN' : 'UP'}, buff=0.15)
+        vertex_lbl_${i} = MathTex(${escapeForPythonString(vertexLabelStr)}, font_size=26, color=RED).next_to(vertex_pt_${i}, ${vertexPos}, buff=0.18)
         root_a_${i} = Dot(axes_${i}.c2p(${rootA}, 0), color=GREEN)
         ${repeatedRoot ? '' : `root_b_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)`}
-        root_a_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=36).next_to(root_a_${i}, DOWN, buff=0.15)
-        ${repeatedRoot ? '' : `root_b_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=36).next_to(root_b_${i}, UP, buff=0.15)`}
-        concavity_lbl_${i} = Text(${escapeForPythonString(concavityStr)}, font_size=22, color=YELLOW).to_corner(UR, buff=0.5).shift(LEFT * 0.5)
-        graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP, buff=${(formatProfile.safeMargin + 0.20).toFixed(3)})
+        root_a_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=28).next_to(root_a_${i}, ${rootPosA}, buff=0.18)
+        ${repeatedRoot ? '' : `root_b_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=28).next_to(root_b_${i}, ${rootPosB}, buff=0.18)`}
+        concavity_lbl_${i} = Text(${escapeForPythonString(concavityStr)}, font_size=20, color=YELLOW).to_corner(UR, buff=${(formatProfile.safeMargin + 0.22).toFixed(3)})
+        graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=30, color=BLUE).to_edge(UP, buff=${(formatProfile.safeMargin + 0.18).toFixed(3)})
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, axis_line_${i}, axis_lbl_${i}, vertex_pt_${i}, vertex_lbl_${i}, root_a_${i}, ${repeatedRoot ? '' : `root_b_${i}, `}root_a_label_${i}, ${repeatedRoot ? '' : `root_b_label_${i}, `}concavity_lbl_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
         self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=1.2)

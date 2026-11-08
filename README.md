@@ -9,6 +9,16 @@ El editor admite extracción de ejercicios desde PNG, JPG, WEBP o una página PD
 
 Requisitos, límites y pruebas del flujo: [Pipeline de imagen/PDF a matemática narrada](docs/IMAGE_TO_NARRATED_MATH_PIPELINE.md).
 
+## Pizarra matemática persistente
+
+El renderizador estable Manim ahora conserva el ejercicio original visible
+mientras resuelve, comprueba y representa sus raíces. Las ecuaciones se
+distribuyen verticalmente a partir del tamaño real de MathTex y se muestran
+por pasos cuando exceden el espacio. TransformMatchingTex anima los símbolos
+comunes sin alterar los tiempos de narración neural.
+
+[Arquitectura, límites y pruebas de la pizarra adaptativa](docs/ADAPTIVE_MATH_BOARD.md).
+
 ## Despliegue privado para una sola persona
 
 La instalación Oracle se ha adaptado al **modo personal**: sin registro abierto,

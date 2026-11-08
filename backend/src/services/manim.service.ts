@@ -560,6 +560,17 @@ ${graphBeats || `        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create
             // original exercise remains independently pinned above the canvas.
             const answerLatex = latexLines[latexLines.length - 2];
             const proofLatex = latexLines[latexLines.length - 1];
+            const spokenRecap = wordBeats.length === pairCount - 1 ? `
+        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.32)
+        for beat_index, pair in enumerate(content_${i}[:-2]):
+            self._wait_spoken_beat(beat_index, ${JSON.stringify(wordBeats)}[beat_index])
+            self.play(FadeIn(pair), run_time=0.18)
+            self._focus_math(pair[1], run_time=0.20)
+            self.play(FadeOut(pair), run_time=0.18)
+        self._wait_spoken_beat(${pairCount - 2}, ${wordBeats[wordBeats.length - 1]})
+        self.play(FadeIn(final_answer_${i}), run_time=0.35)
+        self._finish_spoken_scene(${duration.toFixed(2)})
+        # The verified roots and individual substitutions remain in the last frame.` : null;
             return `
         # Storyboard pedagógico: recapitulación progresiva y respuesta final permanente
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -571,7 +582,7 @@ ${graphBeats || `        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create
         final_proof_${i} = self._make_final_recap_formula(${escapeForPythonString(proofLatex)}, 48, YELLOW)
         final_answer_${i} = VGroup(final_math_${i}, final_proof_${i})
         self._fit_final_recap(final_answer_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+${spokenRecap || `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
         earlier_${i} = len(content_${i}) - 2
         closing_hold_${i} = (min(3.0, max(1.8, ${duration.toFixed(2)} * 0.36))
                              if earlier_${i} else ${duration.toFixed(2)} - 0.85)
@@ -584,7 +595,7 @@ ${graphBeats || `        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create
                 self.play(FadeOut(pair), run_time=0.22)
         self.play(FadeIn(final_answer_${i}), run_time=0.45)
         self.wait(max(0.10, closing_hold_${i}))
-        # No FadeOut: retain the problem, the solution and its validation until the last frame.
+        # No FadeOut: retain the problem, the solution and its validation until the last frame.`}
 `;
           }
 

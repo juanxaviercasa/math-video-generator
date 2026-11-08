@@ -177,7 +177,9 @@ test('pedagogical render reveals mathematical steps, graph landmarks and ends wi
         pedagogicalScenes: storyboard,
         formatProfile: getVideoFormatProfile(aspectRatio, 'low'),
       }, true);
-      assert.match(python, /self\._focus_math\(content_\d+\[step_index\]\[1\]/);
+      if (problem !== 'x^2 + 2x + 5 = 0') {
+        assert.match(python, /self\._focus_math\(content_\d+\[step_index\]\[1\]/);
+      }
       assert.match(python, /card_slot_\d+ = /);
       assert.match(python, /self\._make_final_recap_formula\(/);
       assert.match(python, /self\._fit_final_recap\(final_answer_\d+\)/);

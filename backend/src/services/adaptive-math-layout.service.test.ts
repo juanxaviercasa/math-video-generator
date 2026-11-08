@@ -12,13 +12,17 @@ const exercise = 'x^2 - 5x + 6 = 0';
 const scenes = buildQuadraticStoryboard(exercise, validateMathProblem(exercise));
 
 const runPython = (script: string, stdin?: string): string => {
+  const useStdinForScript = stdin === undefined;
+  const scriptArgs = useStdinForScript ? ['-'] : ['-c', script];
+  const pyArgs = useStdinForScript ? ['-3', '-'] : ['-3', '-c', script];
+  const inputData = useStdinForScript ? script : stdin;
   const candidates: Array<[string, string[]]> = process.platform === 'win32'
-    ? [['python', ['-c', script]], ['py', ['-3', '-c', script]], ['python3', ['-c', script]]]
-    : [['python3', ['-c', script]], ['python', ['-c', script]]];
+    ? [['python', scriptArgs], ['py', pyArgs], ['python3', scriptArgs]]
+    : [['python3', scriptArgs], ['python', scriptArgs]];
   let lastError: unknown;
   for (const [command, args] of candidates) {
     try {
-      return execFileSync(command, args, { input: stdin, encoding: 'utf8', timeout: 10000 });
+      return execFileSync(command, args, { input: inputData, encoding: 'utf8', timeout: 10000 });
     } catch (error) {
       const code = (error as NodeJS.ErrnoException)?.code;
       const status = (error as { status?: number })?.status;

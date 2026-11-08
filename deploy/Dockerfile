@@ -37,8 +37,8 @@ COPY --from=builder /app/backend/prisma ./prisma
 RUN mkdir -p /var/lib/math-video-generator/media \
   && node -e "const {PrismaClient}=require('@prisma/client'); if(!PrismaClient) process.exit(1)"
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/readyz', (r) => {if (r.statusCode !== 200) process.exit(1)})"
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/readyz', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
 
 EXPOSE 3001
 CMD ["node", "dist/index.js"]

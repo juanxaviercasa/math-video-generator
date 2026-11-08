@@ -52,6 +52,12 @@ services:
       - media_data:/var/lib/math-video-generator/media
     # Schema was applied through Supabase migration 20261107185018; do not replay Prisma bootstrap migrations.
     command: ["node", "dist/index.js"]
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'require(\"http\").get(\"http://localhost:3001/readyz\", (r) => process.exit(r.statusCode === 200 ? 0 : 1))'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     cpus: ${API_CPUS:-0.5}
     mem_limit: ${API_MEMORY:-768m}
 

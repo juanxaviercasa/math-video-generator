@@ -62,6 +62,8 @@ function speakNumber(literal: string): string {
 export function prepareSpanishMathNarration(source: string): string {
   let text = (source || '').replace(/\s+/g, ' ').trim();
   if (!text) return '';
+  // A written negative coefficient must be spoken as 'menos siete', never '-siete'.
+  text = text.replace(/(^|[=(:,;\s])-\s*(?=\d)/g, '$1menos ');
   text = text
     .replace(/\b([xX])\s*(?:\^|\*\*)\s*2\b/g, 'equis al cuadrado')
     .replace(/\b([xX])\s*(?:\^|\*\*)\s*3\b/g, 'equis al cubo')

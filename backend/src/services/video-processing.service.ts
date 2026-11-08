@@ -16,6 +16,7 @@ import { validateRenderIntegrity } from './render-integrity.service.js';
 import { readAndValidateGeometry } from './manim-geometry-qa.service.js';
 import { auditFinalVideoFrames } from './final-frame-qa.service.js';
 import { extractVoiceCues, buildCueTimingPlan, CUE_INTRO_SECONDS, CUE_OUTRO_SECONDS, CUE_LEAD_SECONDS } from './voice-cue.service.js';
+import { readWordBoundaries, cueHighlightOffset, type SpokenWordBoundary } from './voice-boundary.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -175,6 +176,7 @@ export const videoProcessing = {
         : synchronization.buildSynchronizedScenes(content, steps);
       let narrationAudioPath = '';
       let lessonTimeline: LessonTimeline | undefined;
+      const spokenWordAudit: Array<{ sceneId: string; cueIndex: number; source: string; words: SpokenWordBoundary[]; highlightOffsetSeconds: number; sceneOffsetSeconds: number }> = [];
       if (enableNarration) {
         console.log(`🎙️ Generando narración con voz neural ${selectedVoice}; proveedor IA: ${aiProvider}`);
         const audioSegments: string[] = [];
@@ -184,6 +186,7 @@ export const videoProcessing = {
           if (cues.length) {
             const clips: string[] = [];
             const actualDurations: number[] = [];
+            const wordBoundaries: SpokenWordBoundary[][] = [];
             for (const [cueIndex, speech] of cues.entries()) {
               const clip = await tts.generateNarrationAudio(speech, outputDir, `${id}-${scene.id}-cue-${cueIndex + 1}`, { style: narrationStyle, voiceId: selectedVoice });
               if (!clip) throw new Error(`VOICE_CUE_MISSING: La voz neural falló en ${scene.id}, transformación ${cueIndex + 1}.`);
@@ -194,8 +197,16 @@ export const videoProcessing = {
               }
               clips.push(clip);
               actualDurations.push(measured);
+              const srtPath = clip.replace(/-narration\.(?:mp3|wav)$/i, '-narration.srt');
+              wordBoundaries.push(readWordBoundaries(srtPath, measured));
             }
             const timing = buildCueTimingPlan(actualDurations);
+            const highlightOffsets = wordBoundaries.map((words, index) =>
+              cueHighlightOffset(words, timing.stageDurations[index], CUE_LEAD_SECONDS));
+            wordBoundaries.forEach((words, index) => spokenWordAudit.push({
+              sceneId: scene.id, cueIndex: index, source: words.length ? 'edge-tts' : 'duration-fallback',
+              words, highlightOffsetSeconds: highlightOffsets[index], sceneOffsetSeconds: timing.stageStarts[index],
+            }));
             const parts: string[] = [
               await ffmpeg.createSilentAudio(path.join(outputDir, `${id}-${scene.id}-opening.wav`), CUE_INTRO_SECONDS),
             ];
@@ -217,6 +228,7 @@ export const videoProcessing = {
             scene.duration = timing.sceneDuration;
             scene.narrationText = cues.join(' ');
             if (pedagogical) pedagogical.visualCueDurations = timing.stageDurations;
+            if (pedagogical) pedagogical.visualCueHighlightOffsets = highlightOffsets;
             audioSegments.push(segmentPath);
             continue;
           }
@@ -260,14 +272,15 @@ export const videoProcessing = {
         // rather than distributing events across an estimated text duration.
         for (const pedagogical of pedagogicalScenes) {
           const cueDurations = pedagogical.visualCueDurations;
-          if (!cueDurations?.length) continue;
+          const cueHighlights = pedagogical.visualCueHighlightOffsets;
+          if (!cueDurations?.length || !cueHighlights?.length) continue;
           const events = lessonTimeline.events.filter((event) => event.segmentId === `segment-${pedagogical.id}`);
           if (events.length !== cueDurations.length) throw new Error(`VOICE_CUE_EVENT_MISMATCH: ${pedagogical.id}`);
           let offset = CUE_INTRO_SECONDS;
           for (const [index, event] of events.entries()) {
-            event.startOffset = Number((offset + CUE_LEAD_SECONDS).toFixed(3));
+            event.startOffset = Number((offset + cueHighlights[index]).toFixed(3));
             event.duration = 0.40;
-            event.holdAfter = Number((cueDurations[index] - CUE_LEAD_SECONDS - 0.40).toFixed(3));
+            event.holdAfter = Number((cueDurations[index] - cueHighlights[index] - 0.40).toFixed(3));
             offset += cueDurations[index];
           }
         }
@@ -286,6 +299,11 @@ export const videoProcessing = {
         narrationAudioPath = await ffmpeg.concatenateAudio(
           audioSegments,
           path.join(outputDir, `${id}-narration.wav`)
+        );
+        fs.writeFileSync(
+          path.join(outputDir, `${id}-voice-word-boundaries.json`),
+          JSON.stringify({ version: 1, source: 'edge-tts SRT WordBoundary where available', cues: spokenWordAudit }, null, 2),
+          'utf8',
         );
         console.log(`✓ Audio sincronizado generado: ${narrationAudioPath}`);
       } else {

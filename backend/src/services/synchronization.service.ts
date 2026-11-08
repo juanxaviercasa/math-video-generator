@@ -1,3 +1,4 @@
+import { cardinalSpanish, prepareSpanishMathNarration } from './spanish-math-speech.service.js';
 export type SynchronizedSceneKind = 'intro' | 'step' | 'calculation' | 'formula' | 'graph' | 'conclusion';
 
 export interface SynchronizedScene {
@@ -11,13 +12,8 @@ export interface SynchronizedScene {
 
 const normalize = (value: string): string => value.replace(/\s+/g, ' ').trim();
 
-const numberWords: Record<string, string> = {
-  '0': 'cero', '1': 'uno', '2': 'dos', '3': 'tres', '4': 'cuatro',
-  '5': 'cinco', '6': 'seis', '7': 'siete', '8': 'ocho', '9': 'nueve',
-};
-
-const oralizeNumber = (value: string): string => value.split('').map((digit) => numberWords[digit] || digit).join(' ');
-const variableWords: Record<string, string> = { a: 'a', b: 'be', c: 'ce', x: 'equis', y: 'ye', z: 'zeta' };
+const oralizeNumber = (value: string): string => cardinalSpanish(Number(value));
+const variableWords: Record<string, string> = { a: 'a', b: 'be labial', c: 'ce', x: 'equis', y: 'ye', z: 'zeta' };
 const oralizeVariables = (value: string): string => value.split('').map((letter) => variableWords[letter.toLowerCase()] || letter).join(' ');
 
 const oralizeMath = (value: string): string => {
@@ -37,8 +33,8 @@ const oralizeMath = (value: string): string => {
     .replace(/≠/g, ' diferente de ')
     .replace(/Δ/g, 'el discriminante')
     .replace(/\^/g, ' elevado a la potencia ')
-    .replace(/elevado a la potencia 2/gi, 'elevado a la potencia dos')
-    .replace(/elevado a la potencia 3/gi, 'elevado a la potencia tres')
+    .replace(/elevado a la potencia 2/gi, 'al cuadrado')
+    .replace(/elevado a la potencia 3/gi, 'al cubo')
     .replace(/\s*\/\s*/g, ' dividido entre ')
     .replace(/=/g, ' igual a ')
     .replace(/\s*,\s*/g, ', ')
@@ -54,7 +50,7 @@ const oralizeMath = (value: string): string => {
     .replace(/\bplus\b/gi, 'más')
     .replace(/\bformula\b/gi, 'fórmula');
 
-  return text || 'este paso matemático';
+  return prepareSpanishMathNarration(text) || 'este paso matemático';
 };
 
 const estimateDuration = (text: string): number => {

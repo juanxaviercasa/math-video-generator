@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 
 const wordSynthScript = fileURLToPath(new URL('../../python/synthesize_words.py', import.meta.url));
 import { resolveVoiceId } from './voice-catalog.service.js';
+import { prepareSpanishMathNarration } from './spanish-math-speech.service.js';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -67,7 +68,7 @@ export const tts = {
     fileName: string,
     options: { style?: 'warm_teacher' | 'neutral_teacher'; voiceId?: string } = {},
   ): Promise<string> {
-    const normalized = (text || '').replace(/\s+/g, ' ').trim();
+    const normalized = prepareSpanishMathNarration(text);
     if (!normalized) {
       return '';
     }

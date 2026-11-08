@@ -406,7 +406,7 @@ export const buildQuadraticStoryboard = (
         `a = ${formatValue(a)},\\; b = ${formatValue(b)},\\; c = ${formatValue(c)}`,
         `\\Delta = ${formatValue(delta)}`,
         `x_1 ${rootRelation(x1)} ${formatRoot(x1)},\\; x_2 ${rootRelation(x2)} ${formatRoot(x2)}`,
-        approximateRoots ? `\\text{Comprobación numérica: } P(x) \\approx 0` : `\\text{Comprobación: } 0 = 0`,
+        approximateRoots ? `\\text{Comprobación numérica: } P(x) \\approx 0` : repeatedRoot ? `P(${formatRoot(x1)})=0` : `P(${formatRoot(x1)})=0,\\;P(${formatRoot(x2)})=0`,
       ],
       'recap',
       'Solución comprobada',

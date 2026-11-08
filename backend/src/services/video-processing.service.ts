@@ -100,6 +100,8 @@ export const videoProcessing = {
     const report = () => request.onProgress?.({ ...progress });
     report();
 
+    fs.mkdirSync(outputDir, { recursive: true });
+
     try {
       // 1. Verificar dependencias
       console.log('🔍 Verificando dependencias...');

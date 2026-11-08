@@ -42,11 +42,12 @@ const buildWindowsTtsCommand = (outputPath: string, text: string): string => {
   return `powershell -NoProfile -ExecutionPolicy Bypass -Command "$tts = New-Object System.Speech.Synthesis.SpeechSynthesizer; $tts.SetOutputToWaveFile('${safeOutput}'); $tts.Rate = -1; $tts.Volume = 100; $tts.Speak('${safeText}'); $tts.Dispose()"`;
 };
 
-const getEdgeTtsArgs = (outputPath: string, text: string, style: 'warm_teacher' | 'neutral_teacher', voiceId: string): string[] => [
+const getEdgeTtsArgs = (outputPath: string, subtitlePath: string, text: string, style: 'warm_teacher' | 'neutral_teacher', voiceId: string): string[] => [
   `--voice=${resolveVoiceId(voiceId)}`,
   `--rate=${style === 'warm_teacher' ? (process.env.TTS_NEURAL_RATE || DEFAULT_NEURAL_RATE) : '-10%'}`,
   '--text', text,
   '--write-media', outputPath,
+  '--write-subtitles', subtitlePath,
 ];
 
 const getEspeakArgs = (outputPath: string, text: string, style: 'warm_teacher' | 'neutral_teacher'): string[] => [
@@ -71,6 +72,7 @@ export const tts = {
     fs.mkdirSync(outputDir, { recursive: true });
     const outputPath = path.join(outputDir, `${fileName}-narration.wav`);
     const neuralOutputPath = path.join(outputDir, `${fileName}-narration.mp3`);
+    const subtitlePath = path.join(outputDir, `${fileName}-narration.srt`);
     const provider = (process.env.TTS_PROVIDER || 'edge').toLowerCase();
     const style = options.style || 'warm_teacher';
     const voiceId = resolveVoiceId(options.voiceId);
@@ -80,6 +82,7 @@ export const tts = {
       let lastError: unknown;
       for (let attempt = 1; attempt <= retryCount; attempt += 1) {
         removeIfExists(neuralOutputPath);
+        removeIfExists(subtitlePath);
         const invocations = [
           { command: process.env.EDGE_TTS_COMMAND || 'edge-tts', prefix: [] as string[] },
           { command: process.platform === 'win32' ? 'py' : 'python3', prefix: ['-m', 'edge_tts'] },
@@ -87,7 +90,7 @@ export const tts = {
         ];
         for (const entry of invocations) {
           try {
-            await execFileAsync(entry.command, [...entry.prefix, ...getEdgeTtsArgs(neuralOutputPath, normalized, style, voiceId)], {
+            await execFileAsync(entry.command, [...entry.prefix, ...getEdgeTtsArgs(neuralOutputPath, subtitlePath, normalized, style, voiceId)], {
               timeout: 45000,
               killSignal: 'SIGKILL',
             });
@@ -96,6 +99,7 @@ export const tts = {
           } catch (error) {
             lastError = error;
             removeIfExists(neuralOutputPath);
+            removeIfExists(subtitlePath);
           }
         }
         if (attempt < retryCount) console.warn(`⚠️ TTS neural reintento ${attempt}/${retryCount}:`, lastError instanceof Error ? lastError.message : lastError);

@@ -1,0 +1,27 @@
+import type { VideoFormatProfile } from './video-format.service.js';
+
+/** Measured MathTex layout for Manim Community, not ManimGL. */
+export function buildAdaptiveManimHelpers(profile: VideoFormatProfile): string {
+  const band = profile.orientation === 'portrait' ? 1.08 : profile.orientation === 'square' ? 0.98 : 0.90;
+  const py = "\n    def _math(self, expression, font_size=54, color=WHITE, role=\"math-primary\"):\n        result = MathTex(expression, font_size=font_size, color=color)\n        result.qa_role = role\n        return result\n\n    def _work_bounds(self):\n        top = @@FRAMEHEIGHT@@ / 2\n        bottom = -@@FRAMEHEIGHT@@ / 2\n        margin = @@MARGIN@@\n        band_height = @@BAND@@\n        band_center = top - margin - band_height / 2\n        content_top = top - margin - band_height - 0.95\n        content_bottom = bottom + margin + 0.20\n        if content_top - content_bottom < 1.1:\n            raise ValueError(\"LAYOUT_FRAME_TOO_SMALL: no queda zona útil debajo del ejercicio\")\n        return {\n            \"anchor_center\": band_center, \"anchor_height\": band_height,\n            \"header_y\": content_top + 0.52, \"top\": content_top, \"bottom\": content_bottom,\n            \"center_y\": (content_top + content_bottom) / 2,\n            \"height\": content_top - content_bottom, \"width\": @@CONTENTWIDTH@@\n        }\n\n    def _create_problem_anchor(self, latex):\n        bounds = self._work_bounds()\n        panel = RoundedRectangle(\n            width=@@PANELWIDTH@@, height=bounds[\"anchor_height\"],\n            corner_radius=0.16, fill_color=\"#1B304A\", fill_opacity=1,\n            stroke_color=BLUE_D, stroke_width=1.8)\n        panel.move_to(UP * bounds[\"anchor_center\"])\n        caption = Text(\"EJERCICIO ORIGINAL\", font_size=19, color=GREY_A)\n        formula = self._math(latex, font_size=37, color=WHITE, role=\"problem-anchor\")\n        group = VGroup(caption, formula).arrange(RIGHT, buff=0.43)\n        factor = min(1.12, (@@PANELWIDTH@@ - 0.42) / max(group.width, 0.001),\n                     (bounds[\"anchor_height\"] - 0.24) / max(group.height, 0.001))\n        group.scale(factor)\n        if formula.height * (@@PIXELHEIGHT@@ / @@FRAMEHEIGHT@@) < max(25, @@PIXELHEIGHT@@ * 0.027):\n            raise ValueError(\"LAYOUT_ANCHOR_UNREADABLE: el enunciado debe dividirse en líneas\")\n        group.move_to(panel.get_center())\n        anchor = VGroup(panel, group)\n        anchor.set_z_index(95)\n        self.add(anchor)\n        return anchor\n\n    def _place_heading(self, heading):\n        bounds = self._work_bounds()\n        heading.scale(min(1.18, bounds[\"width\"] / max(heading.width, 0.001)))\n        heading.move_to(UP * bounds[\"header_y\"])\n        return heading\n\n    def _fit_work(self, group, max_upscale=1.20, min_scale=0.57):\n        bounds = self._work_bounds()\n        if group.width <= 0 or group.height <= 0:\n            raise ValueError(\"LAYOUT_EMPTY: no hay objetos de contenido\")\n        factor = min(max_upscale, bounds[\"width\"] / group.width,\n                     bounds[\"height\"] / group.height)\n        if factor < min_scale:\n            raise ValueError(\"LAYOUT_UNREADABLE: dividir la derivación en más escenas\")\n        group.scale(factor)\n        group.move_to(UP * bounds[\"center_y\"])\n        return group\n\n    def _arrange_equation_stages(self, stages):\n        if not len(stages):\n            raise ValueError(\"LAYOUT_EMPTY_STAGES\")\n        # Measure actual MathTex widths after TeX has built fractions and roots.\n        stages.arrange(DOWN, aligned_edge=LEFT, buff=0.23)\n        bounds = self._work_bounds()\n        factor = min(1.14, bounds[\"width\"] / max(stages.width, 0.001),\n                     bounds[\"height\"] / max(stages.height, 0.001))\n        if factor >= 0.78:\n            self._fit_work(stages, max_upscale=1.14, min_scale=0.78)\n            return False\n        # Too much content: show one focused stage at a time, not tiny formulas.\n        for stage in stages:\n            self._fit_work(stage, max_upscale=1.14, min_scale=0.70)\n        return True\n";
+  return py.replaceAll('@@FRAMEHEIGHT@@', profile.frameHeight.toFixed(5))
+    .replaceAll('@@MARGIN@@', profile.safeMargin.toFixed(5))
+    .replaceAll('@@BAND@@', band.toFixed(5))
+    .replaceAll('@@CONTENTWIDTH@@', profile.contentWidth.toFixed(5))
+    .replaceAll('@@PANELWIDTH@@', profile.panelWidth.toFixed(5))
+    .replaceAll('@@PIXELHEIGHT@@', String(profile.height));
+}
+
+/** Only a verified problem expression is shown in the lesson-wide anchor. */
+export function selectProblemAnchor(scene: {
+  content?: string;
+  pedagogicalScenes?: Array<{ id: string; visualLatex?: string[] }>;
+}): string | null {
+  const intro = scene.pedagogicalScenes?.find((item) => item.id === 'hook');
+  const candidate = (intro?.visualLatex?.[0] || scene.content || '').trim();
+  if (candidate.length < 3 || candidate.length > 140 || !candidate.includes('=')
+      || /(?:\\write18|\\input|\\include|\\openout|\\read|\\catcode|\\def\b)/i.test(candidate)) {
+    return null;
+  }
+  return candidate;
+}

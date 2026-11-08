@@ -609,7 +609,16 @@ ${cueAnimation}
             self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.35)` : null;
             const arrangement = 'DOWN';
             const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=${arrangement === 'DOWN' ? '0.35' : (formatProfile.orientation === 'portrait' ? '0.35' : '0.55')})`;
-            return `
+            const spokenHero = pedScene.layout === 'hero' && wordBeats.length === textLines.length && textLines.length > 0
+            ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.32)
+        self.play(FadeIn(VGroup(*list(content_${i})[:-${textLines.length}])), run_time=0.35)
+        for beat_index in range(${textLines.length}):
+            self._wait_spoken_beat(beat_index, ${JSON.stringify(wordBeats)}[beat_index])
+            self.play(FadeIn(content_${i}[beat_index - ${textLines.length}]), run_time=0.22)
+        self._finish_spoken_scene(${duration.toFixed(2)}, 0.38)
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.38)`
+            : null;
+          return `
         # Storyboard pedagógico: ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=34, color=BLUE))
@@ -639,14 +648,14 @@ ${wordCardAnimation || `        # Reveal each coefficient or substitution when t
         content_${i} = ${contentGroup}
         self._fit_fallback_group(content_${i})
         content_group_${i} = VGroup(header_${i}, content_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+${spokenHero || `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
         self.play(FadeIn(content_${i}), run_time=0.6)
         # Two non-destructive spotlights make the introduction follow the voice.
         self._focus_math(content_${i}[0] if isinstance(content_${i}, VGroup) else content_${i}, run_time=0.55)
         self.wait(max(0.05, (${duration.toFixed(2)} - 2.70) / 2))
         self._focus_math(content_${i}[-1] if isinstance(content_${i}, VGroup) else content_${i}, run_time=0.55)
         self.wait(max(0.05, (${duration.toFixed(2)} - 2.70) / 2))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.6)
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.6)`}
 `;
         }).join('\n')
       : '';

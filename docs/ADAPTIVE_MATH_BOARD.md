@@ -93,3 +93,10 @@ Antes de actualizar Oracle:
 Referencias: [Manim MathTex](https://docs.manim.community/en/stable/reference/manim.mobject.text.tex_mobject.MathTex.html),
 [TransformMatchingTex](https://docs.manim.community/en/stable/reference/manim.animation.transform_matching_parts.TransformMatchingTex.html),
 [Manim Voiceover](https://voiceover.manim.community/en/stable/quickstart.html).
+
+
+## Control semántico de marcas de voz (noviembre 2026)
+
+Las marcas de tiempo de Edge TTS se aceptan solo cuando su secuencia de palabras corresponde al guion de voz del micro-paso. El control elimina diferencias de mayúsculas, tildes y puntuación, sin permitir palabras omitidas ni reordenadas. Si el TTS entrega un SRT cronológicamente válido pero perteneciente a otra frase, se produce `VOICE_BOUNDARY_TEXT_MISMATCH` y se cancela ese render; no se publica una sincronización falsa. Cuando el proveedor local no entrega marcas de palabras, se conserva el fallback por duración ya existente y se registra `duration-fallback` en la auditoría.
+
+Este control no implica alineación fonética certificado palabra por palabra: la calidad de los offsets todavía depende de Edge TTS y requiere revisar muestras del MP4, pero evita aceptar subtítulos ajenos al contenido del problema.

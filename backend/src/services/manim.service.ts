@@ -415,6 +415,7 @@ export const manim = {
           // A portrait video has much more vertical real estate than a 16:9
           // slide. Use it for legible mathematics instead of a tiny center strip.
           const visualStages = pedScene.visualStages || [];
+          const wordBeats = pedScene.visualBeatOffsets || [];
 
           if (pedScene.layout === 'equation' && visualStages.length > 0) {
             const stageLabelSize = scene.formulaFirst ? 18 : 23;
@@ -429,6 +430,17 @@ export const manim = {
             const cueDurations = pedScene.visualCueDurations;
             const cueLocked = cueDurations?.length === visualStages.length
               && cueDurations.every((seconds) => Number.isFinite(seconds) && seconds >= 0.8);
+            const wordLocked = !cueLocked && wordBeats.length === visualStages.length;
+            const wordAnimation = wordLocked ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.32)
+        for step_index in range(len(content_${i])):
+            self._wait_spoken_beat(step_index, ${JSON.stringify(wordBeats)}[step_index])
+            self._animate_equation_step(content_${i}, step_index, focus_${i}, run_time=0.22)
+            self._focus_math(content_${i}[step_index][1], run_time=0.24)
+        self._finish_spoken_scene(${duration.toFixed(2)}, 0.35)
+        if focus_${i}:
+            self.play(FadeOut(content_${i}[-1]), FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.35)
+        else:
+            self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.35)` : null;
             const cueAnimation = cueLocked
               ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
 ${cueDurations.map((seconds, index) => {
@@ -446,7 +458,7 @@ ${waitBefore}        self.play(Indicate(${stageRef}[1], color=YELLOW, scale_fact
             self.play(FadeOut(content_${i}[-1]), FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.3)
         else:
             self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.3)`
-              : `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+              : wordAnimation || `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
         # Split available scene time across verified steps; no long static pause.
         stage_slot_${i} = (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1)
         for step_index in range(len(content_${i})):

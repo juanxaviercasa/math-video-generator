@@ -5,6 +5,7 @@ import { tts } from './tts.service.js';
 import { resolveVoiceId } from './voice-catalog.service.js';
 import { validateAudibleAudio } from './audio-qa.service.js';
 import { validateMathProblem, type MathValidation } from './math-validation.service.js';
+import { verifyQuadraticSymbolically } from './sympy-verification.service.js';
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
 import { buildLessonTimeline, validateLessonTimeline } from './timeline.service.js';
 import type { LessonTimeline } from './timeline.types.js';
@@ -139,6 +140,14 @@ export const videoProcessing = {
       }
       if (!validation.supported && process.env.ALLOW_UNVERIFIED_MATH_VIDEO !== 'true') {
         throw new Error('MATH_UNSUPPORTED: El problema requiere un solver determinista antes de publicarse. Usa preview/revisión manual o activa el flag solo en un entorno de QA.');
+      }
+
+      // Independent SymPy proof: only bounded, prevalidated numeric coefficients.
+      // A symbolic disagreement always aborts publication; no LLM bypass.
+      if (validation.supported && validation.valid && validation.kind === 'quadratic') {
+        const symbolic = await verifyQuadraticSymbolically(validation);
+        fs.writeFileSync(path.join(outputDir, `${id}-sympy-verification.json`), JSON.stringify(symbolic, null, 2), 'utf8');
+        if (symbolic.warning) console.warn('⚠️ SymPy:', symbolic.warning);
       }
 
       // 2. Generar descripción con OpenAI (opcional)

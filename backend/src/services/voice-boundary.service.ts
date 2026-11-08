@@ -35,8 +35,11 @@ export function parseWordBoundaries(srt: string, audioDurationSeconds: number): 
     const text = lines.slice(2).join(' ').trim();
     if (!text || text.length > 150 || !Number.isFinite(startSeconds) || endSeconds <= startSeconds
         || startSeconds < 0 || endSeconds > audioDurationSeconds + 0.15
-        || (words.length > 0 && startSeconds + 0.01 < words[words.length - 1].endSeconds)) {
+        || (words.length > 0 && (startSeconds < words[words.length - 1].startSeconds || startSeconds + 0.15 < words[words.length - 1].endSeconds))) {
       throw new Error('VOICE_BOUNDARY_INVALID: Palabras fuera del audio o fuera de orden.');
+    }
+    if (words.length > 0 && words[words.length - 1].endSeconds > startSeconds) {
+      words[words.length - 1].endSeconds = startSeconds;
     }
     words.push({ text, startSeconds, endSeconds });
   }

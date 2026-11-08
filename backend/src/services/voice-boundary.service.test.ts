@@ -37,3 +37,16 @@ test('rejects timestamp-valid subtitles for the wrong spoken mathematical cue', 
   );
   assert.doesNotThrow(() => assertWordBoundariesMatchNarration('Narración local sin marcas', []));
 });
+
+test('tolerates standard Edge TTS sentence decay overlap and clamps cleanly', () => {
+  const edgeSrt = [
+    '1', '00:00:00,100 --> 00:00:01,618', 'Muy bien.', '',
+    '2', '00:00:01,568 --> 00:00:07,126', 'Hoy resolveremos la ecuación.', '',
+  ].join('\n');
+  const parsed = parseWordBoundaries(edgeSrt, 8.0);
+  assert.equal(parsed.length, 2);
+  assert.equal(parsed[0].startSeconds, 0.1);
+  assert.equal(parsed[0].endSeconds, 1.568);
+  assert.equal(parsed[1].startSeconds, 1.568);
+  assert.equal(parsed[1].endSeconds, 7.126);
+});

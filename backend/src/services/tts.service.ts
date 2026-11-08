@@ -2,6 +2,9 @@ import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const wordSynthScript = fileURLToPath(new URL('../../python/synthesize_words.py', import.meta.url));
 import { resolveVoiceId } from './voice-catalog.service.js';
 
 const execAsync = promisify(exec);
@@ -79,10 +82,32 @@ export const tts = {
 
     if (provider !== 'espeak' && provider !== 'local') {
       const retryCount = Math.max(1, Math.min(3, Number(process.env.TTS_NEURAL_RETRIES || 2)));
+      const rate = style === 'warm_teacher' ? (process.env.TTS_NEURAL_RATE || DEFAULT_NEURAL_RATE) : '-10%';
       let lastError: unknown;
       for (let attempt = 1; attempt <= retryCount; attempt += 1) {
         removeIfExists(neuralOutputPath);
         removeIfExists(subtitlePath);
+
+        // Prefer word-boundary python synthesizer to extract exact word timings
+        if (fs.existsSync(wordSynthScript)) {
+          const pythonCommands = process.platform === 'win32'
+            ? ['python', 'py', 'python3']
+            : ['python3', 'python'];
+          for (const pyCmd of pythonCommands) {
+            try {
+              await execFileAsync(pyCmd, [wordSynthScript, voiceId, rate, neuralOutputPath, subtitlePath, normalized], {
+                timeout: 45000,
+                killSignal: 'SIGKILL',
+              });
+              if (await isValidAudioFile(neuralOutputPath)) return neuralOutputPath;
+            } catch (error) {
+              lastError = error;
+              removeIfExists(neuralOutputPath);
+              removeIfExists(subtitlePath);
+            }
+          }
+        }
+
         const invocations = [
           { command: process.env.EDGE_TTS_COMMAND || 'edge-tts', prefix: [] as string[] },
           { command: process.platform === 'win32' ? 'py' : 'python3', prefix: ['-m', 'edge_tts'] },

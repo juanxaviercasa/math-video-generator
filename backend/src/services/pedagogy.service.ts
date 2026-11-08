@@ -316,7 +316,7 @@ export const buildQuadraticStoryboard = (
       'step',
       `${lead}La expresión más o menos produce dos caminos. En el primero sumamos; en el segundo restamos. Así obtenemos x uno ${rootRelation(x1) === '=' ? 'igual a' : 'aproximadamente'} ${numberToSpanish(Number(formatRoot(x1)))} y x dos ${rootRelation(x2) === '=' ? 'igual a' : 'aproximadamente'} ${numberToSpanish(Number(formatRoot(x2)))}.`,
       [`x_1 = \\frac{${formatValue(-b)} + ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x1)} ${formatRoot(x1)}`, `x_2 = \\frac{${formatValue(-b)} - ${sqrtExpression}}{${formatValue(denominator)}} ${rootRelation(x2)} ${formatRoot(x2)}`],
-      'split',
+      'equation',
       'Dos soluciones',
       10,
       ['Camino +', 'Camino −'],

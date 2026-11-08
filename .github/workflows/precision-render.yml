@@ -2,6 +2,11 @@ name: Precision Render Smoke
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'backend/src/services/**'
+      - 'backend/scripts/smoke-precision-render.ts'
+      - '.github/workflows/precision-render.yml'
   push:
     branches: [main]
     paths:

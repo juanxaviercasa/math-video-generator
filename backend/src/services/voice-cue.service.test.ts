@@ -45,3 +45,23 @@ test('generates sequential highlights in Manim without changing the mathematical
   assert.match(script, /Indicate\(content_0\[0\]\[1\], color=YELLOW/);
   assert.match(script, /Indicate\(content_0\[3\]\[1\], color=YELLOW/);
 });
+
+test('narrates both solution branches with individually timed visual equations', () => {
+  const exercise = 'x^2 - 5x + 6 = 0';
+  const scenes = buildQuadraticStoryboard(exercise, validateMathProblem(exercise));
+  const branches = scenes.find((scene) => scene.id === 'solution-branches');
+  assert.ok(branches);
+  assert.equal(branches.layout, 'equation');
+  assert.equal(extractVoiceCues(branches).length, 3);
+  branches.visualCueDurations = [2, 3, 3];
+  const script = manim.generatePythonScript({
+    title: 'Narrated plus minus',
+    outputDir: '/tmp',
+    content: exercise,
+    steps: [],
+    pedagogicalScenes: scenes,
+  }, true);
+  assert.match(script, /focus_7 = self\._arrange_equation_stages\(content_7\)/);
+  assert.match(script, /self\._create_problem_anchor/);
+  assert.match(script, /Indicate\(content_7\[2\]\[1\]/);
+});

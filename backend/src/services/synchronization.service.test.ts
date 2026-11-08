@@ -5,7 +5,7 @@ import { synchronization } from './synchronization.service.js';
 test('oralizes quadratic notation for natural Spanish speech', () => {
   const narration = synchronization.oralizeMath('x^2 - 5x + 6 = 0');
 
-  assert.match(narration, /elevado a la potencia dos/);
+  assert.match(narration, /equis al cuadrado/);
   assert.match(narration, /menos cinco/);
   assert.match(narration, /más seis/);
   assert.match(narration, /igual a cero/);

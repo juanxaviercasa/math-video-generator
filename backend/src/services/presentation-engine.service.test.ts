@@ -13,8 +13,8 @@ test('builds a complete presentation plan from the existing quadratic storyboard
 
   assert.equal(plan.engineVersion, 'math-presentation-engine-v1');
   assert.equal(plan.designVersion, 'math-design-v1');
-  assert.equal(plan.scenes.length, 10);
-  assert.equal(plan.resolvedLayouts.length, 10);
+  assert.equal(plan.scenes.length, 11);
+  assert.equal(plan.resolvedLayouts.length, 11);
   assert.ok(plan.solutionHash.length >= 12);
   assert.ok(plan.score.total >= 0 && plan.score.total <= 100);
   assert.equal(plan.scenes.find((scene) => scene.id === 'discriminant-calculate')?.blocks[0]?.semanticRole, 'formula-base');

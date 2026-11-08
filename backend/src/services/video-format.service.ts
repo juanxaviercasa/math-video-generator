@@ -28,9 +28,9 @@ const dimensions: Record<VideoQuality, Record<VideoAspectRatio, { width: number;
     '9:16': { width: 720, height: 1280 },
   },
   high: {
-    '16:9': { width: 3840, height: 2160 },
-    '1:1': { width: 2160, height: 2160 },
-    '9:16': { width: 2160, height: 3840 },
+    '16:9': { width: 1920, height: 1080 },
+    '1:1': { width: 1080, height: 1080 },
+    '9:16': { width: 1080, height: 1920 },
   },
 };
 
@@ -69,7 +69,7 @@ export const getVideoFormatProfile = (
 };
 
 export const videoFormatProfiles = {
-  '16:9': { label: 'Horizontal 16:9', social: 'YouTube, Facebook, presentaciones' },
-  '1:1': { label: 'Cuadrado 1:1', social: 'Instagram, publicaciones sociales' },
-  '9:16': { label: 'Vertical 9:16', social: 'Reels, Stories, Shorts, TikTok' },
+  '16:9': { label: 'Horizontal 16:9 (1080p)', social: 'YouTube, Facebook, presentaciones' },
+  '1:1': { label: 'Cuadrado 1:1 (1080p)', social: 'Instagram, publicaciones sociales' },
+  '9:16': { label: 'Vertical 9:16 (1080p)', social: 'Reels, Stories, Shorts, TikTok' },
 } as const;

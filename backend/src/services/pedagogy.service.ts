@@ -30,6 +30,9 @@ export interface QuadraticGraphSpec {
   b: number;
   c: number;
   roots: [number, number];
+  vertex?: [number, number];
+  axisOfSymmetry?: number;
+  concavity?: 'up' | 'down';
 }
 
 export interface PedagogicalScene extends SynchronizedScene {
@@ -118,6 +121,10 @@ export const buildQuadraticStoryboard = (
   const formulaSimplified = `x = \\frac{${formatValue(-b)} \\pm ${sqrtExpression}}{${formatValue(denominator)}}`;
   const x1 = denominator === 0 ? 0 : (-b + sqrtDelta) / denominator;
   const x2 = denominator === 0 ? 0 : (-b - sqrtDelta) / denominator;
+  const vertexX = denominator === 0 ? 0 : -b / (2 * a);
+  const vertexY = a * vertexX * vertexX + b * vertexX + c;
+  const concavity: 'up' | 'down' = a > 0 ? 'up' : 'down';
+  const repeatedRoot = Math.abs(x1 - x2) < 1e-8;
   const pedagogicalContract: PedagogicalContract = {
     requiredSteps: ['hook', 'identify', 'substitute', 'compute', 'simplify', 'solve', 'verify', 'interpret'],
     hook: 'Aprender a identificar coeficientes, sustituir sin perder signos y comprobar las dos raíces.',
@@ -132,8 +139,23 @@ export const buildQuadraticStoryboard = (
     'formula-substitution': 'substitute',
     'formula-simplify': 'simplify',
     'solution-branches': 'solve',
+    verification: 'verify',
     graph: 'verify',
     recap: 'interpret',
+  };
+
+  const buildCheckLatex = (rootVal: number): string => {
+    const rootStr = formatRoot(rootVal);
+    const aTerm = a === 1 ? `(${rootStr})^2` : a === -1 ? `-(${rootStr})^2` : `${formatValue(a)}(${rootStr})^2`;
+    const bSign = b < 0 ? '-' : '+';
+    const bTerm = `${bSign} ${formatValue(Math.abs(b))}(${rootStr})`;
+    const cSign = c < 0 ? '-' : '+';
+    const cTerm = `${cSign} ${formatValue(Math.abs(c))}`;
+    const t1 = a * rootVal * rootVal;
+    const t2 = b * rootVal;
+    const t2Sign = t2 < 0 ? '-' : '+';
+    const t3Sign = c < 0 ? '-' : '+';
+    return `${aTerm} ${bTerm} ${cTerm} = ${formatValue(t1)} ${t2Sign} ${formatValue(Math.abs(t2))} ${t3Sign} ${formatValue(Math.abs(c))} = 0`;
   };
 
   const make = (
@@ -308,26 +330,48 @@ export const buildQuadraticStoryboard = (
       },
     ),
     make(
+      'verification',
+      'step',
+      repeatedRoot
+        ? `${lead}Comprobamos la raíz en la ecuación original. Sustituimos equis por ${numberToSpanish(Number(formatRoot(x1)))}: el resultado es exactamente cero, confirmando la solución.`
+        : `${lead}Comprobamos ambas soluciones en la ecuación original. Para equis igual a ${numberToSpanish(Number(formatRoot(x1)))}, sustituimos y obtenemos cero. Para equis igual a ${numberToSpanish(Number(formatRoot(x2)))}, sustituimos igualmente y confirmamos que da cero. Ambas raíces satisfacen la ecuación.`,
+      repeatedRoot
+        ? [buildCheckLatex(x1)]
+        : [buildCheckLatex(x1), buildCheckLatex(x2)],
+      'split',
+      'Comprobación algebraica',
+      9,
+      repeatedRoot
+        ? [`Comprobación con x = ${formatRoot(x1)}: 0 = 0`]
+        : [`Para x_1 = ${formatRoot(x1)}: 0 = 0`, `Para x_2 = ${formatRoot(x2)}: 0 = 0`],
+    ),
+    make(
       'graph',
       'graph',
-      `${lead}Finalmente, la gráfica confirma la respuesta: la parábola corta el eje horizontal en ${numberToSpanish(Number(formatRoot(x2)))} y ${numberToSpanish(Number(formatRoot(x1)))}.`,
+      `${lead}Finalmente, la gráfica confirma la respuesta. La parábola tiene vértice en ${numberToSpanish(Number(formatRoot(vertexX)))} con ${numberToSpanish(Number(formatRoot(vertexY)))}, abre hacia ${concavity === 'up' ? 'arriba' : 'abajo'}, y corta el eje horizontal en ${numberToSpanish(Number(formatRoot(x2)))} y ${numberToSpanish(Number(formatRoot(x1)))}.`,
       [`y = (${formatValue(a)})x^2 + (${formatValue(b)})x + (${formatValue(c)})`, `raíces: ${formatRoot(x2)} y ${formatRoot(x1)}`],
       'graph',
       'Comprobación gráfica',
       10,
       [],
       [],
-      { graphSpec: { a, b, c, roots: [x2, x1] } },
+      { graphSpec: { a, b, c, roots: [x2, x1], vertex: [vertexX, vertexY], axisOfSymmetry: vertexX, concavity } },
     ),
     make(
       'recap',
       'conclusion',
-      `${warm ? 'Excelente. ' : ''}Recapitulamos: identificamos a, b y c; sustituimos sus valores; calculamos el discriminante; aplicamos la fórmula y comprobamos las dos raíces en la gráfica.`,
-      [`\\begin{aligned}x_1 &${rootRelation(x1)} ${formatRoot(x1)} \\\\ x_2 &${rootRelation(x2)} ${formatRoot(x2)}\\end{aligned}`],
+      `${warm ? 'Excelente trabajo. ' : ''}Recapitulamos el procedimiento completo: identificamos los coeficientes a, b y c; calculamos el discriminante; aplicamos la fórmula general; obtuvimos las soluciones ${numberToSpanish(Number(formatRoot(x1)))} y ${numberToSpanish(Number(formatRoot(x2)))}; y comprobamos que ambas satisfacen la ecuación.`,
+      [
+        validation.normalizedInput,
+        `a = ${formatValue(a)},\\; b = ${formatValue(b)},\\; c = ${formatValue(c)}`,
+        `\\Delta = ${formatValue(delta)}`,
+        `x_1 ${rootRelation(x1)} ${formatRoot(x1)},\\; x_2 ${rootRelation(x2)} ${formatRoot(x2)}`,
+        `\\text{Comprobación: } 0 = 0`,
+      ],
       'recap',
       'Solución comprobada',
       8,
-      ['Soluciones comprobadas'],
+      ['Ecuación original', 'Coeficientes', 'Discriminante', 'Raíces', 'Comprobado'],
     ),
   ];
 };

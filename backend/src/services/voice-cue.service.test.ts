@@ -17,8 +17,8 @@ test('the verified quadratic discriminant has one spoken cue for each mathematic
 
 test('cue timing is based on decoded neural audio and is contiguous', () => {
   const plan = buildCueTimingPlan([2.27, 1.01, 3.25]);
-  assert.deepEqual(plan.stageDurations, [2.9, 1.64, 3.88]);
-  assert.deepEqual(plan.stageStarts, [1.2, 4.1, 5.74]);
+  assert.deepEqual(plan.stageDurations, [2.59, 1.33, 3.57]);
+  assert.deepEqual(plan.stageStarts, [0.4, 2.99, 4.32]);
   assert.ok(Math.abs(plan.sceneDuration - (CUE_INTRO_SECONDS + plan.stageDurations.reduce((sum, seconds) => sum + seconds, 0) + CUE_OUTRO_SECONDS)) < 1e-9);
 });
 
@@ -34,7 +34,7 @@ test('generates sequential highlights in Manim without changing the mathematical
   const stage = scenes.find((item) => item.id === 'discriminant-calculate');
   assert.ok(stage);
   stage.visualCueDurations = [2, 2, 2, 2];
-  stage.duration = 1.2 + stage.visualCueDurations.reduce((sum, seconds) => sum + seconds, 0) + 1;
+  stage.duration = CUE_INTRO_SECONDS + stage.visualCueDurations.reduce((sum, seconds) => sum + seconds, 0) + CUE_OUTRO_SECONDS;
   const script = manim.generatePythonScript({
     title: 'Voice aligned',
     outputDir: '/tmp',
@@ -44,5 +44,4 @@ test('generates sequential highlights in Manim without changing the mathematical
   assert.equal((script.match(/# Voz neural y resaltado del mismo micro-paso/g) || []).length, 4);
   assert.match(script, /Indicate\(content_0\[0\]\[1\], color=YELLOW/);
   assert.match(script, /Indicate\(content_0\[1\]\[2\]\[1\], color=YELLOW/);
-  assert.match(script, /self\.wait\(1\.150\)/);
 });

@@ -32,49 +32,64 @@ const run = async () => {
     const outputDir = path.join(process.env.MEDIA_ROOT || path.join(os.tmpdir(), 'math-video-generator'), `mvg-${videoId}`);
     const request = stored.request;
 
-    const result = await videoProcessing.generateVideo({
-      ...request,
-      id: videoId,
-      userId: stored.userId,
-      outputDir,
-      onProgress: (progress) => {
-        generationJobs.update(videoId, {
-          status: progress.status,
-          progress: progress.progress,
-          message: progress.message,
-          videoUrl: progress.videoUrl,
-          thumbnailUrl: progress.thumbnailUrl,
-          duration: progress.duration,
-          error: progress.error,
-          heartbeatAt: new Date().toISOString(),
-        });
-      },
-    });
-
-    if (result.status === 'failed') {
-      generationJobs.fail(videoId, result.error || result.message);
-      throw new Error(result.error || result.message);
+    let result;
+    try {
+      result = await videoProcessing.generateVideo({
+        ...request,
+        id: videoId,
+        userId: stored.userId,
+        outputDir,
+        onProgress: (progress) => {
+          if (progress.status === 'processing' || progress.status === 'pending') {
+            generationJobs.update(videoId, {
+              status: progress.status,
+              progress: progress.progress,
+              message: progress.message,
+              videoUrl: progress.videoUrl,
+              thumbnailUrl: progress.thumbnailUrl,
+              duration: progress.duration,
+              error: progress.error,
+              heartbeatAt: new Date().toISOString(),
+            });
+          }
+        },
+      });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      await generationJobs.fail(videoId, errorMsg);
+      throw err;
     }
 
-    generationJobs.update(videoId, {
-      status: 'completed',
-      progress: 100,
+    if (result.status === 'failed') {
+      const errorMsg = result.error || result.message;
+      await generationJobs.fail(videoId, errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    await generationJobs.complete(videoId, {
       message: result.message,
       videoUrl: result.videoUrl,
       thumbnailUrl: result.thumbnailUrl,
       duration: result.duration,
-      heartbeatAt: new Date().toISOString(),
     });
 
     return result;
   });
 
-  queue.on('failed', (job, error) => {
+  queue.on('failed', async (job, error) => {
     if (job) {
       const maxAttempts = Number(job.opts.attempts || 1);
       const exhausted = job.attemptsMade >= maxAttempts;
-      if (exhausted) generationJobs.fail(job.data.videoId, error.message, 'WORKER_RETRIES_EXHAUSTED');
-      else generationJobs.update(job.data.videoId, { status: 'pending', message: `Reintentando (${job.attemptsMade}/${maxAttempts})...`, error: error.message, errorCode: 'WORKER_RETRY_PENDING' });
+      if (exhausted) {
+        await generationJobs.fail(job.data.videoId, error.message, 'WORKER_RETRIES_EXHAUSTED');
+      } else {
+        generationJobs.update(job.data.videoId, {
+          status: 'pending',
+          message: `Reintentando (${job.attemptsMade}/${maxAttempts})...`,
+          error: error.message,
+          errorCode: 'WORKER_RETRY_PENDING',
+        });
+      }
     }
     console.error(`[Worker ${workerId}] Job falló (reintento ${job?.attemptsMade ?? 0}):`, error.message);
   });

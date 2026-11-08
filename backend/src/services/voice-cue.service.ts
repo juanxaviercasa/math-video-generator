@@ -1,9 +1,9 @@
 import type { PedagogicalScene } from './pedagogy.service.js';
 
-export const CUE_INTRO_SECONDS = 1.2;
-export const CUE_OUTRO_SECONDS = 1.0;
-export const MIN_CUE_SECONDS = 1.2;
-export const CUE_LEAD_SECONDS = 0.45;
+export const CUE_INTRO_SECONDS = 0.4;
+export const CUE_OUTRO_SECONDS = 0.3;
+export const MIN_CUE_SECONDS = 0.8;
+export const CUE_LEAD_SECONDS = 0.2;
 
 /** A voice cue belongs to one and only one verified visual transformation. */
 export function extractVoiceCues(scene: PedagogicalScene): string[] {
@@ -27,7 +27,7 @@ export function buildCueTimingPlan(actualSpeechDurations: number[]): CueTimingPl
     throw new Error('VOICE_CUES_INVALID: Cada transformación necesita un audio válido.');
   }
   // Use 1/100s because FFmpeg samples at 24 kHz and Manim runs at 30 fps.
-  const stageDurations = actualSpeechDurations.map((seconds) => Math.ceil(Math.max(MIN_CUE_SECONDS, seconds + CUE_LEAD_SECONDS + 0.18) * 100 - 1e-9) / 100);
+  const stageDurations = actualSpeechDurations.map((seconds) => Math.ceil(Math.max(MIN_CUE_SECONDS, seconds + CUE_LEAD_SECONDS + 0.12) * 100 - 1e-9) / 100);
   let cursor = CUE_INTRO_SECONDS;
   const stageStarts = stageDurations.map((duration) => {
     const start = Math.round(cursor * 100) / 100;

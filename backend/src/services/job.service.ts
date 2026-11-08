@@ -1,5 +1,4 @@
 import Bull from 'bull';
-import { randomUUID } from 'node:crypto';
 import { prisma } from '../lib/prisma.js';
 
 export type JobState = 'pending' | 'processing' | 'completed' | 'failed';
@@ -28,6 +27,7 @@ export interface GenerationJob {
   videoUrl?: string;
   thumbnailUrl?: string;
   duration?: number;
+  fileSize?: number;
   error?: string;
   errorCode?: string;
   attempts: number;
@@ -38,7 +38,7 @@ export interface GenerationJob {
   updatedAt: string;
 }
 
-type JobMetadata = {
+export type JobMetadata = {
   userId: string;
   title: string;
   content: string;
@@ -46,7 +46,7 @@ type JobMetadata = {
   idempotencyKey?: string;
 };
 
-type JobPatch = Partial<Omit<GenerationJob, 'id' | 'createdAt'>>;
+export type JobPatch = Partial<Omit<GenerationJob, 'id' | 'createdAt'>>;
 
 const jobs = new Map<string, GenerationJob>();
 const metadata = new Map<string, JobMetadata>();
@@ -78,6 +78,7 @@ const fromPersisted = (video: any): GenerationJob => ({
   videoUrl: video.videoUrl || undefined,
   thumbnailUrl: video.thumbnailUrl || undefined,
   duration: video.duration || undefined,
+  fileSize: video.fileSize || undefined,
   error: video.lastError || undefined,
   errorCode: video.errorCode || undefined,
   attempts: video.attempts || 0,
@@ -88,56 +89,87 @@ const fromPersisted = (video: any): GenerationJob => ({
   updatedAt: new Date(video.updatedAt).toISOString(),
 });
 
-const persist = async (job: GenerationJob, details?: JobMetadata): Promise<void> => {
-  const current = details || metadata.get(job.id);
-  if (!current?.userId) return;
+const isTerminalState = (status?: JobState): boolean => status === 'completed' || status === 'failed';
 
-  await prisma.video.upsert({
-    where: { id: job.id },
-    create: {
-      id: job.id,
-      userId: current.userId,
-      title: current.title,
-      content: current.content,
-      status: job.status,
-      progress: job.progress,
-      message: job.message,
-      videoUrl: job.videoUrl,
-      thumbnailUrl: job.thumbnailUrl,
-      duration: job.duration,
-      lastError: job.error,
-      errorCode: job.errorCode,
-      attempts: job.attempts,
-      heartbeatAt: job.heartbeatAt ? new Date(job.heartbeatAt) : undefined,
-      workerId: job.workerId,
-      idempotencyKey: current.idempotencyKey,
-      requestJson: JSON.stringify(current.request),
-      startedAt: job.status === 'processing' ? new Date() : undefined,
-      completedAt: job.status === 'completed' ? new Date() : undefined,
-      outputDir: process.env.MEDIA_ROOT || undefined,
-    },
-    update: {
-      status: job.status,
-      progress: job.progress,
-      message: job.message,
-      videoUrl: job.videoUrl,
-      thumbnailUrl: job.thumbnailUrl,
-      duration: job.duration,
-      lastError: job.error,
-      errorCode: job.errorCode,
-      attempts: job.attempts,
-      heartbeatAt: job.heartbeatAt ? new Date(job.heartbeatAt) : undefined,
-      workerId: job.workerId,
-      completedAt: job.status === 'completed' ? new Date() : undefined,
-    },
-  });
+const persistJob = async (job: GenerationJob, details?: JobMetadata): Promise<void> => {
+  // If the record in memory is already completed or failed, never overwrite with a non-terminal status
+  const inMemory = jobs.get(job.id);
+  if (inMemory && isTerminalState(inMemory.status) && !isTerminalState(job.status)) {
+    return;
+  }
+
+  const current = details || metadata.get(job.id);
+  if (current?.userId) {
+    await prisma.video.upsert({
+      where: { id: job.id },
+      create: {
+        id: job.id,
+        userId: current.userId,
+        title: current.title,
+        content: current.content,
+        status: job.status,
+        progress: job.progress,
+        message: job.message,
+        videoUrl: job.videoUrl,
+        thumbnailUrl: job.thumbnailUrl,
+        duration: job.duration,
+        fileSize: job.fileSize,
+        lastError: job.error,
+        errorCode: job.errorCode,
+        attempts: job.attempts,
+        heartbeatAt: job.heartbeatAt ? new Date(job.heartbeatAt) : undefined,
+        workerId: job.workerId,
+        idempotencyKey: current.idempotencyKey,
+        requestJson: JSON.stringify(current.request),
+        startedAt: job.status === 'processing' ? new Date() : undefined,
+        completedAt: job.status === 'completed' ? new Date() : undefined,
+        outputDir: process.env.MEDIA_ROOT || undefined,
+      },
+      update: {
+        status: job.status,
+        progress: job.progress,
+        message: job.message,
+        videoUrl: job.videoUrl,
+        thumbnailUrl: job.thumbnailUrl,
+        duration: job.duration,
+        fileSize: job.fileSize,
+        lastError: job.error,
+        errorCode: job.errorCode,
+        attempts: job.attempts,
+        heartbeatAt: job.heartbeatAt ? new Date(job.heartbeatAt) : undefined,
+        workerId: job.workerId,
+        completedAt: job.status === 'completed' ? new Date() : undefined,
+      },
+    });
+  } else {
+    await prisma.video.update({
+      where: { id: job.id },
+      data: {
+        status: job.status,
+        progress: job.progress,
+        message: job.message,
+        videoUrl: job.videoUrl,
+        thumbnailUrl: job.thumbnailUrl,
+        duration: job.duration,
+        fileSize: job.fileSize,
+        lastError: job.error,
+        errorCode: job.errorCode,
+        attempts: job.attempts,
+        heartbeatAt: job.heartbeatAt ? new Date(job.heartbeatAt) : undefined,
+        workerId: job.workerId,
+        completedAt: job.status === 'completed' ? new Date() : undefined,
+      },
+    }).catch((err) => {
+      console.warn(`[Jobs] No se pudo actualizar video ${job.id}:`, err?.message || err);
+    });
+  }
 };
 
-const safePersist = (job: GenerationJob): void => {
+const safePersist = (job: GenerationJob): Promise<void> => {
   const previous = persistenceChains.get(job.id) || Promise.resolve();
   const next = previous
     .catch(() => undefined)
-    .then(() => persist(job))
+    .then(() => persistJob(job))
     .catch((error) => {
       console.error(`[Jobs] No se pudo persistir ${job.id}:`, error);
     });
@@ -145,15 +177,34 @@ const safePersist = (job: GenerationJob): void => {
   void next.finally(() => {
     if (persistenceChains.get(job.id) === next) persistenceChains.delete(job.id);
   });
+  return next;
 };
 
-const updateMemory = (id: string, patch: JobPatch): GenerationJob | undefined => {
+const updateMemoryAndPersist = (id: string, patch: JobPatch): GenerationJob | undefined => {
   const current = jobs.get(id);
-  if (!current) return undefined;
-  const next = { ...current, ...patch, updatedAt: now() };
-  jobs.set(id, next);
-  safePersist(next);
-  return next;
+  if (current) {
+    if (isTerminalState(current.status)) {
+      return current;
+    }
+    const next: GenerationJob = { ...current, ...patch, updatedAt: now() };
+    jobs.set(id, next);
+    safePersist(next);
+    return next;
+  }
+
+  const stub: GenerationJob = {
+    id,
+    status: patch.status || 'processing',
+    progress: patch.progress ?? 0,
+    message: patch.message || '',
+    attempts: patch.attempts ?? 1,
+    createdAt: now(),
+    updatedAt: now(),
+    ...patch,
+  };
+  jobs.set(id, stub);
+  safePersist(stub);
+  return stub;
 };
 
 export const generationJobs = {
@@ -180,7 +231,7 @@ export const generationJobs = {
     };
     metadata.set(id, details);
     jobs.set(id, job);
-    await persist(job, details);
+    await persistJob(job, details);
     return job;
   },
 
@@ -199,7 +250,15 @@ export const generationJobs = {
     if (memory) return { userId: memory.userId, request: memory.request };
     const persisted = await prisma.video.findUnique({ where: { id }, select: { userId: true, requestJson: true } });
     if (!persisted?.requestJson) return undefined;
-    return { userId: persisted.userId, request: JSON.parse(persisted.requestJson) as GenerationRequestSnapshot };
+    const parsed = JSON.parse(persisted.requestJson) as GenerationRequestSnapshot;
+    metadata.set(id, {
+      userId: persisted.userId,
+      title: parsed.title,
+      content: parsed.content,
+      request: parsed,
+      idempotencyKey: parsed.idempotencyKey,
+    });
+    return { userId: persisted.userId, request: parsed };
   },
 
   async belongsTo(id: string, userId: string): Promise<boolean> {
@@ -213,17 +272,69 @@ export const generationJobs = {
   },
 
   update(id: string, patch: JobPatch): GenerationJob | undefined {
-    return updateMemory(id, patch);
+    return updateMemoryAndPersist(id, patch);
   },
 
-  fail(id: string, error: string, errorCode = 'GENERATION_FAILED'): GenerationJob | undefined {
-    return updateMemory(id, {
-      status: 'failed',
-      progress: 100,
-      message: 'La generación falló',
-      error,
-      errorCode,
+  async complete(
+    id: string,
+    details: {
+      message?: string;
+      videoUrl?: string;
+      thumbnailUrl?: string;
+      duration?: number;
+      fileSize?: number;
+    }
+  ): Promise<GenerationJob> {
+    await (persistenceChains.get(id) || Promise.resolve()).catch(() => undefined);
+    const timestamp = new Date();
+    const updated = await prisma.video.update({
+      where: { id },
+      data: {
+        status: 'completed',
+        progress: 100,
+        message: details.message || 'Video completado',
+        videoUrl: details.videoUrl,
+        thumbnailUrl: details.thumbnailUrl,
+        duration: details.duration,
+        fileSize: details.fileSize,
+        completedAt: timestamp,
+        heartbeatAt: timestamp,
+      },
     });
+    const job = fromPersisted(updated);
+    jobs.set(id, job);
+    return job;
+  },
+
+  async fail(id: string, error: string, errorCode = 'GENERATION_FAILED'): Promise<GenerationJob> {
+    await (persistenceChains.get(id) || Promise.resolve()).catch(() => undefined);
+    const timestamp = new Date();
+    try {
+      const updated = await prisma.video.update({
+        where: { id },
+        data: {
+          status: 'failed',
+          progress: 100,
+          message: 'La generación falló',
+          lastError: error,
+          errorCode,
+          completedAt: timestamp,
+          heartbeatAt: timestamp,
+        },
+      });
+      const job = fromPersisted(updated);
+      jobs.set(id, job);
+      return job;
+    } catch {
+      const fallback = updateMemoryAndPersist(id, {
+        status: 'failed',
+        progress: 100,
+        message: 'La generación falló',
+        error,
+        errorCode,
+      })!;
+      return fallback;
+    }
   },
 
   async enqueue(id: string): Promise<void> {
@@ -231,24 +342,57 @@ export const generationJobs = {
   },
 
   async markProcessing(id: string, workerId: string): Promise<GenerationJob | undefined> {
-    const current = await this.get(id);
-    if (!current) return undefined;
-    return updateMemory(id, {
-      status: 'processing',
-      progress: Math.max(current.progress, 1),
-      message: 'Procesamiento iniciado...',
-      attempts: current.attempts + 1,
-      workerId,
-      heartbeatAt: now(),
-    });
+    const timestamp = new Date();
+    try {
+      const updated = await prisma.video.update({
+        where: { id },
+        data: {
+          status: 'processing',
+          progress: 1,
+          message: 'Procesamiento iniciado...',
+          workerId,
+          startedAt: timestamp,
+          heartbeatAt: timestamp,
+          attempts: { increment: 1 },
+        },
+      });
+      const job = fromPersisted(updated);
+      jobs.set(id, job);
+      return job;
+    } catch {
+      const current = await this.get(id);
+      if (!current) return undefined;
+      return updateMemoryAndPersist(id, {
+        status: 'processing',
+        progress: Math.max(current.progress, 1),
+        message: 'Procesamiento iniciado...',
+        attempts: current.attempts + 1,
+        workerId,
+        heartbeatAt: timestamp.toISOString(),
+      });
+    }
   },
 
   async recoverStaleJobs(maxAgeMs = Number(process.env.VIDEO_JOB_STALE_MS || 900000)): Promise<number> {
     const threshold = new Date(Date.now() - maxAgeMs);
-    const stale = await prisma.video.findMany({ where: { status: 'processing', OR: [{ heartbeatAt: null }, { heartbeatAt: { lt: threshold } }] }, select: { id: true } });
+    const stale = await prisma.video.findMany({
+      where: {
+        status: 'processing',
+        OR: [{ heartbeatAt: null }, { heartbeatAt: { lt: threshold } }],
+      },
+      select: { id: true },
+    });
     for (const video of stale) {
-      await prisma.video.update({ where: { id: video.id }, data: { status: 'pending', message: 'Reencolado después de detectar un worker detenido.', workerId: null, heartbeatAt: null } });
-      await getQueue().add({ videoId: video.id }, { jobId: `recovery-${video.id}-${randomUUID()}` });
+      await prisma.video.update({
+        where: { id: video.id },
+        data: {
+          status: 'pending',
+          message: 'Reencolado después de detectar un worker detenido.',
+          workerId: null,
+          heartbeatAt: null,
+        },
+      });
+      await getQueue().add({ videoId: video.id }, { jobId: `recovery-${video.id}` });
     }
     return stale.length;
   },

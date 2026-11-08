@@ -355,6 +355,7 @@ export const manim = {
       const relation = Math.abs(value - rounded) <= 1e-9 ? '=' : '\\approx';
       return `x${relation}${rounded}`;
     };
+    const formatNum = (value: number): string => Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
     const panelWidth = formatProfile.panelWidth.toFixed(2);
     const panelHeight = formatProfile.panelHeight.toFixed(2);
     const contentWidth = formatProfile.contentWidth.toFixed(2);
@@ -423,12 +424,12 @@ export const manim = {
           const visualStages = pedScene.visualStages || [];
 
           if (pedScene.layout === 'equation' && visualStages.length > 0) {
-            const stageLabelSize = visualStages.length >= 4 ? 15 : 17;
+            const stageLabelSize = visualStages.length >= 4 ? 18 : 20;
             const stageObjects = visualStages.map((stage, stageIndex) => {
-              const formulaFontSize = visualStages.length >= 4 ? (stageIndex === 0 ? 30 : 24) : 34;
+              const formulaFontSize = visualStages.length >= 4 ? (stageIndex === 0 ? 42 : 36) : 42;
               const label = `Text(${escapeForPythonString(stage.label)}, font_size=${stageLabelSize}, color=${stageIndex === visualStages.length - 1 ? 'YELLOW' : 'GREY_B'})`;
               const formula = `MathTex(${escapeForPythonString(stage.latex)}, font_size=${formulaFontSize}, color=${stageIndex === visualStages.length - 1 ? 'YELLOW' : 'WHITE'})`;
-              const detail = stage.detail ? `, Text(${escapeForPythonString(stage.detail)}, font_size=13, color=GREY_B)` : '';
+              const detail = stage.detail ? `, Text(${escapeForPythonString(stage.detail)}, font_size=16, color=GREY_B)` : '';
               return `VGroup(${label}, ${formula}${detail}).arrange(DOWN, buff=0.10)`;
             });
             const stageContentY = formatProfile.orientation === 'portrait' ? 0.50 : 0.42;
@@ -437,22 +438,22 @@ export const manim = {
               : `VGroup(${stageObjects.join(', ')}).arrange(DOWN, buff=0.30)`;
             const cueDurations = pedScene.visualCueDurations;
             const cueLocked = cueDurations?.length === visualStages.length
-              && cueDurations.every((seconds) => Number.isFinite(seconds) && seconds >= 1.2);
+              && cueDurations.every((seconds) => Number.isFinite(seconds) && seconds >= 0.8);
             const cueAnimation = cueLocked
-              ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=1.2)
+              ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
 ${cueDurations.map((seconds, index) => {
                 const stageRef = visualStages.length >= 4
                   ? index === 0 ? `content_${i}[0]` : `content_${i}[1][${index - 1}]`
                   : `content_${i}[${index}]`;
                 return `        # Voz neural y resaltado del mismo micro-paso ${index + 1}
-        self.play(FadeIn(${stageRef}), run_time=0.45)
-        self.play(Indicate(${stageRef}[1], color=YELLOW, scale_factor=1.04), run_time=0.40)
-        self.wait(${Math.max(0, seconds - 0.85).toFixed(3)})`;
+        self.play(FadeIn(${stageRef}), run_time=0.25)
+        self.play(Indicate(${stageRef}[1], color=YELLOW, scale_factor=1.04), run_time=0.25)
+        self.wait(${Math.max(0, seconds - 0.50).toFixed(3)})`;
               }).join('\n')}
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)`
-              : `        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)`;
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.3)`
+              : `        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=0.4)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 0.8))
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)`;
             return `
         # Storyboard pedagógico: micro-pasos de ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -472,37 +473,52 @@ ${cueAnimation}
             const [rootA, rootB] = graphSpec.roots;
             const repeatedRoot = Math.abs(rootA - rootB) < 1e-8;
             const vertexX = -graphSpec.b / (2 * graphSpec.a);
+            const vertexY = graphSpec.a * vertexX * vertexX + graphSpec.b * vertexX + graphSpec.c;
             const left = Math.min(rootA, rootB, vertexX) - 1.5;
             const right = Math.max(rootA, rootB, vertexX) + 1.5;
             const yAt = (x: number) => graphSpec.a * x * x + graphSpec.b * x + graphSpec.c;
             const ymin = Math.floor(Math.min(yAt(left), yAt(right), yAt(vertexX), 0) - 1);
             const ymax = Math.ceil(Math.max(yAt(left), yAt(right), yAt(vertexX), 0) + 1);
+            const vertexLabelStr = `V(${formatNum(vertexX)}, ${formatNum(vertexY)})`;
+            const axisLabelStr = `x = ${formatNum(vertexX)}`;
+            const concavityStr = graphSpec.a > 0 ? 'a > 0: cóncava hacia arriba' : 'a < 0: cóncava hacia abajo';
             return `
         # Storyboard pedagógico: gráfica a pantalla completa
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         axes_${i} = Axes(x_range=[${left}, ${right}, 1], y_range=[${ymin}, ${ymax}, 1], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).shift(DOWN * 0.2)
         curve_${i} = axes_${i}.plot(lambda x: ${graphSpec.a} * x**2 + (${graphSpec.b}) * x + (${graphSpec.c}), x_range=[${left}, ${right}], color=YELLOW)
-        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=60))
-        y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y", font_size=60))
+        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=50))
+        y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y", font_size=50))
+        axis_line_${i} = DashedLine(axes_${i}.c2p(${vertexX}, ${ymin}), axes_${i}.c2p(${vertexX}, ${ymax}), dash_length=0.1, color=TEAL)
+        axis_lbl_${i} = MathTex(${escapeForPythonString(axisLabelStr)}, font_size=28, color=TEAL).next_to(axes_${i}.c2p(${vertexX}, ${ymax}), UP, buff=0.1)
+        vertex_pt_${i} = Dot(axes_${i}.c2p(${vertexX}, ${vertexY}), color=RED)
+        vertex_lbl_${i} = MathTex(${escapeForPythonString(vertexLabelStr)}, font_size=30, color=RED).next_to(vertex_pt_${i}, ${graphSpec.a > 0 ? 'DOWN' : 'UP'}, buff=0.15)
         root_2_${i} = Dot(axes_${i}.c2p(${rootA}, 0), color=GREEN)
         ${repeatedRoot ? '' : `root_3_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)`}
-        root_2_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=40).next_to(root_2_${i}, DOWN)
-        ${repeatedRoot ? '' : `root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=40).next_to(root_3_${i}, UP)`}
+        root_2_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=36).next_to(root_2_${i}, DOWN, buff=0.15)
+        ${repeatedRoot ? '' : `root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=36).next_to(root_3_${i}, UP, buff=0.15)`}
+        concavity_lbl_${i} = Text(${escapeForPythonString(concavityStr)}, font_size=22, color=YELLOW).to_corner(UR, buff=0.5).shift(LEFT * 0.5)
         graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP, buff=${(formatProfile.safeMargin + 0.20).toFixed(3)})
-        graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_2_${i}, ${repeatedRoot ? '' : `root_3_${i}, `}root_2_label_${i}, ${repeatedRoot ? '' : `root_3_label_${i}, `}graph_title_${i})
-        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
-        self.play(FadeIn(root_2_${i}), ${repeatedRoot ? '' : `FadeIn(root_3_${i}), `}Write(root_2_label_${i}), ${repeatedRoot ? '' : `Write(root_3_label_${i}), `}FadeIn(graph_title_${i}), run_time=2)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 5.5))
-        self.play(FadeOut(graph_group_${i}), run_time=1)
+        graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, axis_line_${i}, axis_lbl_${i}, vertex_pt_${i}, vertex_lbl_${i}, root_2_${i}, ${repeatedRoot ? '' : `root_3_${i}, `}root_2_label_${i}, ${repeatedRoot ? '' : `root_3_label_${i}, `}concavity_lbl_${i}, graph_title_${i})
+        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
+        self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=1.2)
+        self.play(FadeIn(root_2_${i}), ${repeatedRoot ? '' : `FadeIn(root_3_${i}), `}Write(root_2_label_${i}), ${repeatedRoot ? '' : `Write(root_3_label_${i}), `}FadeIn(concavity_lbl_${i}), FadeIn(graph_title_${i}), run_time=1.2)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 4.3))
+        self.play(FadeOut(graph_group_${i}), run_time=0.4)
 `;
           }
 
           if (pedScene.layout === 'recap') {
-            const recapMath = latexLines.map((line) => `MathTex(${escapeForPythonString(line)}, font_size=40, color=YELLOW)`);
-            const recapLabels = textLines.map((line) => `Text(${escapeForPythonString(line)}, font_size=18, color=GREY_B)`);
-            const recapMathDirection = formatProfile.orientation === 'portrait' ? 'DOWN' : 'RIGHT';
-            const recapLabelsDirection = formatProfile.orientation === 'portrait' ? 'DOWN' : 'RIGHT';
-            const recapContent = `VGroup(VGroup(${recapMath.join(', ')}).arrange(${recapMathDirection}, buff=0.55), VGroup(${recapLabels.join(', ')}).arrange(${recapLabelsDirection}, buff=0.25)).arrange(DOWN, buff=0.5)`;
+            const recapMath = latexLines.map((line) => `MathTex(${escapeForPythonString(line)}, font_size=36, color=YELLOW)`);
+            const recapLabels = textLines.map((line) => `Text(${escapeForPythonString(line)}, font_size=20, color=GREY_B)`);
+            const pairCount = Math.max(recapMath.length, recapLabels.length);
+            const pairs = Array.from({ length: pairCount }, (_, k) => {
+              const m = recapMath[k] || `Text("", font_size=24)`;
+              const l = recapLabels[k] || `Text("", font_size=18)`;
+              return `VGroup(${l}, ${m}).arrange(DOWN, buff=0.12)`;
+            });
+            const recapArrangement = formatProfile.orientation === 'portrait' ? 'DOWN' : 'RIGHT';
+            const recapContent = `VGroup(${pairs.join(', ')}).arrange(${recapArrangement}, buff=0.40)`;
             return `
         # Storyboard pedagógico: recapitulación
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -511,23 +527,23 @@ ${cueAnimation}
         content_${i}.scale(min(3.0, ${contentWidth} / content_${i}.width, ${contentHeight} / content_${i}.height))
         content_${i}.move_to(DOWN * ${contentY})
         content_group_${i} = VGroup(header_${i}, content_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
+        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=0.4)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 0.8))
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)
 `;
           }
 
           if (pedScene.layout === 'card' || pedScene.layout === 'split') {
             const pairCount = Math.max(latexLines.length, textLines.length);
-            const formulaFontSize = pedScene.id === 'coefficients' ? 32 : pedScene.id === 'solution-branches' ? 30 : 40;
-            const captionFontSize = pedScene.id === 'coefficients' ? 16 : pedScene.id === 'solution-branches' ? 18 : 22;
+            const formulaFontSize = pedScene.id === 'coefficients' ? 36 : pedScene.id === 'solution-branches' ? 38 : pedScene.id === 'verification' ? 36 : 42;
+            const captionFontSize = pedScene.id === 'coefficients' ? 20 : pedScene.id === 'solution-branches' ? 22 : 22;
             const pairObjects = Array.from({ length: pairCount }, (_, pairIndex) => {
               const formula = latexLines[pairIndex] ? `MathTex(${escapeForPythonString(latexLines[pairIndex])}, font_size=${formulaFontSize}, color=YELLOW)` : `Text("", font_size=24)`;
               const caption = textLines[pairIndex] ? `Text(${escapeForPythonString(textLines[pairIndex])}, font_size=${captionFontSize}, color=GREY_B)` : `Text("", font_size=${captionFontSize})`;
               return `VGroup(${formula}, ${caption}).arrange(DOWN, buff=0.18)`;
             });
-            const arrangement = formatProfile.orientation === 'landscape' ? 'RIGHT' : 'DOWN';
-            const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=${formatProfile.orientation === 'portrait' ? '0.35' : '0.55'})`;
+            const arrangement = (pedScene.id === 'verification' || formatProfile.orientation !== 'landscape') ? 'DOWN' : 'RIGHT';
+            const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=${arrangement === 'DOWN' ? '0.35' : (formatProfile.orientation === 'portrait' ? '0.35' : '0.55')})`;
             return `
         # Storyboard pedagógico: ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -536,9 +552,9 @@ ${cueAnimation}
         content_${i}.scale(min(3.0, ${contentWidth} / content_${i}.width, ${contentHeight} / content_${i}.height))
         content_${i}.move_to(DOWN * ${contentY})
         content_group_${i} = VGroup(header_${i}, content_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
+        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=0.4)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 0.8))
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)
 `;
           }
 
@@ -553,9 +569,9 @@ ${cueAnimation}
         content_${i}.scale(${compactScale})
         content_${i}.move_to(DOWN * ${compactY})
         content_group_${i} = VGroup(header_${i}, content_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=1.2)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 2.2))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=1)
+        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=0.4)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 0.8))
+        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)
 `;
         }).join('\n')
       : '';
@@ -610,23 +626,33 @@ ${cueAnimation}
             const graphXStep = Math.max(1, Math.ceil((sampleRight - sampleLeft) / 8));
             const curveStart = (sampleLeft - 0.3).toFixed(2);
             const curveEnd = (sampleRight + 0.3).toFixed(2);
+            const vertexY = graphSpec.a * vertexX * vertexX + graphSpec.b * vertexX + graphSpec.c;
+            const vertexLabelStr = `V(${formatNum(vertexX)}, ${formatNum(vertexY)})`;
+            const axisLabelStr = `x = ${formatNum(vertexX)}`;
+            const concavityStr = graphSpec.a > 0 ? 'a > 0: cóncava hacia arriba' : 'a < 0: cóncava hacia abajo';
             return `
         # Timeline pedagógico: gráfica de verificación ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         axes_${i} = Axes(x_range=[${sampleLeft.toFixed(2)}, ${sampleRight.toFixed(2)}, ${graphXStep}], y_range=[${graphYMin}, ${graphYMax}, ${graphYStep}], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).shift(DOWN * 0.2)
         curve_${i} = axes_${i}.plot(lambda x: ${graphSpec.a} * x**2 + ${graphSpec.b} * x + ${graphSpec.c}, x_range=[${curveStart}, ${curveEnd}], color=YELLOW)
-        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=60))
-        y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y", font_size=60))
+        x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=50))
+        y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y", font_size=50))
+        axis_line_${i} = DashedLine(axes_${i}.c2p(${vertexX}, ${graphYMin}), axes_${i}.c2p(${vertexX}, ${graphYMax}), dash_length=0.1, color=TEAL)
+        axis_lbl_${i} = MathTex(${escapeForPythonString(axisLabelStr)}, font_size=28, color=TEAL).next_to(axes_${i}.c2p(${vertexX}, ${graphYMax}), UP, buff=0.1)
+        vertex_pt_${i} = Dot(axes_${i}.c2p(${vertexX}, ${vertexY}), color=RED)
+        vertex_lbl_${i} = MathTex(${escapeForPythonString(vertexLabelStr)}, font_size=30, color=RED).next_to(vertex_pt_${i}, ${graphSpec.a > 0 ? 'DOWN' : 'UP'}, buff=0.15)
         root_a_${i} = Dot(axes_${i}.c2p(${rootA}, 0), color=GREEN)
         ${repeatedRoot ? '' : `root_b_${i} = Dot(axes_${i}.c2p(${rootB}, 0), color=GREEN)`}
-        root_a_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=40).next_to(root_a_${i}, DOWN)
-        ${repeatedRoot ? '' : `root_b_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=40).next_to(root_b_${i}, UP)`}
+        root_a_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=36).next_to(root_a_${i}, DOWN, buff=0.15)
+        ${repeatedRoot ? '' : `root_b_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=36).next_to(root_b_${i}, UP, buff=0.15)`}
+        concavity_lbl_${i} = Text(${escapeForPythonString(concavityStr)}, font_size=22, color=YELLOW).to_corner(UR, buff=0.5).shift(LEFT * 0.5)
         graph_title_${i} = Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE).to_edge(UP, buff=${(formatProfile.safeMargin + 0.20).toFixed(3)})
-        graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, root_a_${i}, ${repeatedRoot ? '' : `root_b_${i}, `}root_a_label_${i}, ${repeatedRoot ? '' : `root_b_label_${i}, `}graph_title_${i})
-        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=2.5)
-        self.play(FadeIn(root_a_${i}), ${repeatedRoot ? '' : `FadeIn(root_b_${i}), `}Write(root_a_label_${i}), ${repeatedRoot ? '' : `Write(root_b_label_${i}), `}FadeIn(graph_title_${i}), run_time=2)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 5.5))
-        self.play(FadeOut(graph_group_${i}), run_time=1)
+        graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, axis_line_${i}, axis_lbl_${i}, vertex_pt_${i}, vertex_lbl_${i}, root_a_${i}, ${repeatedRoot ? '' : `root_b_${i}, `}root_a_label_${i}, ${repeatedRoot ? '' : `root_b_label_${i}, `}concavity_lbl_${i}, graph_title_${i})
+        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
+        self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=1.2)
+        self.play(FadeIn(root_a_${i}), ${repeatedRoot ? '' : `FadeIn(root_b_${i}), `}Write(root_a_label_${i}), ${repeatedRoot ? '' : `Write(root_b_label_${i}), `}FadeIn(concavity_lbl_${i}), FadeIn(graph_title_${i}), run_time=1.2)
+        self.wait(max(0.5, ${duration.toFixed(2)} - 4.3))
+        self.play(FadeOut(graph_group_${i}), run_time=0.4)
 `;
           }
           const checkpoint = pedScene.checkpoints?.[0];
@@ -883,8 +909,9 @@ ${sceneBlockAudited}
       // Ejecutar Manim y forzar la salida dentro del directorio solicitado
       const manimCommand = this.getCommand();
       const mediaDir = path.resolve(scene.outputDir);
+      const qualityFlag = formatProfile.height >= 2160 ? '-qk' : formatProfile.height >= 1080 ? '-qh' : formatProfile.height >= 720 ? '-qm' : '-ql';
       const { stdout, stderr } = await execAsync(
-        `"${manimCommand}" --media_dir "${mediaDir}" -qm -r ${formatProfile.width},${formatProfile.height} --fps 30 -o ${safeName}.mp4 "${scriptPath}" ${className}`,
+        `"${manimCommand}" --media_dir "${mediaDir}" ${qualityFlag} -r ${formatProfile.width},${formatProfile.height} --fps 30 -o ${safeName}.mp4 "${scriptPath}" ${className}`,
         { cwd: scene.outputDir, maxBuffer: 1024 * 1024 * 10, env: buildProcessEnv() }
       );
 

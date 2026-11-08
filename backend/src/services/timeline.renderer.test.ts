@@ -115,9 +115,9 @@ test('renders a single marker for a repeated quadratic root', async () => {
     outputDir: '/tmp',
     pedagogicalScenes: buildQuadraticStoryboard(problem, validateMathProblem(problem)),
   }, true);
-  assert.match(script, /root_2_8 = Dot/);
-  assert.doesNotMatch(script, /root_3_8 = Dot/);
-  assert.doesNotMatch(script, /root_3_label_8 = MathTex/);
+  assert.match(script, /root_2_9 = Dot/);
+  assert.doesNotMatch(script, /root_3_9 = Dot/);
+  assert.doesNotMatch(script, /root_3_label_9 = MathTex/);
 });
 
 test('refuses to plot coefficients with mathematically incorrect roots', async () => {

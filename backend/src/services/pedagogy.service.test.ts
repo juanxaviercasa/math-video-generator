@@ -16,6 +16,7 @@ test('builds a complete quadratic teaching storyboard', () => {
     'formula-substitution',
     'formula-simplify',
     'solution-branches',
+    'verification',
     'graph',
     'recap',
   ]);
@@ -51,9 +52,14 @@ test('builds a complete quadratic teaching storyboard', () => {
   assert.match(negativeBranches?.narrationText ?? '', /uno punto tres tres/);
   assert.doesNotMatch(negativeBranches?.narrationText ?? '', /tres tres tres tres tres tres/);
   assert.equal(branches?.visualLatex?.length, 2);
+  const verification = scenes.find((scene) => scene.id === 'verification');
+  assert.equal(verification?.layout, 'split');
+  assert.match(verification?.visualLatex?.[0] ?? '', /\(3\)\^2 - 5\(3\) \+ 6 = 9 - 15 \+ 6 = 0/);
+  assert.match(verification?.visualLatex?.[1] ?? '', /\(2\)\^2 - 5\(2\) \+ 6 = 4 - 10 \+ 6 = 0/);
+  assert.match(verification?.narrationText ?? '', /Comprobamos ambas soluciones/);
   const graph = scenes.find((scene) => scene.id === 'graph');
   assert.equal(graph?.layout, 'graph');
-  assert.deepEqual(graph?.graphSpec, { a: 1, b: -5, c: 6, roots: [2, 3] });
+  assert.deepEqual(graph?.graphSpec, { a: 1, b: -5, c: 6, roots: [2, 3], vertex: [2.5, -0.25], axisOfSymmetry: 2.5, concavity: 'up' });
 });
 
 test('negative discriminant never yields fictitious roots or a real-intercept graph', () => {

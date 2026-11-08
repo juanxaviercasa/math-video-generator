@@ -100,3 +100,41 @@ Referencias: [Manim MathTex](https://docs.manim.community/en/stable/reference/ma
 Las marcas de tiempo de Edge TTS se aceptan solo cuando su secuencia de palabras corresponde al guion de voz del micro-paso. El control elimina diferencias de mayúsculas, tildes y puntuación, sin permitir palabras omitidas ni reordenadas. Si el TTS entrega un SRT cronológicamente válido pero perteneciente a otra frase, se produce `VOICE_BOUNDARY_TEXT_MISMATCH` y se cancela ese render; no se publica una sincronización falsa. Cuando el proveedor local no entrega marcas de palabras, se conserva el fallback por duración ya existente y se registra `duration-fallback` en la auditoría.
 
 Este control no implica alineación fonética certificado palabra por palabra: la calidad de los offsets todavía depende de Edge TTS y requiere revisar muestras del MP4, pero evita aceptar subtítulos ajenos al contenido del problema.
+
+## Pizarra pedagógica 2.0: movimiento y respuesta persistente
+
+Este bloque amplía la composición **Manim Community** sin cambiar la matemática,
+los tiempos de los clips de Edge TTS, las proporciones ni el contrato de QA:
+
+- **Revelado progresivo**: las escenas de ecuaciones sin marcas de voz
+  desglosadas reparten su duración entre cada transformación. La fórmula actual
+  recibe un énfasis breve y no destructivo; las escenas con marcas de palabra
+  de Edge TTS conservan su reloj original y sus offsets verificados.
+- **Tarjetas pedagógicas**: coeficientes y comprobaciones aparecen uno por uno;
+  si el lienzo permite apilarlos permanecen visibles, y si no, se muestran
+  secuencialmente. La fórmula tiene prioridad sobre la etiqueta decorativa.
+- **Enunciado introductorio**: dos acentos visuales breves evitan una lámina
+  completamente estática sin desplazar el problema anclado.
+- **Gráfica**: el vértice y cada intersección real reciben un énfasis corto.
+  Cuando la raíz es doble se marca un solo punto; si no hay raíces reales,
+  el storyboard no genera una gráfica engañosa.
+- **Conclusión**: se revisan los pasos previos y finalmente se muestran juntas
+  la respuesta verificada y su comprobación dentro del área segura. Se
+  conservan hasta el último fotograma, debajo del enunciado original.
+  Las raíces redondeadas mantienen la relación aproximada.
+- **Legibilidad**: `_fit_final_recap` usa el mismo piso de píxeles que
+  `manim-geometry-qa.service.ts`. Si no caben ambas fórmulas, falla con
+  `LAYOUT_FINAL_RECAP_UNREADABLE` en lugar de publicarlas minúsculas.
+
+### Certificación pendiente y pruebas obligatorias
+
+La suite de TypeScript comprueba guiones Python válidos, persistencia de
+enunciado, marcadores pedagógicos y los tres formatos (16:9, 1:1, 9:16)
+para cuadráticas con dos raíces, raíz doble, raíces irracionales y sin
+raíces reales.
+
+**Es imprescindible** ejecutar `npm run smoke:precision --workspace backend`
+con Manim y LaTeX reales antes de desplegar. Examinar el JSON de geometría,
+cada etapa, los fotogramas del cierre y la duración de la voz neural:
+esta prueba con audio sintético no certifica la sincronización hablada.
+Comparar además el 1080p resultante con la muestra pedagógica anterior.

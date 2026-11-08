@@ -64,3 +64,27 @@ con eventos semánticos, en vez de declarar una sincronización ficticia.
 Los proveedores locales pueden conservar el modo de duración como degradación
 explícita y auditada. Nunca declarar «palabra por palabra» si el reporte marca
 `duration-fallback`.
+
+
+## Política de permanencia en la recapitulación (hotfix)
+
+La pizarra de `recap` conserva la última fórmula o tarjeta visible
+durante **todo el tramo hablado**, incluidas las pausas. El foco amarillo
+(`_focus_math`) no termina la vida visual del objeto:
+
+- Al comienzo del siguiente `WordBoundary` semántico, un único
+  `self.play(FadeOut(anterior), FadeIn(siguiente))` sustituye el contenido
+  sin dejar la pizarra vacía.
+- Al último hito se muestra la respuesta y la comprobación individual;
+  ambas permanecen hasta el último fotograma.
+- En escenas sin marcas de voz también se mantiene la fórmula anterior
+  hasta que comienza la transición al siguiente paso, sin desaparecer tras
+  el foco.
+- Se mantienen los offsets de Edge TTS y la auditoría de desviación de
+  0.17 s. No se añaden duraciones extra ni se desplaza el audio para
+  esconder el problema.
+
+Validar con una muestra real de `x^2-5x+6=0` y observar la recapitulación
+segundo a segundo. La CI de TypeScript verifica el orden y los comandos
+generados; Precision Render Smoke valida la salida de Manim, pero la
+certificación pedagógica definitiva exige revisar el MP4 con narración.

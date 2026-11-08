@@ -72,3 +72,43 @@ test('non-cue scenes use spoken-word offsets for introduction, cards, graph and 
   assert.match(code, /self\._fit_final_recap/);
   assert.doesNotMatch(code, /FadeOut\(final_answer_/);
 });
+
+test('recap with real spoken beats holds each formula until the next one replaces it', () => {
+  const exercise = 'x^2 - 5x + 6 = 0';
+  const storyboard = buildQuadraticStoryboard(exercise, validateMathProblem(exercise));
+  const recap = storyboard.find((scene) => scene.id === 'recap');
+  assert.ok(recap);
+  assert.equal(recap.visualBeatPhrases?.length, 4);
+  recap.visualBeatOffsets = [2, 4.5, 7, 10.5];
+  recap.duration = 14;
+  for (const ratio of ['16:9', '1:1', '9:16'] as const) {
+    const py = manim.generatePythonScript({
+      title: 'Persistent spoken recap', content: exercise, steps: [],
+      outputDir: '/tmp', pedagogicalScenes: storyboard,
+      formatProfile: getVideoFormatProfile(ratio, 'low'),
+    }, true);
+    const recapScript = py.slice(py.indexOf('# Storyboard pedagógico: recapitulación progresiva'));
+    assert.match(recapScript, /active_recap_10 = None/);
+    assert.match(recapScript, /self\._wait_spoken_beat\(beat_index, \[2,4\.5,7,10\.5\]\[beat_index\]\)/);
+    assert.match(recapScript, /self\.play\(FadeOut\(active_recap_10\), FadeIn\(pair\), run_time=0\.18\)/);
+    assert.match(recapScript, /self\.play\(FadeOut\(active_recap_10\), FadeIn\(final_answer_10\), run_time=0\.35\)/);
+    assert.doesNotMatch(recapScript, /self\.play\(FadeOut\(pair\), run_time=/);
+    assert.match(recapScript, /self\._finish_spoken_scene\(14\.00\)/);
+    assert.doesNotMatch(recapScript, /FadeOut\(final_answer_10\)/);
+  }
+});
+
+test('recap without word-boundary metadata also holds content instead of flashing it', () => {
+  const storyboard = buildQuadraticStoryboard(input, validateMathProblem(input));
+  const py = manim.generatePythonScript({
+    title: 'Duration fallback recap', content: input, steps: [], outputDir: '/tmp',
+    pedagogicalScenes: storyboard,
+    formatProfile: getVideoFormatProfile('9:16', 'low'),
+  }, true);
+  const recap = py.slice(py.indexOf('# Storyboard pedagógico: recapitulación progresiva'));
+  assert.match(recap, /active_recap_10 = None/);
+  assert.match(recap, /self\.play\(FadeOut\(active_recap_10\), FadeIn\(pair\), run_time=0\.22\)/);
+  assert.match(recap, /self\.wait\(max\(0\.05, recap_slot_10 - 0\.47\)\)/);
+  assert.match(recap, /self\.play\(FadeOut\(active_recap_10\), FadeIn\(final_answer_10\), run_time=0\.45\)/);
+  assert.doesNotMatch(recap, /self\.play\(FadeOut\(pair\), run_time=/);
+});

@@ -430,23 +430,25 @@ export const manim = {
               ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
 ${cueDurations.map((seconds, index) => {
                 const stageRef = `content_${i}[${index}]`;
-                const oldRef = index > 0 ? `content_${i}[${index - 1}]` : null;
                 return `        # Voz neural y resaltado del mismo micro-paso ${index + 1}
-        self.play(${oldRef ? `FadeOut(${oldRef}), ` : ''}FadeIn(${stageRef}), run_time=0.25) if focus_${i} else self.play(FadeIn(${stageRef}), run_time=0.25)
+        self._animate_equation_step(content_${i}, ${index}, focus_${i}, run_time=0.25)
         self.play(Indicate(${stageRef}[1], color=YELLOW, scale_factor=1.04), run_time=0.25)
         self.wait(${Math.max(0, seconds - 0.50).toFixed(3)})`;
               }).join('\n')}
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.3)`
+        if focus_${i}:
+            self.play(FadeOut(content_${i}[-1]), FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.3)
+        else:
+            self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.3)`
               : `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
         if focus_${i}:
-            for step in content_${i}:
-                self.play(FadeIn(step), run_time=0.25)
-                self.wait(max(0.05, (${duration.toFixed(2)} - 0.8) / len(content_${i}) - 0.50))
-                self.play(FadeOut(step), run_time=0.25)
+            for step_index in range(len(content_${i})):
+                self._animate_equation_step(content_${i}, step_index, True, run_time=0.25)
+                self.wait(max(0.05, (${duration.toFixed(2)} - 0.8) / len(content_${i}) - 0.25))
+            self.play(FadeOut(content_${i}[-1]), FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.4)
         else:
             self.play(FadeIn(content_${i}), run_time=0.25)
             self.wait(max(0.05, ${duration.toFixed(2)} - 1.05))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)`;
+            self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)`;
             return `
         # Storyboard pedagógico: micro-pasos de ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)

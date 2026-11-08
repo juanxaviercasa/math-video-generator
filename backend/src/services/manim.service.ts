@@ -525,18 +525,26 @@ ${cueAnimation}
               const l = recapLabels[k] || `Text("", font_size=18)`;
               return `VGroup(${l}, ${m}).arrange(DOWN, buff=0.12)`;
             });
-            const recapArrangement = 'DOWN';
-            const recapContent = `VGroup(${pairs.join(', ')}).arrange(${recapArrangement}, buff=0.40)`;
+            // Dense recap lists render tiny glyphs. Reveal one verified formula
+            // at a time, keeping the original problem anchored at the top.
+            const recapContent = `VGroup(${pairs.join(', ')})`;
             return `
-        # Storyboard pedagógico: recapitulación
+        # Storyboard pedagógico: recapitulación legible por etapas
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=34, color=BLUE))
         content_${i} = ${recapContent}
-        self._fit_work(content_${i}, max_upscale=1.65)
-        content_group_${i} = VGroup(header_${i}, content_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=0.4)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 0.8))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)
+        for pair in content_${i}:
+            self._fit_work(pair, max_upscale=1.65, min_scale=0.70)
+            # Measure real compiled LaTeX pixels before displaying the formula.
+            if pair[1].height * (${formatProfile.height} / ${formatProfile.frameHeight.toFixed(5)}) < max(27, ${formatProfile.height} * 0.031):
+                raise ValueError("LAYOUT_RECAP_UNREADABLE: dividir la recapitulación")
+        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+        recap_hold_${i} = max(0.05, (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1) - 0.4)
+        for pair in content_${i}:
+            self.play(FadeIn(pair), run_time=0.2)
+            self.wait(recap_hold_${i})
+            self.play(FadeOut(pair), run_time=0.2)
+        self.play(FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.4)
 `;
           }
 

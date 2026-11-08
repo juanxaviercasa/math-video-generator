@@ -86,7 +86,7 @@ test('stable renderer never removes original problem during calculation or recap
   assert.match(script, /content_3 = VGroup\(VGroup\(/);
   assert.match(script, /self\._fit_recap_pair\(pair\)/);
   assert.match(script, /LAYOUT_RECAP_UNREADABLE/);
-  assert.match(script, /for pair in content_10:/);
+  assert.match(script, /for pair in content_10\[:-2\]:/);
   assert.doesNotMatch(script, /self\._fit_work\(content_10,/);
   assert.doesNotMatch(script, /\.arrange\(RIGHT, buff=0\.28/);
 });
@@ -157,4 +157,53 @@ print(json.dumps(out))
   assert.ok(parsed.coeffs.some((c) => c.length === 3 && c[0] === 'a = 1' && c[2] === 'c = 6'));
   assert.ok(parsed.recap_num.some((c) => c[0].startsWith('\\text{') && c[1] === 'P(x) \\approx 0'));
   assert.ok(parsed.irrational_branch.some((c) => c[0] === 'x_1 = \\frac{2 + \\sqrt{8}}{2}' && c[1] === '\\approx 2.414'));
+});
+
+test('pedagogical render reveals mathematical steps, graph landmarks and ends with a persistent answer', () => {
+  const supported = [
+    'x^2 - 5x + 6 = 0',
+    'x^2 - 2x - 1 = 0',
+    'x^2 - 2x + 1 = 0',
+    'x^2 + 2x + 5 = 0',
+  ];
+  for (const problem of supported) {
+    const storyboard = buildQuadraticStoryboard(problem, validateMathProblem(problem));
+    for (const aspectRatio of ['16:9', '1:1', '9:16'] as const) {
+      const python = manim.generatePythonScript({
+        title: 'Active math blackboard',
+        content: problem,
+        steps: [],
+        outputDir: '/tmp',
+        pedagogicalScenes: storyboard,
+        formatProfile: getVideoFormatProfile(aspectRatio, 'low'),
+      }, true);
+      assert.match(python, /self\._focus_math\(content_\d+\[step_index\]\[1\]/);
+      assert.match(python, /card_slot_\d+ = /);
+      assert.match(python, /self\._make_final_recap_formula\(/);
+      assert.match(python, /self\._fit_final_recap\(final_answer_\d+\)/);
+      assert.match(python, /self\.play\(FadeIn\(final_answer_\d+\), run_time=0\.45\)/);
+      assert.doesNotMatch(python, /FadeOut\(final_answer_\d+\)/);
+      assert.match(python, /self\._create_problem_anchor\(/);
+      if (problem !== 'x^2 + 2x + 5 = 0') {
+        assert.match(python, /Indicate\(vertex_pt_\d+/);
+        assert.match(python, /Indicate\(root_2_\d+/);
+      } else {
+        assert.doesNotMatch(python, /Indicate\(root_2_\d+/);
+        assert.match(python, /No hay raices reales/);
+      }
+      runPython('import ast, sys; ast.parse(sys.stdin.read())', python);
+    }
+  }
+});
+
+test('adaptive helpers preserve certified minimum pixels on the final blackboard', () => {
+  for (const aspectRatio of ['16:9', '1:1', '9:16'] as const) {
+    const profile = getVideoFormatProfile(aspectRatio, 'low');
+    const helper = buildAdaptiveManimHelpers(profile);
+    assert.match(helper, /def _make_final_recap_formula/);
+    assert.match(helper, /def _fit_final_recap/);
+    assert.match(helper, /def _focus_math/);
+    assert.match(helper, /formula_min_px = 27\.000/);
+    assert.match(helper, /LAYOUT_FINAL_RECAP_UNREADABLE/);
+  }
 });

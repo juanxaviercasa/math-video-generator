@@ -431,16 +431,18 @@ export const manim = {
             const cueLocked = cueDurations?.length === visualStages.length
               && cueDurations.every((seconds) => Number.isFinite(seconds) && seconds >= 0.8);
             const wordLocked = !cueLocked && wordBeats.length === visualStages.length;
-            const wordAnimation = wordLocked ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.32)
-        for step_index in range(len(content_${i])):
-            self._wait_spoken_beat(step_index, ${JSON.stringify(wordBeats)}[step_index])
-            self._animate_equation_step(content_${i}, step_index, focus_${i}, run_time=0.22)
-            self._focus_math(content_${i}[step_index][1], run_time=0.24)
-        self._finish_spoken_scene(${duration.toFixed(2)}, 0.35)
-        if focus_${i}:
-            self.play(FadeOut(content_${i}[-1]), FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.35)
-        else:
-            self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.35)` : null;
+            const wordAnimation = wordLocked ? [
+              '        self.play(FadeIn(panel_' + i + '), FadeIn(header_' + i + '), run_time=0.32)',
+              '        for step_index in range(len(content_' + i + ')):',
+              '            self._wait_spoken_beat(step_index, ' + JSON.stringify(wordBeats) + '[step_index])',
+              '            self._animate_equation_step(content_' + i + ', step_index, focus_' + i + ', run_time=0.22)',
+              '            self._focus_math(content_' + i + '[step_index][1], run_time=0.24)',
+              '        self._finish_spoken_scene(' + duration.toFixed(2) + ', 0.35)',
+              '        if focus_' + i + ':',
+              '            self.play(FadeOut(content_' + i + '[-1]), FadeOut(header_' + i + '), FadeOut(panel_' + i + '), run_time=0.35)',
+              '        else:',
+              '            self.play(FadeOut(content_group_' + i + '), FadeOut(panel_' + i + '), run_time=0.35)',
+            ].join('\n') : null;
             const cueAnimation = cueLocked
               ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
 ${cueDurations.map((seconds, index) => {

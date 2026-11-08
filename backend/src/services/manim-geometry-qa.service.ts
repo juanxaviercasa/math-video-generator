@@ -61,6 +61,28 @@ const finiteBox = (box: ObservedBox): boolean => (
   [box.x, box.y, box.width, box.height].every(Number.isFinite) && box.width > 0 && box.height > 0
 );
 
+export const GEOMETRY_READABILITY_RULES = {
+  'problem-anchor': { minPixels: 25, heightRatio: 0.027 },
+  'math-primary': { minPixels: 27, heightRatio: 0.031 },
+  text: { minPixels: 9, heightRatio: 0.010 },
+  mathOther: { minPixels: 12, heightRatio: 0.014 },
+} as const;
+
+export function getMinimumReadablePixels(
+  role: string | null | undefined,
+  kind: string,
+  pixelHeight: number,
+): number {
+  const rule = role === 'problem-anchor'
+    ? GEOMETRY_READABILITY_RULES['problem-anchor']
+    : role === 'math-primary'
+      ? GEOMETRY_READABILITY_RULES['math-primary']
+      : kind === 'Text'
+        ? GEOMETRY_READABILITY_RULES.text
+        : GEOMETRY_READABILITY_RULES.mathOther;
+  return Math.max(rule.minPixels, pixelHeight * rule.heightRatio);
+}
+
 const round = (value: number): number => Math.round(value * 100) / 100;
 
 export function validateObservedGeometry(report: ManimGeometryReport, requirements: GeometryRequirements): GeometryAssessment {
@@ -141,13 +163,7 @@ export function validateObservedGeometry(report: ManimGeometryReport, requiremen
         objects++;
         // Small but technically contained formulas are not production-readable.
         // The threshold scales with the encoded canvas, not abstract Manim units.
-        const minimumHeight = object.role === 'problem-anchor'
-          ? Math.max(25, c.pixelHeight * 0.027)
-          : object.role === 'math-primary'
-            ? Math.max(27, c.pixelHeight * 0.031)
-            : object.kind === 'Text'
-              ? Math.max(9, c.pixelHeight * 0.010)
-              : Math.max(12, c.pixelHeight * 0.014);
+        const minimumHeight = getMinimumReadablePixels(object.role, object.kind, c.pixelHeight);
         if (px.height + 0.2 < minimumHeight) {
           addOnce('GEOMETRY_UNREADABLE: ' + stage.id + ' contiene ' + object.kind
             + ' de ' + round(px.height) + ' px (mínimo ' + round(minimumHeight) + ' px).');

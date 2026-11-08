@@ -152,7 +152,7 @@ export const buildQuadraticStoryboard = (
       // Evaluate the displayed rounded number, not the hidden full-precision root.
       // This avoids claiming that a three-decimal approximation satisfies P(x)=0 exactly.
       const shown = Number(rootStr);
-      const shownResidual = a * shown * shown + b * shown + c;
+      const shownResidual = Number((a * shown * shown + b * shown + c).toPrecision(6));
       return `P(${rootStr}) \\approx ${formatValue(shownResidual)}`;
     }
     const aTerm = a === 1 ? `(${rootStr})^2` : a === -1 ? `-(${rootStr})^2` : `${formatValue(a)}(${rootStr})^2`;
@@ -306,7 +306,7 @@ export const buildQuadraticStoryboard = (
     make(
       'formula-simplify',
       'calculation',
-      `${lead}Ya casi terminamos. Simplificamos la expresión antes de separar las dos soluciones: la raíz de ${numberToSpanish(delta)} es ${numberToSpanish(sqrtDelta)} y el denominador vale ${numberToSpanish(denominator)}.`,
+      `${lead}Ya casi terminamos. Simplificamos la expresión antes de separar las dos soluciones: ${sqrtExpression.startsWith('\\sqrt') ? `conservamos la raíz exacta de ${numberToSpanish(delta)}` : `la raíz de ${numberToSpanish(delta)} es ${numberToSpanish(sqrtDelta)}`} y el denominador vale ${numberToSpanish(denominator)}.`,
       [formulaSimplified],
       'equation',
       'Simplificación',

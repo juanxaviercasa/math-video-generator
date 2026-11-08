@@ -402,7 +402,7 @@ export const manim = {
           const latexLines = pedScene.visualLatex || [];
           const textLines = scene.formulaFirst ? [] : (pedScene.visualTextLines || []);
           const mathObjects = latexLines.map((line, lineIndex) =>
-            `MathTex(${escapeForPythonString(line)}, font_size=${lineIndex === 0 ? 46 : 38}, color=${lineIndex === latexLines.length - 1 ? 'YELLOW' : 'WHITE'})`
+            `self._math(${escapeForPythonString(line)}, font_size=${lineIndex === 0 ? 46 : 38}, color=${lineIndex === latexLines.length - 1 ? 'YELLOW' : 'WHITE'}, role="math-other")`
           );
           const textObjects = textLines.map((line) =>
             `Text(${escapeForPythonString(line)}, font_size=26, color=GREY_B)`
@@ -507,6 +507,7 @@ ${cueAnimation}
         ${repeatedRoot ? '' : `root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=44).next_to(root_3_${i}, ${rootPosB}, buff=0.18)`}
         concavity_lbl_${i} = Text(${escapeForPythonString(concavityStr)}, font_size=22, color=YELLOW).move_to(UP * self._work_bounds()["bottom"])
         graph_title_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE))
+        self._sanitize_graph_labels(graph_title_${i}, concavity_lbl_${i}, x_label_${i}, y_label_${i}, axis_lbl_${i}, vertex_lbl_${i}, root_2_label_${i}${repeatedRoot ? '' : `, root_3_label_${i}`})
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, axis_line_${i}, axis_lbl_${i}, vertex_pt_${i}, vertex_lbl_${i}, root_2_${i}, ${repeatedRoot ? '' : `root_3_${i}, `}root_2_label_${i}, ${repeatedRoot ? '' : `root_3_label_${i}, `}concavity_lbl_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
         self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=1.2)
@@ -534,10 +535,7 @@ ${cueAnimation}
         header_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=34, color=BLUE))
         content_${i} = ${recapContent}
         for pair in content_${i}:
-            self._fit_work(pair, max_upscale=1.65, min_scale=0.70)
-            # Measure real compiled LaTeX pixels before displaying the formula.
-            if pair[1].height * (${formatProfile.height} / ${formatProfile.frameHeight.toFixed(5)}) < max(27, ${formatProfile.height} * 0.031):
-                raise ValueError("LAYOUT_RECAP_UNREADABLE: dividir la recapitulación")
+            self._fit_recap_pair(pair)
         self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
         recap_hold_${i} = max(0.05, (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1) - 0.4)
         for pair in content_${i}:
@@ -562,7 +560,7 @@ ${cueAnimation}
                 : textLines[pairIndex]
                   ? `Text(${escapeForPythonString(textLines[pairIndex])}, font_size=${captionFontSize}, color=GREY_B)`
                   : `Text("", font_size=${captionFontSize})`;
-              return `VGroup(${formula}, ${caption}).arrange(DOWN, buff=0.18)`;
+              return (textLines[pairIndex] || !latexLines[pairIndex]) ? `VGroup(${formula}, ${caption}).arrange(DOWN, buff=0.18)` : `VGroup(${formula})`;
             });
             const arrangement = 'DOWN';
             const compactGroup = `VGroup(${pairObjects.join(', ')}).arrange(${arrangement}, buff=${arrangement === 'DOWN' ? '0.35' : (formatProfile.orientation === 'portrait' ? '0.35' : '0.55')})`;
@@ -571,11 +569,20 @@ ${cueAnimation}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=34, color=BLUE))
         content_${i} = ${compactGroup}
-        self._fit_work(content_${i}, max_upscale=1.65)
+        focus_${i} = self._arrange_card_pairs(content_${i})
         content_group_${i} = VGroup(header_${i}, content_${i})
-        self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=0.4)
-        self.wait(max(0.5, ${duration.toFixed(2)} - 0.8))
-        self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)
+        if focus_${i}:
+            self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
+            card_hold_${i} = max(0.05, (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1) - 0.4)
+            for pair in content_${i}:
+                self.play(FadeIn(pair), run_time=0.2)
+                self.wait(card_hold_${i})
+                self.play(FadeOut(pair), run_time=0.2)
+            self.play(FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.4)
+        else:
+            self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=0.4)
+            self.wait(max(0.5, ${duration.toFixed(2)} - 0.8))
+            self.play(FadeOut(content_group_${i}), FadeOut(panel_${i}), run_time=0.4)
 `;
           }
 
@@ -584,9 +591,7 @@ ${cueAnimation}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=34, color=BLUE))
         content_${i} = ${contentGroup}
-        # The VGroup is already fitted to the available width; never re-grow
-        # it to fill the height and overflow a narrow portrait camera.
-        self._fit_work(content_${i}, max_upscale=1.65)
+        self._fit_fallback_group(content_${i})
         content_group_${i} = VGroup(header_${i}, content_${i})
         self.play(FadeIn(panel_${i}), FadeIn(content_group_${i}), run_time=0.4)
         self.wait(max(0.5, ${duration.toFixed(2)} - 0.8))
@@ -674,6 +679,7 @@ ${cueAnimation}
         ${repeatedRoot ? '' : `root_b_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=44).next_to(root_b_${i}, ${rootPosB}, buff=0.18)`}
         concavity_lbl_${i} = Text(${escapeForPythonString(concavityStr)}, font_size=22, color=YELLOW).to_edge(DOWN, buff=${(formatProfile.safeMargin + 0.12).toFixed(3)})
         graph_title_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE))
+        self._sanitize_graph_labels(graph_title_${i}, concavity_lbl_${i}, x_label_${i}, y_label_${i}, axis_lbl_${i}, vertex_lbl_${i}, root_a_label_${i}${repeatedRoot ? '' : `, root_b_label_${i}`})
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, axis_line_${i}, axis_lbl_${i}, vertex_pt_${i}, vertex_lbl_${i}, root_a_${i}, ${repeatedRoot ? '' : `root_b_${i}, `}root_a_label_${i}, ${repeatedRoot ? '' : `root_b_label_${i}, `}concavity_lbl_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
         self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=1.2)

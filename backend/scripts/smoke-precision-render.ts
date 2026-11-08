@@ -193,6 +193,7 @@ async function smokeAudioAlignment(): Promise<void> {
   // Mathematical edge cases: no fictitious real roots, and exactly one double root.
   await smoke('16:9', true, 'x^2 + 2x + 5 = 0', 'no-real-roots');
   await smoke('16:9', true, 'x^2 - 2x + 1 = 0', 'double-root');
+  await smoke('16:9', true, 'x^2 - 2x - 1 = 0', 'irrational-roots');
   await smoke('16:9', false, problem, 'voice-locked');
   await smokePdfExercise();
   await smokeAudioAlignment();

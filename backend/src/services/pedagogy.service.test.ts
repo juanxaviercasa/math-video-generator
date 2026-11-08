@@ -82,6 +82,8 @@ test('irrational roots retain exact radicals and use approximate equality for de
   const branches = scenes.find((scene) => scene.id === 'solution-branches');
 
   assert.match(simplify?.visualLatex?.[0] ?? '', /\\sqrt\{8\}/);
+  assert.match(simplify?.narrationText ?? '', /raíz exacta de ocho/i);
+  assert.doesNotMatch(simplify?.narrationText ?? '', /dos punto ocho dos/i);
   assert.match(branches?.visualLatex?.[0] ?? '', /\\approx/);
   assert.match(branches?.narrationText ?? '', /aproximadamente/);
 });

@@ -316,6 +316,7 @@ export const videoProcessing = {
           width: formatProfile.width,
           height: formatProfile.height,
           sceneIds: pedagogicalScenes.map((scene) => scene.id),
+          requirePersistentProblem: pedagogicalScenes.some((pedagogical) => pedagogical.id === 'hook' && Boolean(pedagogical.visualLatex?.[0])),
           expectedDurations: Object.fromEntries(pedagogicalScenes.map((scene) => [
             scene.id, Math.max(4, scene.duration ?? scene.estimatedDuration),
           ])),

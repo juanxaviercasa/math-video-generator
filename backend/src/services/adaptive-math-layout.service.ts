@@ -530,6 +530,14 @@ export function buildAdaptiveManimHelpers(profile: VideoFormatProfile): string {
             target = target[2]
         self.play(Indicate(target, color=color, scale_factor=1.035), run_time=run_time)
 
+    def _make_final_recap_formula(self, expression, font_size, color):
+        bounds = self._work_bounds()
+        return self._build_wrapped_math(
+            expression, font_size, color, "math-primary",
+            bounds["width"] * 0.96, bounds["height"] * 0.50,
+            @@MINFORMULAPX@@, @@PIXELHEIGHT@@ / @@FRAMEHEIGHT@@
+        )
+
     def _fit_final_recap(self, summary):
         # The original problem already owns the top band; keep both answers
         # and the verification permanently visible beneath it.

@@ -16,6 +16,7 @@ import { prepareExerciseImage, verifyExerciseSource } from '../src/services/exer
 
 const problem = 'x^2 - 5x + 6 = 0';
 const formats: VideoAspectRatio[] = ['16:9', '1:1', '9:16'];
+const syntheticSpeechSeconds = [1.57, 1.57, 1.57, 1.57];
 
 async function smoke(format: VideoAspectRatio, fullLesson = false, problemInput = problem, variant = ''): Promise<void> {
   const artifactRoot = process.env.PRECISION_ARTIFACTS_DIR || path.resolve('smoke-artifacts');
@@ -30,8 +31,9 @@ async function smoke(format: VideoAspectRatio, fullLesson = false, problemInput 
   if (variant === 'voice-locked') {
     const stage = scenes[0];
     if (!stage || stage.visualStages?.length !== 4) throw new Error('VOICE_CUE_SMOKE_INVALID');
-    stage.visualCueDurations = [2.2, 2.2, 2.2, 2.2];
-    stage.duration = 1.2 + stage.visualCueDurations.reduce((total, seconds) => total + seconds, 0) + 1;
+    const timing = buildCueTimingPlan(syntheticSpeechSeconds);
+    stage.visualCueDurations = timing.stageDurations;
+    stage.duration = timing.sceneDuration;
   }
   const geometryFile = path.join(root, 'observed-geometry.json');
   const raw = await manim.renderVideo({
@@ -75,7 +77,7 @@ async function smoke(format: VideoAspectRatio, fullLesson = false, problemInput 
     // This certifies cue timing and MP4 muxing without external TTS credentials.
     const execFileAsync = promisify(execFile);
     const stage = scenes[0];
-    const speechSeconds = [1.57, 1.57, 1.57, 1.57];
+    const speechSeconds = syntheticSpeechSeconds;
     const timing = buildCueTimingPlan(speechSeconds);
     if (JSON.stringify(stage.visualCueDurations) !== JSON.stringify(timing.stageDurations)) {
       throw new Error('VOICE_CUE_SMOKE_TIMING_MISMATCH');

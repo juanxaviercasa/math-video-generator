@@ -341,7 +341,7 @@ export const buildQuadraticStoryboard = (
     make(
       'verification',
       'step',
-      repeatedRoot
+      repeatedRoot && !approximateRoots
         ? `${lead}Comprobamos la raíz en la ecuación original. Sustituimos equis por ${numberToSpanish(Number(formatRoot(x1)))}: el resultado es exactamente cero, confirmando la solución.`
         : approximateRoots
           ? `${lead}Las raíces exactas se obtienen con la fórmula general. Los decimales que mostramos son aproximados: al sustituirlos en el polinomio se obtiene un residuo pequeño, no necesariamente cero exacto.`
@@ -352,7 +352,7 @@ export const buildQuadraticStoryboard = (
       'split',
       'Comprobación algebraica',
       9,
-      repeatedRoot
+      repeatedRoot && !approximateRoots
         ? [`Comprobación con x = ${formatRoot(x1)}: 0 = 0`]
         : approximateRoots
           ? ['Comprobación numérica: raíces aproximadas, residuo cercano a cero']
@@ -373,13 +373,13 @@ export const buildQuadraticStoryboard = (
     make(
       'recap',
       'conclusion',
-      `${warm ? 'Excelente trabajo. ' : ''}Recapitulamos el procedimiento completo: identificamos los coeficientes a, b y c; calculamos el discriminante; aplicamos la fórmula general; obtuvimos las soluciones ${numberToSpanish(Number(formatRoot(x1)))} y ${numberToSpanish(Number(formatRoot(x2)))}; y comprobamos que ambas satisfacen la ecuación.`,
+      `${warm ? 'Excelente trabajo. ' : ''}Recapitulamos el procedimiento completo: identificamos los coeficientes a, b y c; calculamos el discriminante; aplicamos la fórmula general; obtuvimos las soluciones ${numberToSpanish(Number(formatRoot(x1)))} y ${numberToSpanish(Number(formatRoot(x2)))}; ${approximateRoots ? 'sus valores decimales son aproximados y el residuo numérico es cercano a cero' : 'y comprobamos que ambas satisfacen la ecuación exactamente'}.`,
       [
         validation.normalizedInput,
         `a = ${formatValue(a)},\\; b = ${formatValue(b)},\\; c = ${formatValue(c)}`,
         `\\Delta = ${formatValue(delta)}`,
         `x_1 ${rootRelation(x1)} ${formatRoot(x1)},\\; x_2 ${rootRelation(x2)} ${formatRoot(x2)}`,
-        `\\text{Comprobación: } 0 = 0`,
+        approximateRoots ? `\\text{Comprobación numérica: } P(x) \\approx 0` : `\\text{Comprobación: } 0 = 0`,
       ],
       'recap',
       'Solución comprobada',

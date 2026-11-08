@@ -487,7 +487,7 @@ ${cueAnimation}
             return `
         # Storyboard pedagógico: gráfica a pantalla completa
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
-        axes_${i} = Axes(x_range=[${left}, ${right}, 1], y_range=[${ymin}, ${ymax}, 1], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).shift(DOWN * 0.2)
+        axes_${i} = Axes(x_range=[${left}, ${right}, 1], y_range=[${ymin}, ${ymax}, 1], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).move_to(UP * self._work_bounds()["center_y"])
         curve_${i} = axes_${i}.plot(lambda x: ${graphSpec.a} * x**2 + (${graphSpec.b}) * x + (${graphSpec.c}), x_range=[${left}, ${right}], color=YELLOW)
         x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=50))
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y", font_size=50))
@@ -540,7 +540,14 @@ ${cueAnimation}
             const captionFontSize = 25;
             const pairObjects = Array.from({ length: pairCount }, (_, pairIndex) => {
               const formula = latexLines[pairIndex] ? `self._math(${escapeForPythonString(latexLines[pairIndex])}, font_size=${formulaFontSize}, color=YELLOW)` : `Text("", font_size=24)`;
-              const caption = textLines[pairIndex] ? `Text(${escapeForPythonString(textLines[pairIndex])}, font_size=${captionFontSize}, color=GREY_B)` : `Text("", font_size=${captionFontSize})`;
+              // Verification captions contain mathematics: keep indices as TeX,
+              // not literal underscores in a Pango Text label.
+              const mathCaption = textLines[pairIndex]?.match(/^Para (x_[12]) = (.+?): 0 = 0$/);
+              const caption = mathCaption
+                ? `self._math(${escapeForPythonString(`${mathCaption[1]} = ${mathCaption[2]} \\Rightarrow 0 = 0`)}, font_size=${captionFontSize + 4}, color=GREY_B, role="math-caption")`
+                : textLines[pairIndex]
+                  ? `Text(${escapeForPythonString(textLines[pairIndex])}, font_size=${captionFontSize}, color=GREY_B)`
+                  : `Text("", font_size=${captionFontSize})`;
               return `VGroup(${formula}, ${caption}).arrange(DOWN, buff=0.18)`;
             });
             const arrangement = 'DOWN';
@@ -639,7 +646,7 @@ ${cueAnimation}
             return `
         # Timeline pedagógico: gráfica de verificación ${pedScene.id}
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
-        axes_${i} = Axes(x_range=[${sampleLeft.toFixed(2)}, ${sampleRight.toFixed(2)}, ${graphXStep}], y_range=[${graphYMin}, ${graphYMax}, ${graphYStep}], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).shift(DOWN * 0.2)
+        axes_${i} = Axes(x_range=[${sampleLeft.toFixed(2)}, ${sampleRight.toFixed(2)}, ${graphXStep}], y_range=[${graphYMin}, ${graphYMax}, ${graphYStep}], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).move_to(UP * self._work_bounds()["center_y"])
         curve_${i} = axes_${i}.plot(lambda x: ${graphSpec.a} * x**2 + ${graphSpec.b} * x + ${graphSpec.c}, x_range=[${curveStart}, ${curveEnd}], color=YELLOW)
         x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=50))
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y", font_size=50))

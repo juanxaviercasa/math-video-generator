@@ -42,7 +42,10 @@ test('stable renderer never removes original problem during calculation or recap
   assert.match(script, /self\._create_problem_anchor\("x\^2 - 5x \+ 6 = 0"\)/);
   assert.match(script, /focus_3 = self\._arrange_equation_stages\(content_3\)/);
   assert.match(script, /content_3 = VGroup\(VGroup\(/);
-  assert.match(script, /self\._fit_work\(content_10, max_upscale=1\.(?:18|65)\)/);
+  assert.match(script, /self\._fit_work\(pair, max_upscale=1\.65, min_scale=0\.70\)/);
+  assert.match(script, /LAYOUT_RECAP_UNREADABLE/);
+  assert.match(script, /for pair in content_10:/);
+  assert.doesNotMatch(script, /self\._fit_work\(content_10,/);
   assert.doesNotMatch(script, /FadeOut\(.*problem_anchor/);
   assert.doesNotMatch(script, /\.arrange\(RIGHT, buff=0\.28/);
   // Python parser is independent of Manim/LaTeX availability.

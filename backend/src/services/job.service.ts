@@ -159,7 +159,7 @@ const persistJob = async (job: GenerationJob, details?: JobMetadata): Promise<vo
         workerId: job.workerId,
         completedAt: job.status === 'completed' ? new Date() : undefined,
       },
-    }).catch((err) => {
+    }).catch((err: any) => {
       console.warn(`[Jobs] No se pudo actualizar video ${job.id}:`, err?.message || err);
     });
   }
@@ -170,7 +170,7 @@ const safePersist = (job: GenerationJob): Promise<void> => {
   const next = previous
     .catch(() => undefined)
     .then(() => persistJob(job))
-    .catch((error) => {
+    .catch((error: any) => {
       console.error(`[Jobs] No se pudo persistir ${job.id}:`, error);
     });
   persistenceChains.set(job.id, next);

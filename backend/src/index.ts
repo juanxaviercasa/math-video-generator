@@ -17,6 +17,7 @@ dotenv.config()
 assertPersonalModeConfigured()
 
 const app: Express = express()
+app.set('trust proxy', 1)
 const PORT = process.env.BACKEND_PORT || 3001
 
 app.use((req, res, next) => {
@@ -36,6 +37,7 @@ const authLimiter = rateLimit({
   limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: { code: 'AUTH_RATE_LIMITED', error: 'Demasiados intentos. Espera unos minutos.' },
 })
 
@@ -44,6 +46,7 @@ const generationLimiter = rateLimit({
   limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
   message: { code: 'GENERATION_RATE_LIMITED', error: 'Has alcanzado el límite temporal de generación.' },
 })
 

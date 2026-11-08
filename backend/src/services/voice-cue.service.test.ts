@@ -43,5 +43,5 @@ test('generates sequential highlights in Manim without changing the mathematical
   }, true);
   assert.equal((script.match(/# Voz neural y resaltado del mismo micro-paso/g) || []).length, 4);
   assert.match(script, /Indicate\(content_0\[0\]\[1\], color=YELLOW/);
-  assert.match(script, /Indicate\(content_0\[1\]\[2\]\[1\], color=YELLOW/);
+  assert.match(script, /Indicate\(content_0\[3\]\[1\], color=YELLOW/);
 });

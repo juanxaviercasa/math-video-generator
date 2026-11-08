@@ -63,7 +63,10 @@ export function prepareSpanishMathNarration(source: string): string {
   let text = (source || '').replace(/\s+/g, ' ').trim();
   if (!text) return '';
   // A written negative coefficient must be spoken as 'menos siete', never '-siete'.
-  text = text.replace(/(^|[=(:,;\s])-\s*(?=\d)/g, '$1menos ');
+  text = text
+    .replace(/(^|[=(:,;\s])-\s*(?=\d|[xX])/g, '$1menos ')
+    .replace(/\s*\+\s*/g, ' más ')
+    .replace(/\s*=\s*/g, ' igual a ');
   text = text
     .replace(/\b([xX])\s*(?:\^|\*\*)\s*2\b/g, 'equis al cuadrado')
     .replace(/\b([xX])\s*(?:\^|\*\*)\s*3\b/g, 'equis al cubo')

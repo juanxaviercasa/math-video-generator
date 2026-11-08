@@ -30,7 +30,7 @@ test('speak a quadratic as equis al cuadrado menos siete equis mas doce', () => 
 test('prepare TTS narration clarifies be labial and is idempotent', () => {
   const original = 'A es 1, B es -7 y c es 12. Reemplazamos b por 12 en x^2.';
   const spoken = prepareSpanishMathNarration(original);
-  assert.match(spoken, /A es uno, be labial es -siete y ce es doce/);
+  assert.match(spoken, /A es uno, be labial es menos siete y ce es doce/);
   assert.match(spoken, /Reemplazamos be labial por doce en equis al cuadrado/);
   assert.equal(prepareSpanishMathNarration(spoken), spoken);
   assert.doesNotMatch(spoken, /\b(?:12|b|be)\b(?!\s+labial\b)/i);

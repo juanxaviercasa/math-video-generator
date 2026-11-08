@@ -504,6 +504,17 @@ ${cueAnimation}
               ? (rootB === smallerRoot ? 'UP + LEFT * 0.25' : 'UP + RIGHT * 0.25')
               : (rootB === smallerRoot ? 'DOWN + LEFT * 0.25' : 'DOWN + RIGHT * 0.25');
             const vertexPos = graphSpec.a > 0 ? 'DOWN' : 'UP';
+            const graphBeats = wordBeats.length === 2
+              ? `        # Stable graph and labels appear before the narrated landmarks.
+        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=0.42)
+        self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=0.35)
+        self.play(FadeIn(root_2_${i}), ${repeatedRoot ? '' : `FadeIn(root_3_${i}), `}Write(root_2_label_${i}), ${repeatedRoot ? '' : `Write(root_3_label_${i}), `}FadeIn(concavity_lbl_${i}), FadeIn(graph_title_${i}), run_time=0.38)
+        self._wait_spoken_beat(0, ${wordBeats[0]})
+        self.play(Indicate(vertex_pt_${i}, color=RED, scale_factor=1.55), run_time=0.34)
+        self._wait_spoken_beat(1, ${wordBeats[1]})
+        self.play(Indicate(root_2_${i}, color=GREEN, scale_factor=1.55)${repeatedRoot ? '' : `, Indicate(root_3_${i}, color=GREEN, scale_factor=1.55)`}, run_time=0.34)
+        self._finish_spoken_scene(${duration.toFixed(2)}, 0.35)
+        self.play(FadeOut(graph_group_${i}), run_time=0.35)` : null;
             return `
         # Storyboard pedagógico: gráfica a pantalla completa
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
@@ -523,7 +534,7 @@ ${cueAnimation}
         graph_title_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE))
         self._sanitize_graph_labels(graph_title_${i}, concavity_lbl_${i}, x_label_${i}, y_label_${i}, axis_lbl_${i}, vertex_lbl_${i}, root_2_label_${i}${repeatedRoot ? '' : `, root_3_label_${i}`})
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, axis_line_${i}, axis_lbl_${i}, vertex_pt_${i}, vertex_lbl_${i}, root_2_${i}, ${repeatedRoot ? '' : `root_3_${i}, `}root_2_label_${i}, ${repeatedRoot ? '' : `root_3_label_${i}, `}concavity_lbl_${i}, graph_title_${i})
-        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
+${graphBeats || `        self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
         self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=1.2)
         self.play(FadeIn(root_2_${i}), ${repeatedRoot ? '' : `FadeIn(root_3_${i}), `}Write(root_2_label_${i}), ${repeatedRoot ? '' : `Write(root_3_label_${i}), `}FadeIn(concavity_lbl_${i}), FadeIn(graph_title_${i}), run_time=1.2)
         # The narration points first to the vertex and then to each real root.
@@ -531,7 +542,7 @@ ${cueAnimation}
         self.play(Indicate(root_2_${i}, color=GREEN, scale_factor=1.55), run_time=0.55)
         ${repeatedRoot ? '' : `self.play(Indicate(root_3_${i}, color=GREEN, scale_factor=1.55), run_time=0.55)`}
         self.wait(max(0.5, ${duration.toFixed(2)} - 4.3 - ${repeatedRoot ? '1.10' : '1.65'}))
-        self.play(FadeOut(graph_group_${i}), run_time=0.4)
+        self.play(FadeOut(graph_group_${i}), run_time=0.4)`}
 `;
           }
 

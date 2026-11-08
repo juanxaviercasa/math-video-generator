@@ -522,7 +522,7 @@ ${cueAnimation}
 `;
           }
 
-          if (pedScene.layout === 'recap') {
+          if (pedScene.layout === 'recap' && latexLines.length >= 2) {
             const recapMath = latexLines.map((line) => `self._math(${escapeForPythonString(line)}, font_size=53, color=YELLOW)`);
             const recapLabels = textLines.map((line) => `Text(${escapeForPythonString(line)}, font_size=20, color=GREY_B)`);
             const pairCount = Math.max(recapMath.length, recapLabels.length);
@@ -531,23 +531,36 @@ ${cueAnimation}
               const l = recapLabels[k] || `Text("", font_size=18)`;
               return `VGroup(${l}, ${m}).arrange(DOWN, buff=0.12)`;
             });
-            // Dense recap lists render tiny glyphs. Reveal one verified formula
-            // at a time, keeping the original problem anchored at the top.
             const recapContent = `VGroup(${pairs.join(', ')})`;
+            // Final takeaway uses the last two *verified* expressions; the
+            // original exercise remains independently pinned above the canvas.
+            const answerLatex = latexLines[latexLines.length - 2];
+            const proofLatex = latexLines[latexLines.length - 1];
             return `
-        # Storyboard pedagógico: recapitulación legible por etapas
+        # Recap: show the method progressively, then leave roots and check visible.
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
         header_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=34, color=BLUE))
         content_${i} = ${recapContent}
-        for pair in content_${i}:
+        for pair in content_${i}[:-2]:
             self._fit_recap_pair(pair)
+        final_math_${i} = self._make_final_recap_formula(${escapeForPythonString(answerLatex)}, 62, GREEN)
+        final_proof_${i} = self._make_final_recap_formula(${escapeForPythonString(proofLatex)}, 48, YELLOW)
+        final_answer_${i} = VGroup(final_math_${i}, final_proof_${i})
+        self._fit_final_recap(final_answer_${i})
         self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
-        recap_hold_${i} = max(0.05, (${duration.toFixed(2)} - 0.8) / max(len(content_${i}), 1) - 0.4)
-        for pair in content_${i}:
-            self.play(FadeIn(pair), run_time=0.2)
-            self.wait(recap_hold_${i})
-            self.play(FadeOut(pair), run_time=0.2)
-        self.play(FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.4)
+        earlier_${i} = len(content_${i}) - 2
+        closing_hold_${i} = (min(3.0, max(1.8, ${duration.toFixed(2)} * 0.36))
+                             if earlier_${i} else ${duration.toFixed(2)} - 0.85)
+        if earlier_${i}:
+            recap_slot_${i} = (${duration.toFixed(2)} - 0.85 - closing_hold_${i}) / earlier_${i}
+            for pair in content_${i}[:-2]:
+                self.play(FadeIn(pair), run_time=0.22)
+                self._focus_math(pair[1], run_time=0.25)
+                self.wait(max(0.05, recap_slot_${i} - 0.69))
+                self.play(FadeOut(pair), run_time=0.22)
+        self.play(FadeIn(final_answer_${i}), run_time=0.45)
+        self.wait(max(0.10, closing_hold_${i}))
+        # No FadeOut: retain the problem, the solution and its validation until the last frame.
 `;
           }
 

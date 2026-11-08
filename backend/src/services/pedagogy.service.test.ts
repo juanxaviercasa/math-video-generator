@@ -116,11 +116,11 @@ test('rounded irrational roots never masquerade as exact polynomial substitution
   const scenes = buildQuadraticStoryboard(problem, validateMathProblem(problem));
   const verification = scenes.find((scene) => scene.id === 'verification');
   const recap = scenes.find((scene) => scene.id === 'recap');
-  assert.ok(verification?.visualLatex?.every((value) => value.includes('\\\\approx')));
+  assert.ok(verification?.visualLatex?.every((value) => value.includes('\\approx')));
   assert.ok(verification?.visualLatex?.every((value) => !value.endsWith('= 0')));
   assert.match(verification?.narrationText || '', /no necesariamente cero exacto/);
   assert.match(recap?.narrationText || '', /residuo numérico/);
-  assert.ok(recap?.visualLatex?.some((value) => value.includes('\\\\approx')));
+  assert.ok(recap?.visualLatex?.some((value) => value.includes('\\approx')));
 });
 
 test('repeated non-terminating rational root is also a numerical approximation', () => {
@@ -128,5 +128,5 @@ test('repeated non-terminating rational root is also a numerical approximation',
   const scenes = buildQuadraticStoryboard(problem, validateMathProblem(problem));
   const verification = scenes.find((scene) => scene.id === 'verification');
   assert.match(verification?.narrationText || '', /no necesariamente cero exacto/);
-  assert.ok(verification?.visualLatex?.[0]?.includes('\\\\approx'));
+  assert.ok(verification?.visualLatex?.[0]?.includes('\\approx'));
 });

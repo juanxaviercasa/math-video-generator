@@ -25,7 +25,7 @@ RUN apt-get update \
     libavutil-dev libswresample-dev libswscale-dev \
     texlive-latex-base texlive-latex-extra texlive-fonts-recommended \
     dvisvgm ghostscript \
-  && python3 -m pip install --break-system-packages --no-cache-dir manim edge-tts \
+  && python3 -m pip install --break-system-packages --no-cache-dir manim edge-tts 'sympy>=1.13,<1.16' \
   && python3 -m edge_tts --version \
   && rm -rf /var/lib/apt/lists/*
 
@@ -33,6 +33,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/package.json ./package.json
 COPY --from=builder /app/backend/prisma ./prisma
+COPY --from=builder /app/backend/python ./python
 
 RUN mkdir -p /var/lib/math-video-generator/media \
   && node -e "const {PrismaClient}=require('@prisma/client'); if(!PrismaClient) process.exit(1)"

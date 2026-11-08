@@ -5,6 +5,7 @@ import { tts } from './tts.service.js';
 import { resolveVoiceId } from './voice-catalog.service.js';
 import { validateAudibleAudio } from './audio-qa.service.js';
 import { validateMathProblem, type MathValidation } from './math-validation.service.js';
+import { verifyQuadraticSymbolically } from './sympy-verification.service.js';
 import { synchronization, type SynchronizedScene } from './synchronization.service.js';
 import { buildLessonTimeline, validateLessonTimeline } from './timeline.service.js';
 import type { LessonTimeline } from './timeline.types.js';
@@ -15,6 +16,8 @@ import { validateRenderIntegrity } from './render-integrity.service.js';
 import { readAndValidateGeometry } from './manim-geometry-qa.service.js';
 import { auditFinalVideoFrames } from './final-frame-qa.service.js';
 import { extractVoiceCues, buildCueTimingPlan, CUE_INTRO_SECONDS, CUE_OUTRO_SECONDS, CUE_LEAD_SECONDS } from './voice-cue.service.js';
+import { readWordBoundaries, cueHighlightOffset, type SpokenWordBoundary } from './voice-boundary.service.js';
+import { renderWithBoundedVisualRecovery, type VisualRecoveryAttempt } from './visual-render-recovery.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -141,6 +144,14 @@ export const videoProcessing = {
         throw new Error('MATH_UNSUPPORTED: El problema requiere un solver determinista antes de publicarse. Usa preview/revisión manual o activa el flag solo en un entorno de QA.');
       }
 
+      // Independent SymPy proof: only bounded, prevalidated numeric coefficients.
+      // A symbolic disagreement always aborts publication; no LLM bypass.
+      if (validation.supported && validation.valid && validation.kind === 'quadratic') {
+        const symbolic = await verifyQuadraticSymbolically(validation);
+        fs.writeFileSync(path.join(outputDir, `${id}-sympy-verification.json`), JSON.stringify(symbolic, null, 2), 'utf8');
+        if (symbolic.warning) console.warn('⚠️ SymPy:', symbolic.warning);
+      }
+
       // 2. Generar descripción con OpenAI (opcional)
       console.log('🤖 Generando descripción...');
       progress.progress = 20;
@@ -166,6 +177,7 @@ export const videoProcessing = {
         : synchronization.buildSynchronizedScenes(content, steps);
       let narrationAudioPath = '';
       let lessonTimeline: LessonTimeline | undefined;
+      const spokenWordAudit: Array<{ sceneId: string; cueIndex: number; source: string; words: SpokenWordBoundary[]; highlightOffsetSeconds: number; sceneOffsetSeconds: number }> = [];
       if (enableNarration) {
         console.log(`🎙️ Generando narración con voz neural ${selectedVoice}; proveedor IA: ${aiProvider}`);
         const audioSegments: string[] = [];
@@ -175,6 +187,7 @@ export const videoProcessing = {
           if (cues.length) {
             const clips: string[] = [];
             const actualDurations: number[] = [];
+            const wordBoundaries: SpokenWordBoundary[][] = [];
             for (const [cueIndex, speech] of cues.entries()) {
               const clip = await tts.generateNarrationAudio(speech, outputDir, `${id}-${scene.id}-cue-${cueIndex + 1}`, { style: narrationStyle, voiceId: selectedVoice });
               if (!clip) throw new Error(`VOICE_CUE_MISSING: La voz neural falló en ${scene.id}, transformación ${cueIndex + 1}.`);
@@ -185,8 +198,16 @@ export const videoProcessing = {
               }
               clips.push(clip);
               actualDurations.push(measured);
+              const srtPath = clip.replace(/-narration\.(?:mp3|wav)$/i, '-narration.srt');
+              wordBoundaries.push(readWordBoundaries(srtPath, measured));
             }
             const timing = buildCueTimingPlan(actualDurations);
+            const highlightOffsets = wordBoundaries.map((words, index) =>
+              cueHighlightOffset(words, timing.stageDurations[index], CUE_LEAD_SECONDS));
+            wordBoundaries.forEach((words, index) => spokenWordAudit.push({
+              sceneId: scene.id, cueIndex: index, source: words.length ? 'edge-tts' : 'duration-fallback',
+              words, highlightOffsetSeconds: highlightOffsets[index], sceneOffsetSeconds: timing.stageStarts[index],
+            }));
             const parts: string[] = [
               await ffmpeg.createSilentAudio(path.join(outputDir, `${id}-${scene.id}-opening.wav`), CUE_INTRO_SECONDS),
             ];
@@ -208,6 +229,7 @@ export const videoProcessing = {
             scene.duration = timing.sceneDuration;
             scene.narrationText = cues.join(' ');
             if (pedagogical) pedagogical.visualCueDurations = timing.stageDurations;
+            if (pedagogical) pedagogical.visualCueHighlightOffsets = highlightOffsets;
             audioSegments.push(segmentPath);
             continue;
           }
@@ -251,14 +273,15 @@ export const videoProcessing = {
         // rather than distributing events across an estimated text duration.
         for (const pedagogical of pedagogicalScenes) {
           const cueDurations = pedagogical.visualCueDurations;
-          if (!cueDurations?.length) continue;
+          const cueHighlights = pedagogical.visualCueHighlightOffsets;
+          if (!cueDurations?.length || !cueHighlights?.length) continue;
           const events = lessonTimeline.events.filter((event) => event.segmentId === `segment-${pedagogical.id}`);
           if (events.length !== cueDurations.length) throw new Error(`VOICE_CUE_EVENT_MISMATCH: ${pedagogical.id}`);
           let offset = CUE_INTRO_SECONDS;
           for (const [index, event] of events.entries()) {
-            event.startOffset = Number((offset + CUE_LEAD_SECONDS).toFixed(3));
+            event.startOffset = Number((offset + cueHighlights[index]).toFixed(3));
             event.duration = 0.40;
-            event.holdAfter = Number((cueDurations[index] - CUE_LEAD_SECONDS - 0.40).toFixed(3));
+            event.holdAfter = Number((cueDurations[index] - cueHighlights[index] - 0.40).toFixed(3));
             offset += cueDurations[index];
           }
         }
@@ -277,6 +300,11 @@ export const videoProcessing = {
         narrationAudioPath = await ffmpeg.concatenateAudio(
           audioSegments,
           path.join(outputDir, `${id}-narration.wav`)
+        );
+        fs.writeFileSync(
+          path.join(outputDir, `${id}-voice-word-boundaries.json`),
+          JSON.stringify({ version: 1, source: 'edge-tts SRT WordBoundary where available', cues: spokenWordAudit }, null, 2),
+          'utf8',
         );
         console.log(`✓ Audio sincronizado generado: ${narrationAudioPath}`);
       } else {
@@ -306,27 +334,40 @@ export const videoProcessing = {
         // independently certify those same timestamps.
         narrationTimeline: process.env.NARRATION_TIMELINE === 'true' && !pedagogicalScenes.some((scene) => scene.visualCueDurations?.length),
         geometryReportPath: path.join(outputDir, `${id}-manim-geometry.json`),
+        formulaFirst: false,
       };
 
-      const manimVideoPath = await manim.renderVideo(manimScene);
-      // Validate real rendered text/formula bounding boxes and measured stage timecodes.
-      // Reject unsafe geometry before publishing the final MP4.
-      if (pedagogicalScenes.length) {
-        const geometry = readAndValidateGeometry(manimScene.geometryReportPath, {
-          width: formatProfile.width,
-          height: formatProfile.height,
-          sceneIds: pedagogicalScenes.map((scene) => scene.id),
-          requirePersistentProblem: pedagogicalScenes.some((pedagogical) => pedagogical.id === 'hook' && Boolean(pedagogical.visualLatex?.[0])),
-          expectedDurations: Object.fromEntries(pedagogicalScenes.map((scene) => [
-            scene.id, Math.max(4, scene.duration ?? scene.estimatedDuration),
-          ])),
-          tolerancePixels: 2,
-        });
-        fs.writeFileSync(path.join(outputDir, `${id}-geometry-qa.json`), JSON.stringify(geometry, null, 2), 'utf8');
-        for (const warning of geometry.warnings) console.warn('⚠️  Geometría:', warning);
-        if (!geometry.passed) {
-          throw new Error(`VISUAL_QA_FAILED: ${geometry.errors.join(' | ')}`);
-        }
+      const recoveryAudit: VisualRecoveryAttempt[] = [];
+      let manimVideoPath: string;
+      try {
+        manimVideoPath = await renderWithBoundedVisualRecovery(async (pass) => {
+          manimScene.formulaFirst = pass === 'formula-first';
+          // Never accept stale geometry after an unsuccessful previous pass.
+          if (fs.existsSync(manimScene.geometryReportPath)) fs.unlinkSync(manimScene.geometryReportPath);
+          const rendered = await manim.renderVideo(manimScene);
+          if (pedagogicalScenes.length) {
+            const geometry = readAndValidateGeometry(manimScene.geometryReportPath, {
+              width: formatProfile.width,
+              height: formatProfile.height,
+              sceneIds: pedagogicalScenes.map((pedagogical) => pedagogical.id),
+              requirePersistentProblem: pedagogicalScenes.some((pedagogical) => pedagogical.id === 'hook' && Boolean(pedagogical.visualLatex?.[0])),
+              expectedDurations: Object.fromEntries(pedagogicalScenes.map((pedagogical) => [
+                pedagogical.id, Math.max(4, pedagogical.duration ?? pedagogical.estimatedDuration),
+              ])),
+              tolerancePixels: 2,
+            });
+            fs.writeFileSync(path.join(outputDir, `${id}-geometry-qa.json`), JSON.stringify(geometry, null, 2), 'utf8');
+            for (const warning of geometry.warnings) console.warn('⚠️  Geometría:', warning);
+            if (!geometry.passed) throw new Error(`VISUAL_QA_FAILED: ${geometry.errors.join(' | ')}`);
+          }
+          return rendered;
+        }, recoveryAudit);
+      } finally {
+        fs.writeFileSync(
+          path.join(outputDir, `${id}-visual-recovery.json`),
+          JSON.stringify({ version: 1, attempts: recoveryAudit, passed: recoveryAudit.some((item) => item.status === 'passed') }, null, 2),
+          'utf8',
+        );
       }
 
       const remotionEnabled = process.env.REMOTION_ENABLED === 'true';

@@ -58,6 +58,7 @@ interface ManimScene {
     visualTextLines?: string[];
     visualStages?: Array<{ label: string; latex: string; detail?: string; role?: string; semanticStep?: string; formulaAnchorId?: string }>;
     visualCueDurations?: number[];
+    visualCueHighlightOffsets?: number[];
     formulaAnchor?: { latex: string; label?: string; persistence: 'segment' | 'lesson'; position: 'top' | 'side' };
     checkpoints?: Array<{ kind: 'predict' | 'practice' | 'reflect'; prompt: string; pauseSeconds: number }>;
     graphSpec?: { a: number; b: number; c: number; roots: [number, number] };
@@ -70,6 +71,7 @@ interface ManimScene {
   lessonTimeline?: LessonTimeline;
   narrationTimeline?: boolean;
   geometryReportPath?: string;
+  formulaFirst?: boolean;
 }
 
 const escapeForPythonString = (value: string): string => JSON.stringify(value);
@@ -398,7 +400,7 @@ export const manim = {
           const duration = Math.max(4, pedScene.duration ?? pedScene.estimatedDuration);
           const emphasis = pedScene.emphasis || pedScene.visualText || 'Paso matemático';
           const latexLines = pedScene.visualLatex || [];
-          const textLines = pedScene.visualTextLines || [];
+          const textLines = scene.formulaFirst ? [] : (pedScene.visualTextLines || []);
           const mathObjects = latexLines.map((line, lineIndex) =>
             `MathTex(${escapeForPythonString(line)}, font_size=${lineIndex === 0 ? 46 : 38}, color=${lineIndex === latexLines.length - 1 ? 'YELLOW' : 'WHITE'})`
           );
@@ -414,12 +416,12 @@ export const manim = {
           const visualStages = pedScene.visualStages || [];
 
           if (pedScene.layout === 'equation' && visualStages.length > 0) {
-            const stageLabelSize = 23;
+            const stageLabelSize = scene.formulaFirst ? 18 : 23;
             const stageObjects = visualStages.map((stage, stageIndex) => {
               const formulaFontSize = stageIndex === visualStages.length - 1 ? 61 : 55;
               const label = `Text(${escapeForPythonString(stage.label)}, font_size=${stageLabelSize}, color=${stageIndex === visualStages.length - 1 ? 'YELLOW' : 'GREY_B'})`;
               const formula = `self._math(${escapeForPythonString(stage.latex)}, font_size=${formulaFontSize}, color=${stageIndex === visualStages.length - 1 ? 'YELLOW' : 'WHITE'})`;
-              const detail = stage.detail ? `, Text(${escapeForPythonString(stage.detail)}, font_size=21, color=GREY_B)` : '';
+              const detail = !scene.formulaFirst && stage.detail ? `, Text(${escapeForPythonString(stage.detail)}, font_size=21, color=GREY_B)` : '';
               return `VGroup(${label}, ${formula}${detail}).arrange(DOWN, buff=0.10)`;
             });
             const stageArrangement = `VGroup(${stageObjects.join(', ')})`;
@@ -430,10 +432,14 @@ export const manim = {
               ? `        self.play(FadeIn(panel_${i}), FadeIn(header_${i}), run_time=0.4)
 ${cueDurations.map((seconds, index) => {
                 const stageRef = `content_${i}[${index}]`;
+                // Offset comes from Edge TTS WordBoundary metadata where available.
+                const requestedOffset = pedScene.visualCueHighlightOffsets?.[index] ?? 0.25;
+                const highlightAt = Math.max(0.25, Math.min(requestedOffset, seconds - 0.30));
+                const waitBefore = highlightAt > 0.255 ? `        self.wait(${(highlightAt - 0.25).toFixed(3)})\n` : '';
                 return `        # Voz neural y resaltado del mismo micro-paso ${index + 1}
         self._animate_equation_step(content_${i}, ${index}, focus_${i}, run_time=0.25)
-        self.play(Indicate(${stageRef}[1], color=YELLOW, scale_factor=1.04), run_time=0.25)
-        self.wait(${Math.max(0, seconds - 0.50).toFixed(3)})`;
+${waitBefore}        self.play(Indicate(${stageRef}[1], color=YELLOW, scale_factor=1.04), run_time=0.25)
+        self.wait(${Math.max(0.05, seconds - highlightAt - 0.25).toFixed(3)})`;
               }).join('\n')}
         if focus_${i}:
             self.play(FadeOut(content_${i}[-1]), FadeOut(header_${i}), FadeOut(panel_${i}), run_time=0.3)

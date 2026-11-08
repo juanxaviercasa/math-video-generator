@@ -218,7 +218,7 @@ export const buildQuadraticStoryboard = (
     } else if (scene.id === 'graph') {
       phrases = ['vértice', 'corta el eje horizontal'];
     } else if (scene.id === 'recap' && delta >= 0) {
-      phrases = ['Recapitulamos', 'identificamos', 'calculamos', 'obtuvimos'];
+      phrases = ['Recapitulamos', 'identificamos', 'calculamos', 'aplicamos', 'obtuvimos'];
     }
     return phrases.length ? { ...scene, visualBeatPhrases: phrases } : scene;
   };
@@ -405,13 +405,14 @@ export const buildQuadraticStoryboard = (
         validation.normalizedInput,
         `a = ${formatValue(a)},\\; b = ${formatValue(b)},\\; c = ${formatValue(c)}`,
         `\\Delta = ${formatValue(delta)}`,
+        'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}',
         `x_1 ${rootRelation(x1)} ${formatRoot(x1)},\\; x_2 ${rootRelation(x2)} ${formatRoot(x2)}`,
         approximateRoots ? `\\text{Comprobación numérica: } P(x) \\approx 0` : repeatedRoot ? `P(${formatRoot(x1)})=0` : `P(${formatRoot(x1)})=0,\\;P(${formatRoot(x2)})=0`,
       ],
       'recap',
       'Solución comprobada',
       8,
-      ['Ecuación original', 'Coeficientes', 'Discriminante', 'Raíces', 'Comprobado'],
+      ['Ecuación original', 'Coeficientes', 'Discriminante', 'Fórmula general', 'Raíces', 'Comprobado'],
     ),
   ].map(withSpokenBeats);
 };

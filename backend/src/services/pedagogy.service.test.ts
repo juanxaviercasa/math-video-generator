@@ -132,3 +132,14 @@ test('repeated non-terminating rational root is also a numerical approximation',
   assert.match(verification?.narrationText || '', /no necesariamente cero exacto/);
   assert.ok(verification?.visualLatex?.[0]?.includes('\\approx'));
 });
+
+test('Pizarra 2.2 recap includes general formula and 5 semantic beat phrases', () => {
+  const validation = validateMathProblem('x^2 - 5x + 6 = 0');
+  const scenes = buildQuadraticStoryboard('x^2 - 5x + 6 = 0', validation);
+  const recap = scenes.find((scene) => scene.id === 'recap');
+  assert.ok(recap);
+  assert.deepEqual(recap.visualBeatPhrases, ['Recapitulamos', 'identificamos', 'calculamos', 'aplicamos', 'obtuvimos']);
+  assert.equal(recap.visualLatex?.length, 6);
+  assert.equal(recap.visualLatex?.[3], 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}');
+  assert.deepEqual(recap.visualTextLines, ['Ecuación original', 'Coeficientes', 'Discriminante', 'Fórmula general', 'Raíces', 'Comprobado']);
+});

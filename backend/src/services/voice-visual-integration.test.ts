@@ -49,7 +49,7 @@ test('non-cue scenes use spoken-word offsets for introduction, cards, graph and 
     'formula-symbolic': [2.5],
     verification: [3.2, 7.8],
     graph: [3.7, 8.3],
-    recap: [0.8, 2.2, 5.1, 9.9],
+    recap: [0.8, 2.2, 5.1, 7.5, 9.9],
   };
   for (const scene of story) {
     if (timings[scene.id]) {
@@ -68,7 +68,7 @@ test('non-cue scenes use spoken-word offsets for introduction, cards, graph and 
   assert.match(code, /self\._wait_spoken_beat\(pair_index, \[2\.1,4,5\.9\]\[pair_index\]\)/);
   assert.match(code, /self\._wait_spoken_beat\(0, 3\.7\)/);
   assert.match(code, /self\._wait_spoken_beat\(1, 8\.3\)/);
-  assert.match(code, /self\._wait_spoken_beat\(3, 9\.9\)/);
+  assert.match(code, /self\._wait_spoken_beat\(4, 9\.9\)/);
   assert.match(code, /self\._fit_final_recap/);
   assert.doesNotMatch(code, /FadeOut\(final_answer_/);
 });
@@ -78,8 +78,8 @@ test('recap with real spoken beats holds each formula until the next one replace
   const storyboard = buildQuadraticStoryboard(exercise, validateMathProblem(exercise));
   const recap = storyboard.find((scene) => scene.id === 'recap');
   assert.ok(recap);
-  assert.equal(recap.visualBeatPhrases?.length, 4);
-  recap.visualBeatOffsets = [2, 4.5, 7, 10.5];
+  assert.equal(recap.visualBeatPhrases?.length, 5);
+  recap.visualBeatOffsets = [2, 4.5, 7, 9, 11.5];
   recap.duration = 14;
   for (const ratio of ['16:9', '1:1', '9:16'] as const) {
     const py = manim.generatePythonScript({
@@ -89,7 +89,7 @@ test('recap with real spoken beats holds each formula until the next one replace
     }, true);
     const recapScript = py.slice(py.indexOf('# Storyboard pedagógico: recapitulación progresiva'));
     assert.match(recapScript, /active_recap_10 = None/);
-    assert.match(recapScript, /self\._wait_spoken_beat\(beat_index, \[2,4\.5,7,10\.5\]\[beat_index\]\)/);
+    assert.match(recapScript, /self\._wait_spoken_beat\(beat_index, \[2,4\.5,7,9,11\.5\]\[beat_index\]\)/);
     assert.match(recapScript, /self\.play\(FadeOut\(active_recap_10\), FadeIn\(pair\), run_time=0\.18\)/);
     assert.match(recapScript, /self\.play\(FadeOut\(active_recap_10\), FadeIn\(final_answer_10\), run_time=0\.35\)/);
     assert.doesNotMatch(recapScript, /self\.play\(FadeOut\(pair\), run_time=/);

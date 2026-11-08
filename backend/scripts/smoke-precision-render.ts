@@ -30,7 +30,7 @@ async function smoke(format: VideoAspectRatio, fullLesson = false, problemInput 
     hook: { duration: 12, beats: [2.2, 4.7, 7.3] },
     coefficients: { duration: 12, beats: [2.1, 4.0, 5.9] },
     graph: { duration: 12, beats: [3.7, 8.3] },
-    recap: { duration: 16, beats: [0.8, 2.2, 5.1, 9.9] },
+    recap: { duration: 16, beats: [0.8, 2.2, 5.1, 7.5, 9.9] },
   };
   const scenes = variant === 'voice-locked'
     ? storyboard.filter((scene) => scene.id === 'discriminant-calculate')

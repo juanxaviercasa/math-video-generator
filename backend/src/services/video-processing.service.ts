@@ -17,6 +17,7 @@ import { readAndValidateGeometry } from './manim-geometry-qa.service.js';
 import { auditFinalVideoFrames } from './final-frame-qa.service.js';
 import { extractVoiceCues, buildCueTimingPlan, CUE_INTRO_SECONDS, CUE_OUTRO_SECONDS, CUE_LEAD_SECONDS } from './voice-cue.service.js';
 import { readWordBoundaries, cueHighlightOffset, type SpokenWordBoundary } from './voice-boundary.service.js';
+import { renderWithBoundedVisualRecovery, type VisualRecoveryAttempt } from './visual-render-recovery.service.js';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -333,27 +334,40 @@ export const videoProcessing = {
         // independently certify those same timestamps.
         narrationTimeline: process.env.NARRATION_TIMELINE === 'true' && !pedagogicalScenes.some((scene) => scene.visualCueDurations?.length),
         geometryReportPath: path.join(outputDir, `${id}-manim-geometry.json`),
+        formulaFirst: false,
       };
 
-      const manimVideoPath = await manim.renderVideo(manimScene);
-      // Validate real rendered text/formula bounding boxes and measured stage timecodes.
-      // Reject unsafe geometry before publishing the final MP4.
-      if (pedagogicalScenes.length) {
-        const geometry = readAndValidateGeometry(manimScene.geometryReportPath, {
-          width: formatProfile.width,
-          height: formatProfile.height,
-          sceneIds: pedagogicalScenes.map((scene) => scene.id),
-          requirePersistentProblem: pedagogicalScenes.some((pedagogical) => pedagogical.id === 'hook' && Boolean(pedagogical.visualLatex?.[0])),
-          expectedDurations: Object.fromEntries(pedagogicalScenes.map((scene) => [
-            scene.id, Math.max(4, scene.duration ?? scene.estimatedDuration),
-          ])),
-          tolerancePixels: 2,
-        });
-        fs.writeFileSync(path.join(outputDir, `${id}-geometry-qa.json`), JSON.stringify(geometry, null, 2), 'utf8');
-        for (const warning of geometry.warnings) console.warn('⚠️  Geometría:', warning);
-        if (!geometry.passed) {
-          throw new Error(`VISUAL_QA_FAILED: ${geometry.errors.join(' | ')}`);
-        }
+      const recoveryAudit: VisualRecoveryAttempt[] = [];
+      let manimVideoPath: string;
+      try {
+        manimVideoPath = await renderWithBoundedVisualRecovery(async (pass) => {
+          manimScene.formulaFirst = pass === 'formula-first';
+          // Never accept stale geometry after an unsuccessful previous pass.
+          if (fs.existsSync(manimScene.geometryReportPath)) fs.unlinkSync(manimScene.geometryReportPath);
+          const rendered = await manim.renderVideo(manimScene);
+          if (pedagogicalScenes.length) {
+            const geometry = readAndValidateGeometry(manimScene.geometryReportPath, {
+              width: formatProfile.width,
+              height: formatProfile.height,
+              sceneIds: pedagogicalScenes.map((pedagogical) => pedagogical.id),
+              requirePersistentProblem: pedagogicalScenes.some((pedagogical) => pedagogical.id === 'hook' && Boolean(pedagogical.visualLatex?.[0])),
+              expectedDurations: Object.fromEntries(pedagogicalScenes.map((pedagogical) => [
+                pedagogical.id, Math.max(4, pedagogical.duration ?? pedagogical.estimatedDuration),
+              ])),
+              tolerancePixels: 2,
+            });
+            fs.writeFileSync(path.join(outputDir, `${id}-geometry-qa.json`), JSON.stringify(geometry, null, 2), 'utf8');
+            for (const warning of geometry.warnings) console.warn('⚠️  Geometría:', warning);
+            if (!geometry.passed) throw new Error(`VISUAL_QA_FAILED: ${geometry.errors.join(' | ')}`);
+          }
+          return rendered;
+        }, recoveryAudit);
+      } finally {
+        fs.writeFileSync(
+          path.join(outputDir, `${id}-visual-recovery.json`),
+          JSON.stringify({ version: 1, attempts: recoveryAudit, passed: recoveryAudit.some((item) => item.status === 'passed') }, null, 2),
+          'utf8',
+        );
       }
 
       const remotionEnabled = process.env.REMOTION_ENABLED === 'true';

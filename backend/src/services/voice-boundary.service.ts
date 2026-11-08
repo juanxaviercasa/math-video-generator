@@ -57,5 +57,5 @@ export function cueHighlightOffset(
   if (!Number.isFinite(cueDuration) || cueDuration < 0.8) throw new Error('VOICE_CUE_DURATION_INVALID');
   const desired = speechLeadSeconds + (words[0]?.startSeconds ?? 0);
   // The formula reveal requires 0.25s. Reserve 0.25s for the highlight itself.
-  return Number(Math.min(Math.max(0.25, desired), cueDuration - 0.25).toFixed(3));
+  return Number(Math.min(Math.max(0.25, desired), cueDuration - 0.45).toFixed(3));
 }

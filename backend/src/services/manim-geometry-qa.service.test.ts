@@ -105,3 +105,30 @@ test('does not penalize sufficiently large text and formula bounds', () => {
   const measured = validateObservedGeometry(report, requirements);
   assert.equal(measured.passed, true);
 });
+
+test('requires the same original problem at the top of every stage and snapshot', () => {
+  const report = valid();
+  const anchor = { kind: 'MathTex', role: 'problem-anchor', content: 'x^2-5x+6=0',
+    bbox: { x: -2, y: 2.56, width: 4, height: 0.42 } };
+  for (const scene of report.stages) for (const snapshot of scene.snapshots) snapshot.objects.push({ ...anchor });
+  const requirementsWithAnchor = { ...requirements, requirePersistentProblem: true };
+  assert.equal(validateObservedGeometry(report, requirementsWithAnchor).passed, true);
+  report.stages[1].snapshots[0].objects.pop();
+  assert.ok(validateObservedGeometry(report, requirementsWithAnchor).errors.some((e) => e.includes('GEOMETRY_ANCHOR_MISSING')));
+});
+
+test('rejects moving original problem and illegibly small active formulas', () => {
+  const report = valid();
+  const anchor = { kind: 'MathTex', role: 'problem-anchor', content: 'x^2-5x+6=0',
+    bbox: { x: -2, y: 2.56, width: 4, height: 0.42 } };
+  for (const scene of report.stages) scene.snapshots[0].objects.push({ ...anchor });
+  report.stages[1].snapshots[0].objects[1] = {
+    ...anchor, bbox: { x: -1.4, y: 2.56, width: 4, height: 0.42 },
+  };
+  report.stages[0].snapshots[0].objects[0].role = 'math-primary';
+  report.stages[0].snapshots[0].objects[0].bbox.height = 0.15;
+  const result = validateObservedGeometry(report, { ...requirements, requirePersistentProblem: true });
+  assert.equal(result.passed, false);
+  assert.ok(result.errors.some((e) => e.includes('GEOMETRY_ANCHOR_MOVED')));
+  assert.ok(result.errors.some((e) => e.includes('GEOMETRY_UNREADABLE')));
+});

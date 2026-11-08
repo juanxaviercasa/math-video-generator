@@ -37,6 +37,36 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Setup Python for the symbolic oracle
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify real SymPy roots and reject nonnumeric payloads
+        run: |
+          python -m pip install 'sympy==1.14.0'
+          python - <<'PY'
+          import json
+          import subprocess
+          import sys
+          helper = 'backend/python/symbolic_verifier.py'
+          def verify(payload):
+              return subprocess.run([sys.executable, helper], input=json.dumps(payload),
+                                    text=True, capture_output=True, timeout=10)
+          two_roots = verify({'a': '1', 'b': '-5', 'c': '6'})
+          assert two_roots.returncode == 0, two_roots.stderr
+          result = json.loads(two_roots.stdout)
+          assert result['roots'] == [2.0, 3.0], result
+          no_real = verify({'a': '1', 'b': '2', 'c': '5'})
+          assert no_real.returncode == 0, no_real.stderr
+          assert json.loads(no_real.stdout)['roots'] == []
+          repeated = verify({'a': '1', 'b': '-2', 'c': '1'})
+          assert json.loads(repeated.stdout)['roots'] == [1.0]
+          injection = verify({'a': '__import__("os")', 'b': '0', 'c': '1'})
+          assert injection.returncode != 0
+          print('Safe SymPy real-domain root oracle passed')
+          PY
+
       - name: Build
         run: npm run build
 

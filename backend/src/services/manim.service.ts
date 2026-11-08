@@ -59,6 +59,7 @@ interface ManimScene {
     visualStages?: Array<{ label: string; latex: string; detail?: string; role?: string; semanticStep?: string; formulaAnchorId?: string }>;
     visualCueDurations?: number[];
     visualCueHighlightOffsets?: number[];
+    visualBeatOffsets?: number[];
     formulaAnchor?: { latex: string; label?: string; persistence: 'segment' | 'lesson'; position: 'top' | 'side' };
     checkpoints?: Array<{ kind: 'predict' | 'practice' | 'reflect'; prompt: string; pauseSeconds: number }>;
     graphSpec?: { a: number; b: number; c: number; roots: [number, number] };
@@ -853,8 +854,34 @@ ${adaptiveHelpers}
 
     def _qa_start(self, stage_id):
         self._qa_finish()
-        self._qa_current = {"id": stage_id, "start": self._qa_now(), "snapshots": []}
+        self._qa_current = {"id": stage_id, "start": self._qa_now(), "snapshots": [], "beats": []}
         self._qa_capture()
+
+    def _wait_spoken_beat(self, index, offset_seconds):
+        if self._qa_current is None:
+            raise ValueError("VOICE_BEAT_WITHOUT_SCENE")
+        elapsed = self._qa_now() - self._qa_current["start"]
+        if elapsed > offset_seconds + 0.17:
+            raise ValueError("VOICE_BEAT_LATE: animación " + str(index)
+                             + " llegó " + str(round(elapsed - offset_seconds, 3)) + " s después de la palabra")
+        if offset_seconds - elapsed > 0.012:
+            self.wait(offset_seconds - elapsed)
+        actual = self._qa_now() - self._qa_current["start"]
+        self._qa_current["beats"].append({
+            "index": index, "expectedSeconds": offset_seconds,
+            "actualSeconds": float(actual)
+        })
+
+    def _finish_spoken_scene(self, duration, closing=0.0):
+        if self._qa_current is None:
+            raise ValueError("VOICE_SCENE_MISSING")
+        elapsed = self._qa_now() - self._qa_current["start"]
+        remainder = duration - closing - elapsed
+        if remainder < -0.17:
+            raise ValueError("VOICE_SCENE_OVERRUN: " + self._qa_current["id"]
+                             + " se excedió " + str(round(-remainder, 3)) + " segundos")
+        if remainder > 0.012:
+            self.wait(remainder)
 
     def _qa_finish(self):
         if self._qa_current is not None:

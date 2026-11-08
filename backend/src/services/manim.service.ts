@@ -500,7 +500,7 @@ ${cueAnimation}
         root_2_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=28).next_to(root_2_${i}, ${rootPosA}, buff=0.18)
         ${repeatedRoot ? '' : `root_3_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=28).next_to(root_3_${i}, ${rootPosB}, buff=0.18)`}
         concavity_lbl_${i} = Text(${escapeForPythonString(concavityStr)}, font_size=22, color=YELLOW).to_edge(DOWN, buff=${(formatProfile.safeMargin + 0.12).toFixed(3)})
-        graph_title_${i} = self._place_graph_heading(Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE))
+        graph_title_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE))
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, axis_line_${i}, axis_lbl_${i}, vertex_pt_${i}, vertex_lbl_${i}, root_2_${i}, ${repeatedRoot ? '' : `root_3_${i}, `}root_2_label_${i}, ${repeatedRoot ? '' : `root_3_label_${i}, `}concavity_lbl_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
         self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=1.2)
@@ -659,7 +659,7 @@ ${cueAnimation}
         root_a_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootA))}, font_size=28).next_to(root_a_${i}, ${rootPosA}, buff=0.18)
         ${repeatedRoot ? '' : `root_b_label_${i} = MathTex(${escapeForPythonString(rootLabel(rootB))}, font_size=28).next_to(root_b_${i}, ${rootPosB}, buff=0.18)`}
         concavity_lbl_${i} = Text(${escapeForPythonString(concavityStr)}, font_size=22, color=YELLOW).to_edge(DOWN, buff=${(formatProfile.safeMargin + 0.12).toFixed(3)})
-        graph_title_${i} = self._place_graph_heading(Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE))
+        graph_title_${i} = self._place_heading(Text(${escapeForPythonString(emphasis)}, font_size=32, color=BLUE))
         graph_group_${i} = VGroup(panel_${i}, axes_${i}, curve_${i}, x_label_${i}, y_label_${i}, axis_line_${i}, axis_lbl_${i}, vertex_pt_${i}, vertex_lbl_${i}, root_a_${i}, ${repeatedRoot ? '' : `root_b_${i}, `}root_a_label_${i}, ${repeatedRoot ? '' : `root_b_label_${i}, `}concavity_lbl_${i}, graph_title_${i})
         self.play(FadeIn(panel_${i}), Create(axes_${i}), Create(curve_${i}), FadeIn(x_label_${i}), FadeIn(y_label_${i}), run_time=1.5)
         self.play(Create(axis_line_${i}), Write(axis_lbl_${i}), FadeIn(vertex_pt_${i}), Write(vertex_lbl_${i}), run_time=1.2)

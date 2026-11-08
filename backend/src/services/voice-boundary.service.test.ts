@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { cueHighlightOffset, parseWordBoundaries } from './voice-boundary.service.js';
+import { cueHighlightOffset, parseWordBoundaries, assertWordBoundariesMatchNarration } from './voice-boundary.service.js';
 
 const srt = [
   '1', '00:00:00,120 --> 00:00:00,460', 'Calculamos', '',
@@ -21,4 +21,19 @@ test('refuses corrupt and impossible subtitle boundaries rather than trusting fa
   assert.throws(() => parseWordBoundaries(srt.replace('00:00:00,490', '00:00:00,100'), 1.2), /VOICE_BOUNDARY_INVALID/);
   assert.throws(() => parseWordBoundaries(srt.replace('2\n', '3\n'), 1.2), /VOICE_BOUNDARY_INVALID/);
   assert.deepEqual(parseWordBoundaries('', 2), []);
+});
+
+test('rejects timestamp-valid subtitles for the wrong spoken mathematical cue', () => {
+  const words = parseWordBoundaries(srt, 1.2);
+  assert.doesNotThrow(() => assertWordBoundariesMatchNarration('Calculamos delta', words));
+  assert.doesNotThrow(() => assertWordBoundariesMatchNarration('Calculámos, DELTA.', words));
+  assert.throws(
+    () => assertWordBoundariesMatchNarration('Calculamos la raíz delta', words),
+    /VOICE_BOUNDARY_TEXT_MISMATCH/,
+  );
+  assert.throws(
+    () => assertWordBoundariesMatchNarration('Delta calculamos', words),
+    /VOICE_BOUNDARY_TEXT_MISMATCH/,
+  );
+  assert.doesNotThrow(() => assertWordBoundariesMatchNarration('Narración local sin marcas', []));
 });

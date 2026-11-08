@@ -16,7 +16,7 @@ import { validateRenderIntegrity } from './render-integrity.service.js';
 import { readAndValidateGeometry } from './manim-geometry-qa.service.js';
 import { auditFinalVideoFrames } from './final-frame-qa.service.js';
 import { extractVoiceCues, buildCueTimingPlan, CUE_INTRO_SECONDS, CUE_OUTRO_SECONDS, CUE_LEAD_SECONDS } from './voice-cue.service.js';
-import { readWordBoundaries, cueHighlightOffset, type SpokenWordBoundary } from './voice-boundary.service.js';
+import { readWordBoundaries, cueHighlightOffset, assertWordBoundariesMatchNarration, type SpokenWordBoundary } from './voice-boundary.service.js';
 import { renderWithBoundedVisualRecovery, type VisualRecoveryAttempt } from './visual-render-recovery.service.js';
 import * as path from 'path';
 import * as os from 'os';
@@ -199,7 +199,9 @@ export const videoProcessing = {
               clips.push(clip);
               actualDurations.push(measured);
               const srtPath = clip.replace(/-narration\.(?:mp3|wav)$/i, '-narration.srt');
-              wordBoundaries.push(readWordBoundaries(srtPath, measured));
+              const boundaries = readWordBoundaries(srtPath, measured);
+              assertWordBoundariesMatchNarration(speech, boundaries);
+              wordBoundaries.push(boundaries);
             }
             const timing = buildCueTimingPlan(actualDurations);
             const highlightOffsets = wordBoundaries.map((words, index) =>

@@ -145,8 +145,16 @@ export const buildQuadraticStoryboard = (
     recap: 'interpret',
   };
 
+  const approximateRoots = rootRelation(x1) !== '=' || rootRelation(x2) !== '=';
   const buildCheckLatex = (rootVal: number): string => {
     const rootStr = formatRoot(rootVal);
+    if (rootRelation(rootVal) !== '=') {
+      // Evaluate the displayed rounded number, not the hidden full-precision root.
+      // This avoids claiming that a three-decimal approximation satisfies P(x)=0 exactly.
+      const shown = Number(rootStr);
+      const shownResidual = a * shown * shown + b * shown + c;
+      return `P(${rootStr}) \\approx ${formatValue(shownResidual)}`;
+    }
     const aTerm = a === 1 ? `(${rootStr})^2` : a === -1 ? `-(${rootStr})^2` : `${formatValue(a)}(${rootStr})^2`;
     const bSign = b < 0 ? '-' : '+';
     const bTerm = `${bSign} ${formatValue(Math.abs(b))}(${rootStr})`;
@@ -333,18 +341,22 @@ export const buildQuadraticStoryboard = (
     make(
       'verification',
       'step',
-      repeatedRoot
+      repeatedRoot && !approximateRoots
         ? `${lead}Comprobamos la raíz en la ecuación original. Sustituimos equis por ${numberToSpanish(Number(formatRoot(x1)))}: el resultado es exactamente cero, confirmando la solución.`
-        : `${lead}Comprobamos ambas soluciones en la ecuación original. Para equis igual a ${numberToSpanish(Number(formatRoot(x1)))}, sustituimos y obtenemos cero. Para equis igual a ${numberToSpanish(Number(formatRoot(x2)))}, sustituimos igualmente y confirmamos que da cero. Ambas raíces satisfacen la ecuación.`,
+        : approximateRoots
+          ? `${lead}Las raíces exactas se obtienen con la fórmula general. Los decimales que mostramos son aproximados: al sustituirlos en el polinomio se obtiene un residuo pequeño, no necesariamente cero exacto.`
+          : `${lead}Comprobamos ambas soluciones en la ecuación original. Para equis igual a ${numberToSpanish(Number(formatRoot(x1)))}, sustituimos y obtenemos cero. Para equis igual a ${numberToSpanish(Number(formatRoot(x2)))}, sustituimos igualmente y confirmamos que da cero. Ambas raíces satisfacen la ecuación.`,
       repeatedRoot
         ? [buildCheckLatex(x1)]
         : [buildCheckLatex(x1), buildCheckLatex(x2)],
       'split',
       'Comprobación algebraica',
       9,
-      repeatedRoot
+      repeatedRoot && !approximateRoots
         ? [`Comprobación con x = ${formatRoot(x1)}: 0 = 0`]
-        : [`Para x_1 = ${formatRoot(x1)}: 0 = 0`, `Para x_2 = ${formatRoot(x2)}: 0 = 0`],
+        : approximateRoots
+          ? ['Comprobación numérica: raíces aproximadas, residuo cercano a cero']
+          : [`Para x_1 = ${formatRoot(x1)}: 0 = 0`, `Para x_2 = ${formatRoot(x2)}: 0 = 0`],
     ),
     make(
       'graph',
@@ -361,13 +373,13 @@ export const buildQuadraticStoryboard = (
     make(
       'recap',
       'conclusion',
-      `${warm ? 'Excelente trabajo. ' : ''}Recapitulamos el procedimiento completo: identificamos los coeficientes a, b y c; calculamos el discriminante; aplicamos la fórmula general; obtuvimos las soluciones ${numberToSpanish(Number(formatRoot(x1)))} y ${numberToSpanish(Number(formatRoot(x2)))}; y comprobamos que ambas satisfacen la ecuación.`,
+      `${warm ? 'Excelente trabajo. ' : ''}Recapitulamos el procedimiento completo: identificamos los coeficientes a, b y c; calculamos el discriminante; aplicamos la fórmula general; obtuvimos las soluciones ${numberToSpanish(Number(formatRoot(x1)))} y ${numberToSpanish(Number(formatRoot(x2)))}; ${approximateRoots ? 'sus valores decimales son aproximados y el residuo numérico es cercano a cero' : 'y comprobamos que ambas satisfacen la ecuación exactamente'}.`,
       [
         validation.normalizedInput,
         `a = ${formatValue(a)},\\; b = ${formatValue(b)},\\; c = ${formatValue(c)}`,
         `\\Delta = ${formatValue(delta)}`,
         `x_1 ${rootRelation(x1)} ${formatRoot(x1)},\\; x_2 ${rootRelation(x2)} ${formatRoot(x2)}`,
-        `\\text{Comprobación: } 0 = 0`,
+        approximateRoots ? `\\text{Comprobación numérica: } P(x) \\approx 0` : `\\text{Comprobación: } 0 = 0`,
       ],
       'recap',
       'Solución comprobada',

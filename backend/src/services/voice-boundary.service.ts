@@ -59,3 +59,29 @@ export function cueHighlightOffset(
   // The formula reveal requires 0.25s. Reserve 0.25s for the highlight itself.
   return Number(Math.min(Math.max(0.25, desired), cueDuration - 0.45).toFixed(3));
 }
+
+/**
+ * An SRT with valid timestamps can still belong to a different narration.
+ * Require the actual recognized WordBoundary sequence to match the requested
+ * speech before using its offsets to certify a math animation.
+ *
+ * Missing boundaries remain distinguishable from mismatched boundaries:
+ * local TTS without WordBoundary metadata can use the duration fallback.
+ */
+export function assertWordBoundariesMatchNarration(narration: string, boundaries: SpokenWordBoundary[]): void {
+  if (!boundaries.length) return;
+  const tokens = (value: string): string[] => value
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('es')
+    .match(/[a-z0-9]+/g) || [];
+  const expected = tokens(narration);
+  const observed = tokens(boundaries.map((word) => word.text).join(' '));
+  if (!expected.length || !observed.length) {
+    throw new Error('VOICE_BOUNDARY_TEXT_MISMATCH: La narración o las palabras están vacías.');
+  }
+  // Spoken text may be segmented differently by a TTS provider, but every
+  // lexical token must stay in its original position and sequence.
+  if (expected.length !== observed.length || expected.some((token, index) => token !== observed[index])) {
+    throw new Error('VOICE_BOUNDARY_TEXT_MISMATCH: Las marcas de voz no corresponden al guion.');
+  }
+}

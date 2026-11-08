@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export interface ObservedBox { x: number; y: number; width: number; height: number }
-export interface ObservedObject { kind: string; content: string; bbox: ObservedBox }
+export interface ObservedObject { kind: string; content: string; bbox: ObservedBox; role?: string | null }
 export interface GeometrySnapshot { time: number; objects: ObservedObject[] }
 export interface GeometryStage {
   id: string;
@@ -38,6 +38,7 @@ export interface GeometryRequirements {
   height: number;
   expectedDurations?: Record<string, number>;
   tolerancePixels?: number;
+  requirePersistentProblem?: boolean;
 }
 
 export function projectManimBoxToPixels(box: ObservedBox, canvas: ManimGeometryReport['canvas']): ObservedBox {
@@ -108,11 +109,26 @@ export function validateObservedGeometry(report: ManimGeometryReport, requiremen
     }
     let objects = 0;
     let margin = Number.POSITIVE_INFINITY;
+    let initialAnchor: ObservedBox | null = null;
     for (const [snapshotIndex, snapshot] of (stage.snapshots || []).entries()) {
       if (!Number.isFinite(snapshot.time) || snapshot.time < stage.start - 0.05 || snapshot.time > stage.end + 0.05) {
         addOnce('GEOMETRY_TIMESTAMP: Fotograma lógico fuera de la escena ' + stage.id);
       }
       const boxes: { px: ObservedBox; content: string }[] = [];
+      if (requirements.requirePersistentProblem) {
+        const anchors = (snapshot.objects || []).filter((object) => object.role === 'problem-anchor');
+        if (anchors.length !== 1) addOnce('GEOMETRY_ANCHOR_MISSING: ' + stage.id + ' perdió el enunciado original.');
+        if (anchors.length === 1 && finiteBox(anchors[0].bbox)) {
+          const anchorPx = projectManimBoxToPixels(anchors[0].bbox, c);
+          if (anchorPx.y > c.pixelHeight * 0.24) addOnce('GEOMETRY_ANCHOR_POSITION: ' + stage.id);
+          if (initialAnchor && (Math.abs(initialAnchor.x - anchorPx.x) > 3
+            || Math.abs(initialAnchor.y - anchorPx.y) > 3
+            || Math.abs(initialAnchor.width - anchorPx.width) > 3)) {
+            addOnce('GEOMETRY_ANCHOR_MOVED: ' + stage.id + ' desplazó el ejercicio original.');
+          }
+          initialAnchor = anchorPx;
+        }
+      }
       for (const object of snapshot.objects || []) {
         if (!finiteBox(object.bbox)) {
           addOnce('GEOMETRY_BBOX_INVALID: ' + stage.id);
@@ -125,9 +141,13 @@ export function validateObservedGeometry(report: ManimGeometryReport, requiremen
         objects++;
         // Small but technically contained formulas are not production-readable.
         // The threshold scales with the encoded canvas, not abstract Manim units.
-        const minimumHeight = object.kind === 'Text'
-          ? Math.max(9, c.pixelHeight * 0.010)
-          : Math.max(12, c.pixelHeight * 0.014);
+        const minimumHeight = object.role === 'problem-anchor'
+          ? Math.max(25, c.pixelHeight * 0.027)
+          : object.role === 'math-primary'
+            ? Math.max(27, c.pixelHeight * 0.031)
+            : object.kind === 'Text'
+              ? Math.max(9, c.pixelHeight * 0.010)
+              : Math.max(12, c.pixelHeight * 0.014);
         if (px.height + 0.2 < minimumHeight) {
           addOnce('GEOMETRY_UNREADABLE: ' + stage.id + ' contiene ' + object.kind
             + ' de ' + round(px.height) + ' px (mínimo ' + round(minimumHeight) + ' px).');

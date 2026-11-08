@@ -520,6 +520,39 @@ export function buildAdaptiveManimHelpers(profile: VideoFormatProfile): string {
             raise ValueError("LAYOUT_RECAP_UNREADABLE: dividir la recapitulación")
         return pair
 
+
+    def _focus_math(self, obj, run_time=0.35, color=YELLOW):
+        # Highlight the verified right-hand side without moving the equation.
+        # A wrapped equation remains a semantic MathTex group.
+        math = self._iter_math(obj, role=None)
+        target = math[-1] if math else obj
+        if isinstance(target, MathTex) and len(target) == 3:
+            target = target[2]
+        self.play(Indicate(target, color=color, scale_factor=1.035), run_time=run_time)
+
+    def _fit_final_recap(self, summary):
+        # The original problem already owns the top band; keep both answers
+        # and the verification permanently visible beneath it.
+        bounds = self._work_bounds()
+        pixel_ratio = @@PIXELHEIGHT@@ / @@FRAMEHEIGHT@@
+        formula_min_px = @@MINFORMULAPX@@
+        summary.arrange(DOWN, buff=0.36)
+        math = self._iter_math(summary, role="math-primary")
+        if len(math) < 2:
+            raise ValueError("LAYOUT_FINAL_RECAP_EMPTY: faltan las conclusiones")
+        smallest = min(item.height for item in math)
+        if smallest <= 0 or summary.width <= 0 or summary.height <= 0:
+            raise ValueError("LAYOUT_FINAL_RECAP_EMPTY: fórmula de cierre inválida")
+        required_scale = formula_min_px / (smallest * pixel_ratio)
+        scale = min(max(1.65, min(2.50, required_scale * 1.06)),
+                    bounds["width"] / summary.width,
+                    bounds["height"] / summary.height)
+        if any(item.height * scale * pixel_ratio + 0.2 < formula_min_px for item in math):
+            raise ValueError("LAYOUT_FINAL_RECAP_UNREADABLE: dividir el resumen")
+        summary.scale(scale)
+        summary.move_to(UP * bounds["center_y"])
+        return summary
+
     def _fit_fallback_group(self, group):
         bounds = self._work_bounds()
         pixel_ratio = @@PIXELHEIGHT@@ / @@FRAMEHEIGHT@@

@@ -71,6 +71,7 @@ interface ManimScene {
   lessonTimeline?: LessonTimeline;
   narrationTimeline?: boolean;
   geometryReportPath?: string;
+  formulaFirst?: boolean;
 }
 
 const escapeForPythonString = (value: string): string => JSON.stringify(value);
@@ -399,7 +400,7 @@ export const manim = {
           const duration = Math.max(4, pedScene.duration ?? pedScene.estimatedDuration);
           const emphasis = pedScene.emphasis || pedScene.visualText || 'Paso matemático';
           const latexLines = pedScene.visualLatex || [];
-          const textLines = pedScene.visualTextLines || [];
+          const textLines = scene.formulaFirst ? [] : (pedScene.visualTextLines || []);
           const mathObjects = latexLines.map((line, lineIndex) =>
             `MathTex(${escapeForPythonString(line)}, font_size=${lineIndex === 0 ? 46 : 38}, color=${lineIndex === latexLines.length - 1 ? 'YELLOW' : 'WHITE'})`
           );
@@ -415,12 +416,12 @@ export const manim = {
           const visualStages = pedScene.visualStages || [];
 
           if (pedScene.layout === 'equation' && visualStages.length > 0) {
-            const stageLabelSize = 23;
+            const stageLabelSize = scene.formulaFirst ? 18 : 23;
             const stageObjects = visualStages.map((stage, stageIndex) => {
               const formulaFontSize = stageIndex === visualStages.length - 1 ? 61 : 55;
               const label = `Text(${escapeForPythonString(stage.label)}, font_size=${stageLabelSize}, color=${stageIndex === visualStages.length - 1 ? 'YELLOW' : 'GREY_B'})`;
               const formula = `self._math(${escapeForPythonString(stage.latex)}, font_size=${formulaFontSize}, color=${stageIndex === visualStages.length - 1 ? 'YELLOW' : 'WHITE'})`;
-              const detail = stage.detail ? `, Text(${escapeForPythonString(stage.detail)}, font_size=21, color=GREY_B)` : '';
+              const detail = !scene.formulaFirst && stage.detail ? `, Text(${escapeForPythonString(stage.detail)}, font_size=21, color=GREY_B)` : '';
               return `VGroup(${label}, ${formula}${detail}).arrange(DOWN, buff=0.10)`;
             });
             const stageArrangement = `VGroup(${stageObjects.join(', ')})`;

@@ -6,9 +6,14 @@ import { InteractiveLessonPreview } from './InteractiveLessonPreview'
 
 type VideoGeneratorProps = {
   onGenerated?: () => void
+  externalProblem?: {
+    title: string
+    content: string
+    key: number
+  } | null
 }
 
-export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
+export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorProps) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [quality, setQuality] = useState<'low' | 'medium' | 'high'>('medium')
@@ -40,6 +45,15 @@ export function VideoGenerator({ onGenerated }: VideoGeneratorProps) {
     pollingTimers.current.forEach((timer) => window.clearTimeout(timer))
     pollingTimers.current.clear()
   }, [])
+
+  useEffect(() => {
+    if (!externalProblem) return
+    setTitle(externalProblem.title)
+    setContent(externalProblem.content)
+    setPreview(null)
+    setSteps([])
+    setError('')
+  }, [externalProblem])
 
   useEffect(() => {
     let active = true

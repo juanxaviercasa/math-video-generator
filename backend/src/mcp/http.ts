@@ -22,8 +22,8 @@ const authorized = (req: Request, res: Response, next: NextFunction) => {
 };
 
 router.use(authorized);
-router.post('/', (req: Request, res: Response) => {
-  const reply = handleMathMcpRequest(req.body);
+router.post('/', async (req: Request, res: Response) => {
+  const reply = await handleMathMcpRequest(req.body);
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('MCP-Protocol-Version', req.header('mcp-protocol-version') || '2025-06-18');
   if (!reply) return res.status(202).end();

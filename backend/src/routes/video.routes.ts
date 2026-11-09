@@ -12,6 +12,7 @@ import { validateAudibleAudio } from '../services/audio-qa.service.js';
 import { inspectViralForge } from '../services/viralforge-bridge.service.js';
 import {
   auditWebpageMathOpportunities,
+  crawlAndAuditDomain,
   listMathEnginesCatalog,
   recommendEngineForTopic,
 } from '../services/site-math-auditor.service.js';
@@ -56,6 +57,24 @@ router.post('/site-auditor/audit', (req: Request, res: Response) => {
   const url = typeof req.body?.url === 'string' ? req.body.url : undefined;
   const baseEmbedUrl = typeof req.body?.baseEmbedUrl === 'string' ? req.body.baseEmbedUrl : undefined;
   return res.json(auditWebpageMathOpportunities({ url, htmlOrMarkdown, baseEmbedUrl }));
+});
+
+router.post('/site-auditor/crawl-domain', async (req: Request, res: Response) => {
+  const domainOrUrl = typeof req.body?.domainOrUrl === 'string' ? req.body.domainOrUrl.trim() : '';
+  if (!domainOrUrl || domainOrUrl.length > 500) {
+    return res.status(400).json({ code: 'INVALID_DOMAIN_OR_URL', error: 'Ingresa un dominio o URL válido.' });
+  }
+  const maxPages = typeof req.body?.maxPages === 'number' ? req.body.maxPages : undefined;
+  const baseEmbedUrl = typeof req.body?.baseEmbedUrl === 'string' ? req.body.baseEmbedUrl : undefined;
+  try {
+    const report = await crawlAndAuditDomain({ domainOrUrl, maxPages, baseEmbedUrl });
+    return res.json(report);
+  } catch (error) {
+    return res.status(400).json({
+      code: 'DOMAIN_CRAWL_FAILED',
+      error: error instanceof Error ? error.message : 'Error al rastrear el dominio.',
+    });
+  }
 });
 
 router.post('/voices/preview', requireAuth, async (req: AuthenticatedRequest, res: Response) => {

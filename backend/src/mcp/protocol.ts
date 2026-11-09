@@ -3,6 +3,7 @@ import { buildQuadraticStoryboard } from '../services/pedagogy.service.js';
 import { SPANISH_VOICES } from '../services/voice-catalog.service.js';
 import {
   auditWebpageMathOpportunities,
+  crawlAndAuditDomain,
   generateWidgetEmbedCode,
   listMathEnginesCatalog,
   recommendEngineForTopic,
@@ -68,6 +69,28 @@ const embedWidgetArgs = {
   additionalProperties: false,
 };
 
+const crawlDomainArgs = {
+  type: 'object',
+  properties: {
+    domainOrUrl: {
+      type: 'string',
+      description: 'Dominio raíz (ej: miacademia.edu) o URL de matemáticas para rastrear de forma autónoma todas sus páginas',
+      maxLength: 500,
+    },
+    maxPages: {
+      type: 'number',
+      description: 'Número máximo de páginas internas a descubrir y auditar (1 a 20, default 8)',
+    },
+    baseEmbedUrl: {
+      type: 'string',
+      description: 'URL base donde corre Math Video Generator',
+      maxLength: 300,
+    },
+  },
+  required: ['domainOrUrl'],
+  additionalProperties: false,
+};
+
 export const mathMcpTools = [
   { name: 'validate_math', description: 'Valida determinísticamente un ejercicio y devuelve la solución verificada si existe; nunca inventa pasos no comprobados.', inputSchema: problemArgs },
   { name: 'preview_quadratic_storyboard', description: 'Obtiene las escenas y narraciones de una cuadrática validada, sin generar ni publicar videos.', inputSchema: problemArgs },
@@ -77,6 +100,7 @@ export const mathMcpTools = [
   { name: 'recommend_engine_for_topic', description: 'Analiza un tema matemático y ecuaciones de una página web y recomienda cuál de los 60 motores deterministas incrustar.', inputSchema: recommendArgs },
   { name: 'audit_webpage_math_opportunities', description: 'Rastrea el HTML o Markdown de una página web de matemáticas, detecta qué herramientas interactivas faltan por sección y devuelve los códigos embed de los 60 motores.', inputSchema: auditWebpageArgs },
   { name: 'generate_widget_embed_code', description: 'Genera la URL embebible (?embed=1) y el código HTML <iframe> / React para insertar cualquiera de los 60 motores en un sitio web.', inputSchema: embedWidgetArgs },
+  { name: 'crawl_and_audit_domain', description: 'Rastrea de forma autónoma todas las páginas de un dominio o URL de matemáticas, descubre lecciones internas y genera el mapa completo de fórmulas y motores (#01-#60) a inyectar.', inputSchema: crawlDomainArgs },
 ] as const;
 
 const ok = (id: JsonRpcId, result: unknown): RpcResponse => ({ jsonrpc: '2.0', id, result });
@@ -84,7 +108,7 @@ const fail = (id: JsonRpcId, code: number, message: string): RpcResponse => ({ j
 const content = (value: unknown) => ({ content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] });
 const errorContent = (message: string) => ({ isError: true, content: [{ type: 'text', text: message }] });
 
-function runTool(name: string, args: unknown): unknown {
+async function runTool(name: string, args: unknown): Promise<unknown> {
   if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Se esperan argumentos JSON.');
   const input = args as Record<string, unknown>;
   if (name === 'list_neural_voices') return content({ voices: SPANISH_VOICES });
@@ -133,6 +157,16 @@ function runTool(name: string, args: unknown): unknown {
     return content(generateWidgetEmbedCode({ toolId: input.toolId, expression, baseEmbedUrl, height }));
   }
 
+  if (name === 'crawl_and_audit_domain') {
+    if (typeof input.domainOrUrl !== 'string' || !input.domainOrUrl.trim() || input.domainOrUrl.length > 500) {
+      throw new Error('Se requiere un domainOrUrl no vacío de hasta 500 caracteres.');
+    }
+    const maxPages = typeof input.maxPages === 'number' ? input.maxPages : undefined;
+    const baseEmbedUrl = typeof input.baseEmbedUrl === 'string' ? input.baseEmbedUrl : undefined;
+    const report = await crawlAndAuditDomain({ domainOrUrl: input.domainOrUrl, maxPages, baseEmbedUrl });
+    return content(report);
+  }
+
   if (name !== 'validate_math' && name !== 'preview_quadratic_storyboard') throw new Error('Herramienta MCP desconocida.');
   if (typeof input.problem !== 'string' || !input.problem.trim() || input.problem.length > 10000) {
     throw new Error('Se requiere una ecuación no vacía de hasta 10000 caracteres.');
@@ -147,7 +181,7 @@ function runTool(name: string, args: unknown): unknown {
     ({ id, narrationText, visualLatex, visualStages, layout, graphSpec })) });
 }
 
-export function handleMathMcpRequest(raw: unknown): RpcResponse | null {
+export async function handleMathMcpRequest(raw: unknown): Promise<RpcResponse | null> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fail(null, -32600, 'Invalid Request');
   const req = raw as RpcRequest;
   if (req.jsonrpc !== '2.0' || typeof req.method !== 'string') return fail(req.id ?? null, -32600, 'Invalid Request');
@@ -169,7 +203,7 @@ export function handleMathMcpRequest(raw: unknown): RpcResponse | null {
       }
       const { name, arguments: args } = params as { name: string; arguments?: unknown };
       if (!mathMcpTools.some((tool) => tool.name === name)) return fail(id, -32602, 'Tool not found');
-      try { return ok(id, runTool(name, args || {})); }
+      try { return ok(id, await runTool(name, args || {})); }
       catch (e) { return ok(id, errorContent(e instanceof Error ? e.message : 'Tool failed')); }
     }
     default: return fail(id, -32601, 'Method not found');

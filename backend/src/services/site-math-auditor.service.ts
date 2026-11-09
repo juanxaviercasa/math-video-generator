@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { validateMathProblem, type MathValidation } from './math-validation.service.js';
 
 export type EngineCategoryId =
@@ -445,6 +446,208 @@ export function auditWebpageMathOpportunities(input: {
         'recommend_engine_for_topic',
         'audit_webpage_math_opportunities',
         'generate_widget_embed_code',
+        'crawl_and_audit_domain',
+      ],
+    },
+  };
+}
+
+export interface DomainPageAudit {
+  pageUrl: string;
+  pagePath: string;
+  pageTitle: string;
+  opportunitiesFound: number;
+  categoriesFound: EngineCategoryId[];
+  sections: WebpageAuditSectionOpportunity[];
+}
+
+export interface DomainAuditReport {
+  targetDomain: string;
+  normalizedBaseUrl: string;
+  crawledPagesCount: number;
+  totalOpportunitiesFound: number;
+  pages: DomainPageAudit[];
+  enginesDistribution: Record<string, number>;
+  categoriesDistribution: Record<string, number>;
+  summary: {
+    message: string;
+    aiRouterRole: string;
+    deterministicEnginesCount: number;
+    recommendedActions: string[];
+  };
+}
+
+export function extractInternalLinks(html: string, baseUrl: URL): string[] {
+  const matches = html.matchAll(/<a\b[^>]*\bhref=["']([^"']+)["']/gi);
+  const links = new Set<string>();
+  for (const m of matches) {
+    const rawHref = m[1].trim();
+    if (
+      !rawHref ||
+      rawHref.startsWith('#') ||
+      rawHref.startsWith('javascript:') ||
+      rawHref.startsWith('mailto:') ||
+      rawHref.startsWith('tel:')
+    ) {
+      continue;
+    }
+    try {
+      const resolved = new URL(rawHref, baseUrl.origin);
+      if (resolved.origin === baseUrl.origin) {
+        resolved.hash = '';
+        resolved.search = '';
+        const pathname = resolved.pathname;
+        if (
+          !/\.(png|jpe?g|gif|svg|webp|pdf|docx?|zip|rar|mp4|webm|mp3|wav|css|js|map|json|ico)$/i.test(
+            pathname
+          )
+        ) {
+          links.add(resolved.toString());
+        }
+      }
+    } catch {
+      // ignore malformed URLs
+    }
+  }
+  return Array.from(links);
+}
+
+export function isSafeCrawlingUrl(target: URL): boolean {
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') return false;
+  const host = target.hostname.toLowerCase();
+  if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '::1') {
+    return process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development';
+  }
+  if (
+    host.startsWith('169.254.') ||
+    host.startsWith('10.') ||
+    host.startsWith('192.168.') ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export async function crawlAndAuditDomain(input: {
+  domainOrUrl: string;
+  maxPages?: number;
+  baseEmbedUrl?: string;
+  htmlOverride?: Record<string, string>;
+}): Promise<DomainAuditReport> {
+  const rawInput = input.domainOrUrl.trim();
+  const withProtocol = /^https?:\/\//i.test(rawInput) ? rawInput : `https://${rawInput}`;
+  let baseTarget: URL;
+  try {
+    baseTarget = new URL(withProtocol);
+  } catch {
+    throw new Error(`Dominio o URL no válida: "${input.domainOrUrl}".`);
+  }
+
+  const normalizedBaseUrl = `${baseTarget.protocol}//${baseTarget.host}`;
+  const targetDomain = baseTarget.hostname;
+  const maxPages = Math.min(Math.max(input.maxPages || 8, 1), 25);
+
+  const pagesToCrawl: string[] = [baseTarget.toString()];
+  const visited = new Set<string>();
+  const pageAudits: DomainPageAudit[] = [];
+  const enginesDistribution: Record<string, number> = {};
+  const categoriesDistribution: Record<string, number> = {};
+
+  while (pagesToCrawl.length > 0 && pageAudits.length < maxPages) {
+    const currentUrl = pagesToCrawl.shift();
+    if (!currentUrl) break;
+    if (visited.has(currentUrl)) continue;
+    visited.add(currentUrl);
+
+    let parsedCurrent: URL;
+    try {
+      parsedCurrent = new URL(currentUrl);
+    } catch {
+      continue;
+    }
+
+    if (!isSafeCrawlingUrl(parsedCurrent)) {
+      continue;
+    }
+
+    let pageHtml = '';
+    if (input.htmlOverride && input.htmlOverride[currentUrl]) {
+      pageHtml = input.htmlOverride[currentUrl];
+    } else if (input.htmlOverride && input.htmlOverride[parsedCurrent.pathname]) {
+      pageHtml = input.htmlOverride[parsedCurrent.pathname];
+    } else {
+      try {
+        const response = await axios.get(currentUrl, {
+          timeout: 6000,
+          maxContentLength: 1024 * 1024,
+          maxRedirects: 3,
+          headers: {
+            'User-Agent': 'MathVideoGenerator-Auditor/1.0 (+https://math.forjavia.site)',
+            Accept: 'text/html,application/xhtml+xml',
+          },
+        });
+        pageHtml = typeof response.data === 'string' ? response.data : '';
+      } catch {
+        // Skip unreachable pages gracefully
+        continue;
+      }
+    }
+
+    if (!pageHtml.trim()) continue;
+
+    // Discover internal links for subsequent crawl iterations
+    const discovered = extractInternalLinks(pageHtml, baseTarget);
+    for (const link of discovered) {
+      if (!visited.has(link) && !pagesToCrawl.includes(link) && pagesToCrawl.length < 50) {
+        pagesToCrawl.push(link);
+      }
+    }
+
+    const titleMatch = pageHtml.match(/<title[^>]*>(.*?)<\/title>/i);
+    const pageTitle = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim().slice(0, 100) : parsedCurrent.pathname;
+
+    const report = auditWebpageMathOpportunities({
+      url: currentUrl,
+      htmlOrMarkdown: pageHtml,
+      baseEmbedUrl: input.baseEmbedUrl,
+    });
+
+    for (const sec of report.sections) {
+      const engName = sec.recommendedEngine.name;
+      enginesDistribution[engName] = (enginesDistribution[engName] || 0) + 1;
+      const catId = sec.recommendedEngine.categoryId;
+      categoriesDistribution[catId] = (categoriesDistribution[catId] || 0) + 1;
+    }
+
+    pageAudits.push({
+      pageUrl: currentUrl,
+      pagePath: parsedCurrent.pathname || '/',
+      pageTitle,
+      opportunitiesFound: report.opportunitiesFound,
+      categoriesFound: report.categoriesCovered,
+      sections: report.sections,
+    });
+  }
+
+  const totalOpportunities = pageAudits.reduce((acc, p) => acc + p.opportunitiesFound, 0);
+
+  return {
+    targetDomain,
+    normalizedBaseUrl,
+    crawledPagesCount: pageAudits.length,
+    totalOpportunitiesFound: totalOpportunities,
+    pages: pageAudits,
+    enginesDistribution,
+    categoriesDistribution,
+    summary: {
+      message: `Rastreo completado para el dominio ${targetDomain}. Se analizaron ${pageAudits.length} páginas y se identificaron ${totalOpportunities} puntos de inyección interactiva.`,
+      aiRouterRole: 'La IA actuó como rastreador y auditor identificando la ausencia de componentes interactivos por página; los 60 motores deterministas proveen los laboratorios de cálculo exacto.',
+      deterministicEnginesCount: BACKEND_MATH_ENGINES.length,
+      recommendedActions: [
+        'Inyectar los widgets <iframe /> generados en cada una de las plantillas de página del sitio.',
+        'Exportar el mapa de inyección en formato JSON para el pipeline CI/CD o CMS del dominio.',
+        'Generar videos con Manim 2.2 para las lecciones principales que requieren explicación con voz.',
       ],
     },
   };

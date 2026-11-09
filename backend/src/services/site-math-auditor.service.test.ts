@@ -3,6 +3,8 @@ import test from 'node:test';
 import {
   auditWebpageMathOpportunities,
   BACKEND_MATH_ENGINES,
+  crawlAndAuditDomain,
+  extractInternalLinks,
   generateWidgetEmbedCode,
   listMathEnginesCatalog,
   recommendEngineForTopic,
@@ -82,4 +84,61 @@ test('generateWidgetEmbedCode produces valid iframe and React snippet', () => {
   assert.ok(res.embedUrl.startsWith('https://math.forjavia.site/?embed=1&tool=mathsteps'));
   assert.ok(res.iframeHtml.includes('height="600"'));
   assert.ok(res.reactComponent.includes('<MathSuiteEmbed toolId="mathsteps"'));
+});
+
+test('extractInternalLinks discovers internal domain links and discards external and asset URLs', () => {
+  const html = `
+    <nav>
+      <a href="/cursos/algebra">Álgebra</a>
+      <a href="/cursos/calculo">Cálculo</a>
+      <a href="https://example.com/geometria">Geometría</a>
+      <a href="https://google.com">Google</a>
+      <a href="/logo.png">Logo</a>
+      <a href="#contacto">Contacto</a>
+    </nav>
+  `;
+  const links = extractInternalLinks(html, new URL('https://example.com/'));
+  assert.equal(links.length, 3);
+  assert.ok(links.includes('https://example.com/cursos/algebra'));
+  assert.ok(links.includes('https://example.com/cursos/calculo'));
+  assert.ok(links.includes('https://example.com/geometria'));
+});
+
+test('crawlAndAuditDomain crawls multiple pages across a domain and produces structured report', async () => {
+  const homeHtml = `
+    <h1>Academia de Matemáticas</h1>
+    <nav><a href="/algebra">Álgebra</a><a href="/calculo">Cálculo</a></nav>
+    <h2>Bienvenida al Portal</h2>
+    <p>Aprende matemáticas interactivas con ejercicios como x^2 - 5x + 6 = 0.</p>
+  `;
+  const algebraHtml = `
+    <h1>Curso de Álgebra</h1>
+    <h2>Factorización</h2>
+    <p>Despejamos x^2 - 7x + 12 = 0 paso a paso.</p>
+  `;
+  const calculoHtml = `
+    <h1>Curso de Cálculo</h1>
+    <h2>Recta Tangente y Derivada</h2>
+    <p>Pendiente en la curva de x^2 - 4x + 3 = 0.</p>
+    <img src="tangente.png" />
+  `;
+
+  const report = await crawlAndAuditDomain({
+    domainOrUrl: 'https://miacademia.edu',
+    maxPages: 5,
+    htmlOverride: {
+      '/': homeHtml,
+      'https://miacademia.edu/': homeHtml,
+      '/algebra': algebraHtml,
+      'https://miacademia.edu/algebra': algebraHtml,
+      '/calculo': calculoHtml,
+      'https://miacademia.edu/calculo': calculoHtml,
+    },
+  });
+
+  assert.equal(report.targetDomain, 'miacademia.edu');
+  assert.equal(report.crawledPagesCount, 3);
+  assert.ok(report.totalOpportunitiesFound >= 3);
+  assert.ok(report.pages.some((p) => p.pagePath === '/algebra'));
+  assert.ok(report.pages.some((p) => p.pagePath === '/calculo'));
 });

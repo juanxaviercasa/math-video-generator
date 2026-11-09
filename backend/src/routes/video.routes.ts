@@ -10,6 +10,11 @@ import { SPANISH_VOICES, resolveVoiceId } from '../services/voice-catalog.servic
 import { tts } from '../services/tts.service.js';
 import { validateAudibleAudio } from '../services/audio-qa.service.js';
 import { inspectViralForge } from '../services/viralforge-bridge.service.js';
+import {
+  auditWebpageMathOpportunities,
+  listMathEnginesCatalog,
+  recommendEngineForTopic,
+} from '../services/site-math-auditor.service.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -25,6 +30,32 @@ router.get('/voices', requireAuth, (_req: Request, res: Response) => {
 router.get('/ai-infrastructure', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ code: 'UNAUTHENTICATED', error: 'Debes iniciar sesión' });
   return res.json(await inspectViralForge());
+});
+
+router.get('/site-auditor/catalog', (_req: Request, res: Response) => {
+  const categoryId = typeof _req.query.categoryId === 'string' ? _req.query.categoryId : undefined;
+  return res.json(listMathEnginesCatalog(categoryId));
+});
+
+router.post('/site-auditor/recommend', (req: Request, res: Response) => {
+  const topic = typeof req.body?.topic === 'string' ? req.body.topic.trim() : '';
+  if (!topic || topic.length > 2000) {
+    return res.status(400).json({ code: 'INVALID_TOPIC', error: 'Ingresa un tema válido (máx. 2000 caracteres).' });
+  }
+  const sampleEquations = Array.isArray(req.body?.sampleEquations)
+    ? req.body.sampleEquations.filter((item: unknown): item is string => typeof item === 'string' && item.length <= 300)
+    : undefined;
+  return res.json(recommendEngineForTopic({ topic, sampleEquations }));
+});
+
+router.post('/site-auditor/audit', (req: Request, res: Response) => {
+  const htmlOrMarkdown = typeof req.body?.htmlOrMarkdown === 'string' ? req.body.htmlOrMarkdown.trim() : '';
+  if (!htmlOrMarkdown || htmlOrMarkdown.length > 50000) {
+    return res.status(400).json({ code: 'INVALID_CONTENT', error: 'Ingresa contenido HTML o Markdown válido (máx. 50000 caracteres).' });
+  }
+  const url = typeof req.body?.url === 'string' ? req.body.url : undefined;
+  const baseEmbedUrl = typeof req.body?.baseEmbedUrl === 'string' ? req.body.baseEmbedUrl : undefined;
+  return res.json(auditWebpageMathOpportunities({ url, htmlOrMarkdown, baseEmbedUrl }));
 });
 
 router.post('/voices/preview', requireAuth, async (req: AuthenticatedRequest, res: Response) => {

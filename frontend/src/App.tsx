@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { AuthPanel } from './components/AuthPanel'
 import { VideoGenerator } from './components/VideoGenerator'
 import { VideoLibrary } from './components/VideoLibrary'
 import { AiModelsPanel } from './components/AiModelsPanel'
 import { PasswordRecovery } from './components/PasswordRecovery'
 import { MathSuperSuite } from './components/MathSuperSuite'
+import { MathWidgetEmbedView } from './components/MathWidgetEmbedView'
+import { WebsiteMathAuditor } from './components/WebsiteMathAuditor'
 import { MACRO_CATEGORIES, type CategoryId } from './suite/catalog'
 import { consumePasswordRecoveryUrl } from './services/password-recovery'
 import { auth, User } from './services/auth'
@@ -14,12 +16,25 @@ import { auth, User } from './services/auth'
 const incomingRecovery = consumePasswordRecoveryUrl()
 
 function App() {
+  const embedParams = useMemo(() => {
+    if (typeof window === 'undefined') return null
+    const params = new URLSearchParams(window.location.search)
+    const isEmbed = params.get('embed') === '1' || params.get('mode') === 'embed'
+    if (!isEmbed) return null
+    return {
+      toolId: params.get('tool') || undefined,
+      expr: params.get('expr') || undefined,
+    }
+  }, [])
+
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [libraryRefresh, setLibraryRefresh] = useState(0)
   const [recovery, setRecovery] = useState<{ session?: { accessToken: string }; error?: string } | null>(incomingRecovery)
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'studio' | 'supersuite'>('supersuite')
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'studio' | 'supersuite' | 'auditor'>('supersuite')
   const [suiteCategory, setSuiteCategory] = useState<CategoryId>('video_anim')
+  const [suiteToolId, setSuiteToolId] = useState<string | undefined>(undefined)
+  const [suiteExpr, setSuiteExpr] = useState<string | undefined>(undefined)
   const [suiteKey, setSuiteKey] = useState(0)
   const [externalProblem, setExternalProblem] = useState<{
     title: string
@@ -28,15 +43,39 @@ function App() {
   } | null>(null)
 
   useEffect(() => {
+    if (embedParams) return
     auth
       .me()
       .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setAuthLoading(false))
-  }, [])
+  }, [embedParams])
+
+  if (embedParams) {
+    return (
+      <MathWidgetEmbedView
+        initialToolId={embedParams.toolId}
+        initialExpression={embedParams.expr}
+      />
+    )
+  }
 
   const handleOpenCategory = (catId: CategoryId) => {
     setSuiteCategory(catId)
+    setSuiteToolId(undefined)
+    setSuiteExpr(undefined)
+    setSuiteKey((prev) => prev + 1)
+    setActiveWorkspaceTab('supersuite')
+  }
+
+  const handleOpenSpecificToolInSuite = (
+    catId: CategoryId,
+    toolId: string,
+    expression: string
+  ) => {
+    setSuiteCategory(catId)
+    setSuiteToolId(toolId)
+    setSuiteExpr(expression)
     setSuiteKey((prev) => prev + 1)
     setActiveWorkspaceTab('supersuite')
   }
@@ -58,7 +97,7 @@ function App() {
             <div>
               <h1 className="text-3xl font-bold text-white">🎓 Math Video Generator</h1>
               <p className="text-slate-400 mt-1 text-sm">
-                Estudio de videos matemáticos con IA (Pizarra Manim 2.2) + Super-Suite de 60 Motores Open-Source
+                Estudio Manim 2.2 + Super-Suite de 60 Motores Open-Source + Auditor e Inyector Web (Kaggle &amp; MCP)
               </p>
             </div>
             <div className="flex items-center gap-5">
@@ -108,6 +147,18 @@ function App() {
               <span>🧭 Super-Suite Matemática (12 Categorías · 60 Motores)</span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => setActiveWorkspaceTab('auditor')}
+              className={`rounded-xl px-4 py-2 text-xs font-bold transition flex items-center gap-2 ${
+                activeWorkspaceTab === 'auditor'
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-950/60'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              <span>🕸️ Auditor e Inyector Web (Pipeline Kaggle + MCP → 60 Motores)</span>
+            </button>
+
             <div className="h-4 w-px bg-slate-700 mx-1 hidden lg:block" />
 
             {/* Quick Category Pills */}
@@ -135,11 +186,19 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 py-8">
         {recovery ? (
           <PasswordRecovery key={recovery.session?.accessToken ? 'token' : 'request'} recovery={recovery} onClose={() => setRecovery(null)} />
+        ) : activeWorkspaceTab === 'auditor' ? (
+          <WebsiteMathAuditor
+            onOpenToolInSuite={handleOpenSpecificToolInSuite}
+            onSendToVideoStudio={handleSendToVideoStudio}
+          />
         ) : activeWorkspaceTab === 'supersuite' ? (
           <MathSuperSuite
-            key={`${suiteCategory}-${suiteKey}`}
+            key={`${suiteCategory}-${suiteToolId || 'first'}-${suiteKey}`}
             initialCategory={suiteCategory}
+            initialToolId={suiteToolId}
+            initialExpression={suiteExpr}
             onSendToVideoStudio={handleSendToVideoStudio}
+            onOpenWebAuditor={() => setActiveWorkspaceTab('auditor')}
           />
         ) : authLoading ? (
           <div className="rounded-lg border border-slate-700 bg-slate-800 p-8 text-center text-slate-300">Verificando mi sesión…</div>
@@ -152,7 +211,7 @@ function App() {
             {externalProblem && (
               <div className="mt-4 rounded-lg border border-cyan-500/40 bg-cyan-950/30 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-cyan-300">
-                  Ejercicio recibido desde la Super-Suite Matemática
+                  Ejercicio recibido desde la Super-Suite / Auditor Web
                 </p>
                 <p className="mt-1 text-sm font-bold text-white">{externalProblem.title}</p>
                 <p className="mt-1 font-mono text-xs text-cyan-200">{externalProblem.content}</p>
@@ -167,15 +226,24 @@ function App() {
             </div>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-slate-400">
-                Mientras tanto, puedes utilizar las 60 herramientas interactivas en la pestaña Super-Suite Matemática.
+                Mientras tanto, puedes utilizar las 60 herramientas interactivas y el Auditor e Inyector de Sitios Web.
               </p>
-              <button
-                type="button"
-                onClick={() => setActiveWorkspaceTab('supersuite')}
-                className="rounded-lg bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-xs font-bold text-white transition"
-              >
-                🧭 Volver a la Super-Suite (60 Motores)
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveWorkspaceTab('supersuite')}
+                  className="rounded-lg bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-xs font-bold text-white transition"
+                >
+                  🧭 Super-Suite (60 Motores)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveWorkspaceTab('auditor')}
+                  className="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-bold text-white transition"
+                >
+                  🕸️ Auditor e Inyector Web
+                </button>
+              </div>
             </div>
           </div>
         ) : !user ? (
@@ -190,13 +258,20 @@ function App() {
                 <p className="text-xs text-white font-mono mt-1">{externalProblem.title}</p>
               </div>
             )}
-            <div className="pt-2">
+            <div className="pt-2 flex flex-wrap justify-center gap-2">
               <button
                 type="button"
                 onClick={() => setActiveWorkspaceTab('supersuite')}
                 className="rounded-lg border border-cyan-500/50 bg-cyan-500/10 hover:bg-cyan-500/20 px-4 py-2 text-xs font-semibold text-cyan-300 transition"
               >
-                🧭 Explorar las 60 Herramientas de la Super-Suite Matemática sin iniciar sesión
+                🧭 Explorar Super-Suite (60 Motores)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveWorkspaceTab('auditor')}
+                className="rounded-lg border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-2 text-xs font-semibold text-indigo-300 transition"
+              >
+                🕸️ Abrir Auditor e Inyector Web
               </button>
             </div>
           </div>
@@ -221,7 +296,7 @@ function App() {
       <footer className="border-t border-slate-700 mt-20 py-8 bg-slate-900/50">
         <div className="max-w-7xl mx-auto px-4 text-center text-slate-400 text-sm">
           <p>
-            Math Video Generator — Estudio Manim 2.2 + Super-Suite de 60 Herramientas Open-Source
+            Math Video Generator — Estudio Manim 2.2 + Super-Suite de 60 Motores Open-Source + Auditor Web MCP/Kaggle
             {' | '}
             <a
               href="https://github.com/juanxaviercasa/math-video-generator"

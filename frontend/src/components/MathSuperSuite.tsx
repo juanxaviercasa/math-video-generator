@@ -6,25 +6,42 @@ import {
   type MathToolSpec,
 } from '../suite/catalog'
 import { parseQuadraticInput } from '../suite/mathEngines'
+import { buildWidgetEmbedSnippet } from '../suite/siteAuditor'
 import { ToolWorkbench } from '../suite/ToolWorkbenches'
 
 export type MathSuperSuiteProps = {
   initialCategory?: CategoryId
+  initialToolId?: string
+  initialExpression?: string
   onSendToVideoStudio?: (title: string, expression: string) => void
+  onOpenWebAuditor?: () => void
 }
 
 export function MathSuperSuite({
   initialCategory = 'video_anim',
+  initialToolId,
+  initialExpression,
   onSendToVideoStudio,
+  onOpenWebAuditor,
 }: MathSuperSuiteProps) {
   const [activeCategory, setActiveCategory] = useState<CategoryId>(initialCategory)
   const [selectedToolId, setSelectedToolId] = useState<string>(() => {
+    if (initialToolId) {
+      const match = MATH_TOOLS_CATALOG.find((t) => t.id === initialToolId)
+      if (match) return match.id
+    }
     const first = MATH_TOOLS_CATALOG.find((t) => t.categoryId === initialCategory)
     return first ? first.id : MATH_TOOLS_CATALOG[0].id
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [showGlobalDirectory, setShowGlobalDirectory] = useState(false)
-  const [customExpressions, setCustomExpressions] = useState<Record<string, string>>({})
+  const [showEmbedDrawer, setShowEmbedDrawer] = useState(false)
+  const [customExpressions, setCustomExpressions] = useState<Record<string, string>>(() => {
+    if (initialToolId && initialExpression) {
+      return { [initialToolId]: initialExpression }
+    }
+    return {}
+  })
   const [sentToast, setSentToast] = useState<string | null>(null)
 
   const activeCategoryMeta = useMemo(
@@ -62,6 +79,11 @@ export function MathSuperSuite({
     [currentExpression]
   )
 
+  const embedInfo = useMemo(
+    () => buildWidgetEmbedSnippet(activeTool, currentExpression),
+    [activeTool, currentExpression]
+  )
+
   const setToolExpression = (value: string) => {
     setCustomExpressions((prev) => ({
       ...prev,
@@ -94,6 +116,14 @@ export function MathSuperSuite({
     window.setTimeout(() => setSentToast(null), 3500)
   }
 
+  const handleCopyEmbed = (text: string, label: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      void navigator.clipboard.writeText(text)
+    }
+    setSentToast(`Copiado al portapapeles: ${label}`)
+    window.setTimeout(() => setSentToast(null), 3000)
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Banner & Search */}
@@ -111,12 +141,12 @@ export function MathSuperSuite({
               Super-Suite Matemática Unificada (#01 – #60)
             </h2>
             <p className="text-sm text-slate-300 mt-1">
-              Explora los 60 mejores repositorios matemáticos de GitHub organizados por especialidad. Cada pestaña cuenta con su motor interactivo en vivo y puente directo a nuestra Pizarra Manim 2.2.
+              Explora los 60 motores deterministas de código libre organizados por especialidad. Cada pestaña se puede incrustar como widget interactivo en tu sitio web o enviar a la Pizarra de Video Manim 2.2.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[260px]">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="relative min-w-[250px]">
               <input
                 type="search"
                 value={searchQuery}
@@ -135,6 +165,16 @@ export function MathSuperSuite({
               )}
             </div>
 
+            {onOpenWebAuditor && (
+              <button
+                type="button"
+                onClick={onOpenWebAuditor}
+                className="rounded-xl border border-indigo-500/40 bg-indigo-500/15 hover:bg-indigo-500/25 px-3.5 py-2 text-xs font-semibold text-indigo-200 transition"
+              >
+                🕸️ Auditor e Inyector de Sitios Web
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setShowGlobalDirectory((v) => !v)}
@@ -144,7 +184,7 @@ export function MathSuperSuite({
                   : 'border-slate-700 bg-slate-800 text-slate-200 hover:border-slate-500'
               }`}
             >
-              {showGlobalDirectory ? '📋 Ocultar Catálogo Completo (60)' : '📋 Ver Catálogo Completo (60 URLs)'}
+              {showGlobalDirectory ? '📋 Ocultar Catálogo (60)' : '📋 Ver Catálogo (60 URLs)'}
             </button>
           </div>
         </div>
@@ -327,6 +367,18 @@ export function MathSuperSuite({
             <div className="flex flex-wrap items-center gap-2 shrink-0">
               <button
                 type="button"
+                onClick={() => setShowEmbedDrawer((v) => !v)}
+                className={`rounded-xl border px-3.5 py-2.5 text-xs font-bold transition ${
+                  showEmbedDrawer
+                    ? 'border-emerald-400 bg-emerald-500/20 text-emerald-200'
+                    : 'border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300'
+                }`}
+              >
+                &lt;/&gt; Código Embed para mi Web
+              </button>
+
+              <button
+                type="button"
                 onClick={handleSendToStudio}
                 className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-900/40 transition"
               >
@@ -338,6 +390,54 @@ export function MathSuperSuite({
           {sentToast && (
             <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 text-xs text-emerald-200">
               ✅ {sentToast}
+            </div>
+          )}
+
+          {/* Expandable Embed Code Generator Drawer */}
+          {showEmbedDrawer && (
+            <div className="rounded-xl border border-emerald-500/40 bg-slate-900/95 p-4 space-y-3 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="font-bold text-emerald-300">
+                    Inyectar Motor #{String(activeTool.number).padStart(2, '0')} ({activeTool.name}) en tu Sitio Web
+                  </span>
+                  <p className="text-[11px] text-slate-400">
+                    Pega este código en cualquier artículo o lección de tu portal para cargar el laboratorio interactivo determinista con la ecuación actual.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={embedInfo.embedUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded bg-blue-600/20 border border-blue-500/40 px-2.5 py-1 text-blue-300 hover:bg-blue-600/35"
+                  >
+                    Probar Vista Embed Independiente ↗
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyEmbed(embedInfo.iframeCode, `<iframe> de ${activeTool.name}`)}
+                    className="rounded bg-emerald-600 hover:bg-emerald-500 px-3 py-1 font-bold text-white"
+                  >
+                    Copiar &lt;iframe&gt;
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-3">
+                <div>
+                  <div className="text-[11px] font-semibold text-slate-400 mb-1">HTML &lt;iframe&gt; Universal:</div>
+                  <pre className="rounded bg-slate-950 p-3 font-mono text-[11px] text-emerald-200 overflow-x-auto">
+                    {embedInfo.iframeCode}
+                  </pre>
+                </div>
+                <div>
+                  <div className="text-[11px] font-semibold text-slate-400 mb-1">Componente React / Next.js / Astro:</div>
+                  <pre className="rounded bg-slate-950 p-3 font-mono text-[11px] text-cyan-200 overflow-x-auto">
+                    {embedInfo.reactSnippet}
+                  </pre>
+                </div>
+              </div>
             </div>
           )}
 

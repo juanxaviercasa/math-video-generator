@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "math-video-generator": {
+      "command": "node",
+      "args": [
+        "c:\\Users\\cabel\\Videos\\Math Video Generator\\backend\\dist\\mcp\\stdio.js"
+      ],
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}

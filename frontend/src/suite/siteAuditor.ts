@@ -397,6 +397,95 @@ export type SampleDomainPreset = {
 
 export const SAMPLE_DOMAIN_PRESETS: SampleDomainPreset[] = [
   {
+    id: 'dominio-sistema-zenit',
+    domain: 'sistemazenit.com',
+    title: 'Sistema Educativo Zénit (Plataforma Oficial)',
+    badge: 'Producción · 8 Páginas Auditoría · 60 Motores',
+    description: 'Plataforma oficial de matemática y ciencias con 628 lecciones, 12 Macro-Laboratorios y catálogo completo de 60 motores open-source.',
+    pages: [
+      {
+        path: '/',
+        title: 'Inicio: Sistema Educativo Zénit',
+        content: `<h1>Sistema Educativo Zénit: Matemática y Ciencias</h1>
+<h2>1. Resolución Rigurosa de Ecuaciones Cuadráticas y Polinomios</h2>
+<p>Dominio analítico de la ecuación ax^2 + bx + c = 0, raíces exactas mediante fórmula general y factorización simbólica.</p>
+<h2>2. Explicación Visual y Narración Docente en Video Manim 2.2</h2>
+<p>Clase magistral paso a paso con animaciones vectoriales cuadro a cuadro y sincronización de voz pedagógica.</p>
+<h2>3. Laboratorio Central de 12 Herramientas Interactivas</h2>
+<p>Exploración directa de parámetros, simulación dinámica y contraste de hipótesis en tiempo real.</p>`,
+      },
+      {
+        path: '/herramientas',
+        title: 'Herramientas Interactivas y Catálogo de 60 Motores',
+        content: `<h1>Laboratorios Interactivos y Motores Matemáticos</h1>
+<h2>1. Simulador de Conjuntos y Diagramas de Venn-Euler</h2>
+<p>Operaciones de unión, intersección, diferencia simétrica y cardinalidad n(A ∪ B) = n(A) + n(B) - n(A ∩ B) con diagramas interactivos.</p>
+<h2>2. Teoría de Números, Numeración y MCD/MCM</h2>
+<p>Algoritmo de Euclides por divisiones sucesivas, factorización canónica en números primos y cálculo de divisores.</p>
+<h2>3. Polinomios, División Ruffini-Horner y Productos Notables</h2>
+<p>Esquema interactivo de división sintética, Teorema del Resto P(r) = R y mosaicos de áreas de productos notables.</p>
+<h2>4. Estudio Analítico de Funciones y Recta Tangente</h2>
+<p>Transformaciones de funciones g(x) = a f(x-h) + k, dominio, rango y cálculo de pendiente en vivo.</p>`,
+      },
+      {
+        path: '/aprende/matematica-preuniversitaria/algebra/ecuaciones-cuadraticas-3sec-unidad3',
+        title: 'Álgebra: Ecuaciones Cuadráticas y Cardano-Vieta',
+        content: `<h1>Álgebra: Ecuaciones de Segundo Grado</h1>
+<h2>1. Fórmula General, Raíces y Discriminante</h2>
+<p>Estudio de ax^2 + bx + c = 0, naturaleza de raíces reales o complejas según el signo de Delta = b^2 - 4ac.</p>
+<h2>2. Relaciones de Cardano-Vieta y Reconstrucción de Ecuaciones</h2>
+<p>Suma de raíces x1 + x2 = -b/a y producto x1 * x2 = c/a para reconstruir la ecuación x^2 - Sx + P = 0.</p>
+<h2>3. Práctica Interactiva con Teclado Matemático Virtual</h2>
+<p>Entrada de respuestas en notación científica LaTeX y verificación inmediata de alternativas.</p>`,
+      },
+      {
+        path: '/aprende/matematica-preuniversitaria/trigonometria/circunferencia-trigonometrica-4sec-unidad5',
+        title: 'Trigonometría: Circunferencia Trigonométrica y Líneas',
+        content: `<h1>Trigonometría: Circunferencia Unitaria y Ondas</h1>
+<h2>1. Circunferencia Trigonométrica y Cuadrantes</h2>
+<p>Ecuación x^2 + y^2 = 1, líneas trigonométricas de seno, coseno, tangente y variación de signos en los 4 cuadrantes.</p>
+<h2>2. Conversión entre Sistemas Angulares y Longitud de Arco</h2>
+<p>Relación fundamental S/180 = C/200 = R/pi y cálculo de longitud de arco L = theta * r con área del sector circular.</p>`,
+      },
+      {
+        path: '/aprende/matematica-preuniversitaria/geometria/secciones-conicas-y-parabola-5sec-unidad6',
+        title: 'Geometría Analítica: Secciones Cónicas y Parábola',
+        content: `<h1>Geometría Analítica: La Parábola como Lugar Geométrico</h1>
+<h2>1. Definición Focal: Foco y Recta Directriz</h2>
+<p>Ecuación canónica (x-h)^2 = 4p(y-k), distancia focal p, directriz y cálculo del lado recto |4p|.</p>
+<h2>2. Construcciones Geométricas Euclidianas y Cónicas</h2>
+<p>Trazado interactivo con regla y compás digital, puntos de tangencia y propiedad reflectora parabólica.</p>`,
+      },
+      {
+        path: '/aprende/matematica-universitaria/calculo-1/definicion-de-la-derivada-y-regla-de-la-cadena',
+        title: 'Cálculo I: Derivada como Límite y Recta Tangente',
+        content: `<h1>Cálculo Diferencial: La Derivada</h1>
+<h2>1. Definición Formal de Límite Épsilon-Delta y Continuidad</h2>
+<p>Para todo epsilon > 0 existe delta > 0 tal que 0 < |x - c| < delta implica |f(x) - L| < epsilon.</p>
+<h2>2. La Derivada como Pendiente de la Recta Tangente</h2>
+<p>Límite del cociente de Fermat f'(x) = lim h->0 [f(x+h) - f(x)] / h y recta tangente móvil sobre la curva.</p>`,
+      },
+      {
+        path: '/aprende/matematica-universitaria/calculo-2/sumas-de-riemann-e-integral-definida',
+        title: 'Cálculo II: Sumas de Riemann e Integral Definida',
+        content: `<h1>Cálculo Integral: Particiones de Riemann</h1>
+<h2>1. Sumas de Riemann y Teorema Fundamental del Cálculo</h2>
+<p>Aproximación del área bajo la curva mediante sumas finitas de rectángulos y límite hacia la integral definida.</p>
+<h2>2. Volúmenes de Sólidos de Revolución en el Espacio</h2>
+<p>Métodos de discos, arandelas y cascarones cilíndricos para calcular volúmenes generados por rotación.</p>`,
+      },
+      {
+        path: '/aprende/matematica-universitaria/calculo-3/superficies-cuadricas-y-geometria-r3',
+        title: 'Cálculo III: Superficies Cuádricas y Cálculo Multivariable',
+        content: `<h1>Cálculo Multivariable en R^3</h1>
+<h2>1. Superficies Cuádricas y Curvas de Nivel 3D</h2>
+<p>Visualización tridimensional de paraboloides, hiperboloides y sillas de montar z = f(x, y).</p>
+<h2>2. Cálculo Vectorial: Gradiente y Plano Tangente</h2>
+<p>Vector gradiente nabla f(x,y) como dirección de máxima variación y aproximación por plano tangente.</p>`,
+      },
+    ],
+  },
+  {
     id: 'dominio-academia-completa',
     domain: 'mi-academia-matematica.edu',
     title: 'Academia Matemática Global (4 Páginas Completas)',

@@ -3,6 +3,7 @@ import { api, PreviewResponse, type ExtractedExercise, type VoiceChoice } from '
 import { useVideoStore } from '../store/video.store'
 const InteractiveMathEditor = lazy(() => import('./InteractiveMathEditor').then((module) => ({ default: module.InteractiveMathEditor })))
 import { InteractiveLessonPreview } from './InteractiveLessonPreview'
+import { AUDIENCE_MODES, EDUCATION_PRESETS, type AudienceMode, type EducationPreset } from '../config/educationPresets'
 
 type VideoGeneratorProps = {
   onGenerated?: () => void
@@ -47,6 +48,10 @@ export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorP
   const [extracting, setExtracting] = useState(false)
   const [wizardStep, setWizardStep] = useState(1)
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null)
+  const [audienceMode, setAudienceMode] = useState<AudienceMode>('student')
+  const [selectedPreset, setSelectedPreset] = useState<string | null>('quadratic')
+  const [recommendation, setRecommendation] = useState<{ category: string; engine: string; rationale: string } | null>(null)
+  const [recommending, setRecommending] = useState(false)
 
   const addVideo = useVideoStore((state) => state.addVideo)
   const pollingTimers = useRef(new Map<string, number>())
@@ -122,6 +127,32 @@ export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorP
       setError(error instanceof Error ? error.message : 'No se pudo generar la prueba de voz.')
     } finally {
       setPreviewingVoice(false)
+    }
+  }
+
+  const applyPreset = (preset: EducationPreset) => {
+    setSelectedPreset(preset.id)
+    setAudienceMode(preset.audience)
+    setTitle((current) => current || preset.titleTemplate)
+    setContent((current) => current || preset.example)
+    setQuality(preset.quality)
+    setAspectRatio(preset.aspectRatio)
+    setLayoutDensity(preset.layoutDensity)
+    setNarrationStyle(preset.narrationStyle)
+    setEnableNarration(preset.enableNarration)
+    setWizardStep(1)
+  }
+
+  const handleRecommendEngine = async () => {
+    if (!content.trim()) return
+    setRecommending(true)
+    try {
+      const result = await api.recommendEngine(content, [content])
+      setRecommendation({ category: result.detectedCategoryTitle, engine: result.primaryEngine.name, rationale: result.rationale })
+    } catch {
+      setRecommendation(null)
+    } finally {
+      setRecommending(false)
     }
   }
 
@@ -316,6 +347,18 @@ export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorP
         {WIZARD_STEPS.map((step) => <button key={step.id} type="button" onClick={() => { setWizardStep(step.id); document.getElementById(step.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} className={`rounded-lg px-1 py-2 text-center transition ${wizardStep === step.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><span className="block text-[10px] font-bold sm:text-xs">0{step.id} · {step.label}</span><span className="mt-0.5 hidden text-[9px] opacity-70 sm:block">{step.hint}</span></button>)}
       </div>
 
+      <div className="mb-6 rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div><p className="text-xs font-bold uppercase tracking-[0.16em] text-cyan-300">Comienza con una plantilla</p><p className="mt-1 text-xs text-slate-400">Los presets preparan formato, ritmo y narración. Puedes cambiar todo después.</p></div>
+          <div className="flex rounded-lg border border-slate-700 bg-slate-950/60 p-1">
+            {AUDIENCE_MODES.map((mode) => <button key={mode.id} type="button" onClick={() => setAudienceMode(mode.id)} className={`rounded-md px-2.5 py-1.5 text-[11px] font-semibold ${audienceMode === mode.id ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white'}`}>{mode.icon} {mode.label}</button>)}
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          {EDUCATION_PRESETS.filter((preset) => preset.audience === audienceMode || audienceMode === 'student').map((preset) => <button key={preset.id} type="button" onClick={() => applyPreset(preset)} className={`rounded-lg border p-3 text-left transition ${selectedPreset === preset.id ? 'border-cyan-400 bg-cyan-400/10' : 'border-slate-700 bg-slate-950/50 hover:border-slate-500'}`}><span className="text-lg font-bold text-cyan-200">{preset.icon}</span><span className="mt-1 block text-xs font-bold text-white">{preset.title}</span><span className="mt-1 block text-[10px] leading-snug text-slate-400">{preset.description}</span></button>)}
+        </div>
+      </div>
+
       {error && (
         <div className="mb-4 bg-red-500/10 border border-red-500/50 rounded p-3">
           <p className="text-red-400 text-sm">{error}</p>
@@ -405,6 +448,10 @@ export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorP
           >
             {previewLoading ? 'Preparando revisión...' : 'Revisar solución antes de generar'}
           </button>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-600 bg-slate-900/50 px-3 py-2">
+            <div><span className="text-[11px] font-semibold text-slate-300">Motor recomendado</span>{recommendation ? <p className="text-xs text-cyan-200">{recommendation.engine} · {recommendation.category}</p> : <p className="text-[11px] text-slate-500">Analiza tu ejercicio para sugerir una herramienta.</p>}</div>
+            <button type="button" onClick={() => void handleRecommendEngine()} disabled={!content.trim() || recommending || loading} className="rounded-lg border border-cyan-500/50 px-3 py-1.5 text-xs font-semibold text-cyan-200 hover:bg-cyan-500/10 disabled:opacity-40">{recommending ? 'Analizando…' : 'Recomendar motor'}</button>
+          </div>
         </div>
 
         {preview && (

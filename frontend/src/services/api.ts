@@ -103,6 +103,15 @@ export interface AiInfrastructureStatus {
   message: string
 }
 
+export interface EngineRecommendation {
+  topic: string
+  detectedCategoryTitle: string
+  recommendedEquation: string
+  rationale: string
+  primaryEngine: { id: string; name: string; categoryTitle?: string; tagline?: string }
+  alternativeEngines: Array<{ id: string; name: string; categoryTitle?: string; tagline?: string }>
+}
+
 export interface VoiceChoice {
   id: string
   label: string
@@ -156,6 +165,15 @@ export interface LibraryVideo {
 }
 
 export const api = {
+  async recommendEngine(topic: string, sampleEquations: string[] = []): Promise<EngineRecommendation> {
+    try {
+      const response = await axios.post<EngineRecommendation>(`${API_URL}/site-auditor/recommend`, { topic, sampleEquations }, { withCredentials: true })
+      return response.data
+    } catch (error) {
+      throw normalizeApiError(error)
+    }
+  },
+
   async getAiInfrastructure(): Promise<AiInfrastructureStatus> {
     const response = await axios.get<AiInfrastructureStatus>(`${API_URL}/ai-infrastructure`, { withCredentials: true })
     return response.data

@@ -139,7 +139,7 @@ export function MathSuperSuite({
               Explora, prueba y conecta tus motores matemáticos
             </h2>
             <p className="text-sm text-slate-400 mt-1 max-w-3xl">
-              Elige una categoría en el panel, abre un motor y trabaja en el mismo espacio. Sin saltos verticales ni páginas largas: tu contexto permanece visible mientras navegas.
+              Elige un área y un motor para abrir su laboratorio sin recorrer páginas largas. En escritorio, las áreas quedan en un panel fijo; en móvil, accedes a todo desde dos selectores compactos.
             </p>
           </div>
 
@@ -258,6 +258,34 @@ export function MathSuperSuite({
 
       {/* Persistent category navigation + active laboratory */}
       <div className="suite-layout">
+        <div className="suite-mobile-switcher">
+          <label className="suite-mobile-field">
+            <span>Área matemática</span>
+            <select
+              aria-label="Seleccionar área matemática"
+              value={searchQuery.trim() ? '' : activeCategory}
+              onChange={(event) => handleSelectCategory(event.target.value as CategoryId)}
+            >
+              <option value="" disabled>Selecciona una categoría</option>
+              {MACRO_CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.icon} {cat.shortTitle.replace(/^\d+\.\s*/, '')}</option>
+              ))}
+            </select>
+          </label>
+          <label className="suite-mobile-field">
+            <span>Motor ({categoryTools.length})</span>
+            <select
+              aria-label="Seleccionar motor matemático"
+              value={activeTool.id}
+              onChange={(event) => setSelectedToolId(event.target.value)}
+              disabled={categoryTools.length === 0}
+            >
+              {categoryTools.map((tool) => (
+                <option key={tool.id} value={tool.id}>#{String(tool.number).padStart(2, '0')} · {tool.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
         <aside className="category-rail rounded-2xl border border-slate-700/80 bg-slate-900/90 p-3" aria-label="Categorías matemáticas">
           <div className="px-2 pb-3">
             <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Explorar por área</div>
@@ -306,7 +334,7 @@ export function MathSuperSuite({
         </div>
 
         {/* Tool Sub-Tab Pills */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+        <div className="suite-tool-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
           {categoryTools.map((tool) => {
             const isSelected = tool.id === activeTool.id
             return (

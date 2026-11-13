@@ -91,6 +91,10 @@ body::before {
 .category-nav-description { display: block; overflow: hidden; margin-top: .12rem; color: #64748b; font-size: .61rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
 .category-nav-count { min-width: 22px; padding: .15rem .35rem; border-radius: 999px; color: #94a3b8; background: #1e293b; font-family: monospace; font-size: .62rem; text-align: center; }
 .category-nav-item.is-active .category-nav-count { color: #cffafe; background: rgba(8, 145, 178, .35); }
+.suite-mobile-switcher { display: none; }
+.suite-mobile-field { display: grid; gap: .4rem; min-width: 0; color: #94a3b8; font-size: .68rem; font-weight: 700; }
+.suite-mobile-field select { width: 100%; min-width: 0; min-height: 44px; padding: .65rem 2.25rem .65rem .75rem; border: 1px solid #334155; border-radius: .75rem; color: #e2e8f0; background: #0b1222; font-size: .8rem; }
+.suite-mobile-field select:focus-visible { border-color: #22d3ee; }
 
 @media (max-width: 900px) {
   .suite-layout { grid-template-columns: 1fr; }
@@ -104,4 +108,23 @@ body::before {
   .workspace-nav-item { flex: 0 0 auto; }
   .suite-hero { padding: 1rem !important; }
   .suite-hero h2 { font-size: 1.45rem; line-height: 1.12; }
+}
+
+@media (max-width: 640px) {
+  .suite-layout { gap: .75rem; }
+  .suite-mobile-switcher { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .6rem; padding: .75rem; border: 1px solid rgba(51, 65, 85, .9); border-radius: 1rem; background: rgba(15, 23, 42, .92); }
+  .category-rail { display: none; }
+  .suite-tool-grid { display: none; }
+  .suite-layout > section { min-width: 0; padding: 1rem; gap: 1rem; }
+  .suite-hero > div { gap: .9rem; }
+  .suite-hero h2 { max-width: 18ch; }
+  .suite-hero .relative { width: 100%; min-width: 0; }
+  .suite-hero > div > div:last-child { width: 100%; }
+  .suite-hero > div > div:last-child > button { flex: 1 1 auto; }
+  .suite-mobile-field select { text-overflow: ellipsis; }
+}
+
+@media (max-width: 380px) {
+  .suite-mobile-switcher { grid-template-columns: 1fr; }
+  .app-header .max-w-\[1500px\] { padding-left: .75rem; padding-right: .75rem; }
 }

@@ -1,12 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { AuthPanel } from './components/AuthPanel'
-import { VideoGenerator } from './components/VideoGenerator'
-import { VideoLibrary } from './components/VideoLibrary'
-import { AiModelsPanel } from './components/AiModelsPanel'
+import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+const AuthPanel = lazy(() => import('./components/AuthPanel').then((module) => ({ default: module.AuthPanel })))
+const VideoGenerator = lazy(() => import('./components/VideoGenerator').then((module) => ({ default: module.VideoGenerator })))
+const VideoLibrary = lazy(() => import('./components/VideoLibrary').then((module) => ({ default: module.VideoLibrary })))
+const AiModelsPanel = lazy(() => import('./components/AiModelsPanel').then((module) => ({ default: module.AiModelsPanel })))
 import { PasswordRecovery } from './components/PasswordRecovery'
-import { MathSuperSuite } from './components/MathSuperSuite'
-import { MathWidgetEmbedView } from './components/MathWidgetEmbedView'
-import { WebsiteMathAuditor } from './components/WebsiteMathAuditor'
+import { SystemHealthBadge } from './components/SystemHealthBadge'
+const MathSuperSuite = lazy(() => import('./components/MathSuperSuite').then((module) => ({ default: module.MathSuperSuite })))
+const MathWidgetEmbedView = lazy(() => import('./components/MathWidgetEmbedView').then((module) => ({ default: module.MathWidgetEmbedView })))
+const WebsiteMathAuditor = lazy(() => import('./components/WebsiteMathAuditor').then((module) => ({ default: module.WebsiteMathAuditor })))
 import { type CategoryId } from './suite/catalog'
 import { consumePasswordRecoveryUrl } from './services/password-recovery'
 import { auth, User } from './services/auth'
@@ -53,10 +54,12 @@ function App() {
 
   if (embedParams) {
     return (
-      <MathWidgetEmbedView
-        initialToolId={embedParams.toolId}
-        initialExpression={embedParams.expr}
-      />
+      <Suspense fallback={<div className="min-h-screen bg-slate-950 p-8 text-center text-sm text-slate-400">Cargando widget…</div>}>
+        <MathWidgetEmbedView
+          initialToolId={embedParams.toolId}
+          initialExpression={embedParams.expr}
+        />
+      </Suspense>
     )
   }
 
@@ -142,13 +145,16 @@ function App() {
               <span className="nav-icon">◎</span><span>Auditor Web</span>
             </button>
             <div className="ml-auto hidden lg:flex items-center gap-2 text-[11px] text-slate-500">
-              <span className="status-dot" /> Navegación por áreas
+              <SystemHealthBadge />
+              <span className="mx-1 text-slate-700">·</span>
+              <span>Navegación por áreas</span>
             </div>
           </nav>
         </div>
       </header>
 
       <main className="max-w-[1500px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <Suspense fallback={<div className="rounded-2xl border border-slate-700 bg-slate-900/80 p-10 text-center text-sm text-slate-400">Cargando espacio de trabajo…</div>}>
         {recovery ? (
           <PasswordRecovery key={recovery.session?.accessToken ? 'token' : 'request'} recovery={recovery} onClose={() => setRecovery(null)} />
         ) : activeWorkspaceTab === 'auditor' ? (
@@ -256,6 +262,7 @@ function App() {
             </div>
           </>
         )}
+        </Suspense>
       </main>
 
       <footer className="border-t border-slate-700 mt-20 py-8 bg-slate-900/50">

@@ -50,6 +50,15 @@ export function VideoLibrary({ user, refreshKey = 0 }: VideoLibraryProps) {
     loadVideos()
   }, [user, refreshKey])
 
+  useEffect(() => {
+    const active = videos.filter((video) => video.status === 'pending' || video.status === 'processing')
+    if (!active.length) return
+    const unsubscribers = active.map((video) => api.subscribeVideoStatus(video.id, (status) => {
+      setVideos((current) => current.map((item) => item.id === video.id ? { ...item, ...status, title: status.title || item.title } : item))
+    }, () => undefined))
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe())
+  }, [videos.map((video) => `${video.id}:${video.status}`).join('|')])
+
   const filteredVideos = useMemo(() => videos.filter((video) => {
     const matchesFilter = filter === 'all' || video.status === filter
     const haystack = `${video.title} ${video.content} ${video.id}`.toLowerCase()

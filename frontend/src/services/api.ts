@@ -165,6 +165,21 @@ export interface LibraryVideo {
 }
 
 export const api = {
+  async getHealth(): Promise<{ status: string; timestamp: string }> {
+    const response = await axios.get<{ status: string; timestamp: string }>(`${API_URL.replace(/\/api$/, '')}/health`, { timeout: 8000 })
+    return response.data
+  },
+
+  subscribeVideoStatus(id: string, onUpdate: (status: VideoResponse) => void, onError?: () => void): () => void {
+    const stream = new EventSource(`${API_URL}/generate-video/status/${encodeURIComponent(id)}/stream`, { withCredentials: true })
+    const handleProgress = (event: MessageEvent<string>) => {
+      try { onUpdate(normalizeVideo(JSON.parse(event.data) as VideoResponse)) } catch { onError?.() }
+    }
+    stream.addEventListener('progress', handleProgress)
+    stream.onerror = () => { onError?.(); stream.close() }
+    return () => { stream.close() }
+  },
+
   async recommendEngine(topic: string, sampleEquations: string[] = []): Promise<EngineRecommendation> {
     try {
       const response = await axios.post<EngineRecommendation>(`${API_URL}/site-auditor/recommend`, { topic, sampleEquations }, { withCredentials: true })

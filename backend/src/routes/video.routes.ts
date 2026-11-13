@@ -211,6 +211,29 @@ router.post('/preview', requireAuth, (req: Request, res: Response) => {
   });
 });
 
+router.get('/generate-video/status/:id/stream', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) return res.status(401).json({ code: 'UNAUTHENTICATED', error: 'Debes iniciar sesión' });
+  const { id } = req.params;
+  if (!(await generationJobs.belongsTo(id, req.user.id))) return res.status(404).end();
+  res.status(200).set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
+  res.flushHeaders();
+  let closed = false;
+  const send = async () => {
+    if (closed) return;
+    const job = await generationJobs.get(id);
+    if (!job) return;
+    res.write(`event: progress\ndata: ${JSON.stringify(job)}\n\n`);
+    if (job.status === 'completed' || job.status === 'failed') {
+      res.write('event: done\ndata: {}\n\n');
+      clearInterval(timer);
+      res.end();
+    }
+  };
+  const timer = setInterval(() => void send(), 1500);
+  req.on('close', () => { closed = true; clearInterval(timer); });
+  await send();
+});
+
 router.get('/generate-video/status/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ code: 'UNAUTHENTICATED', error: 'Debes iniciar sesión' });

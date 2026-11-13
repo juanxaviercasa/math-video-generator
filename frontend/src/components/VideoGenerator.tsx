@@ -13,6 +13,14 @@ type VideoGeneratorProps = {
   } | null
 }
 
+const DRAFT_KEY = 'math-video-generator:draft:v1'
+const WIZARD_STEPS = [
+  { id: 1, label: 'Ejercicio', hint: 'Idea o archivo', target: 'video-step-exercise' },
+  { id: 2, label: 'Revisión', hint: 'Pasos y formato', target: 'video-step-review' },
+  { id: 3, label: 'Narración', hint: 'Voz y estilo', target: 'video-step-voice' },
+  { id: 4, label: 'Generar', hint: 'Confirmar y lanzar', target: 'video-step-generate' },
+]
+
 export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorProps) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
@@ -37,6 +45,8 @@ export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorP
   const [extracted, setExtracted] = useState<ExtractedExercise | null>(null)
   const [sourceConfirmed, setSourceConfirmed] = useState(false)
   const [extracting, setExtracting] = useState(false)
+  const [wizardStep, setWizardStep] = useState(1)
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null)
 
   const addVideo = useVideoStore((state) => state.addVideo)
   const pollingTimers = useRef(new Map<string, number>())
@@ -45,6 +55,40 @@ export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorP
     pollingTimers.current.forEach((timer) => window.clearTimeout(timer))
     pollingTimers.current.clear()
   }, [])
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(DRAFT_KEY)
+      if (!saved) return
+      const draft = JSON.parse(saved) as Partial<{
+        title: string; content: string; quality: 'low' | 'medium' | 'high'; aspectRatio: '16:9' | '1:1' | '9:16'
+        layoutDensity: 'comfortable' | 'compact'; narrationStyle: 'warm_teacher' | 'neutral_teacher'; enableNarration: boolean
+        narratorVoiceId: string; aiProvider: 'openrouter' | 'gemini' | 'openai'; enableComfyUI: boolean
+      }>
+      if (draft.title) setTitle(draft.title)
+      if (draft.content) setContent(draft.content)
+      if (draft.quality) setQuality(draft.quality)
+      if (draft.aspectRatio) setAspectRatio(draft.aspectRatio)
+      if (draft.layoutDensity) setLayoutDensity(draft.layoutDensity)
+      if (draft.narrationStyle) setNarrationStyle(draft.narrationStyle)
+      if (typeof draft.enableNarration === 'boolean') setEnableNarration(draft.enableNarration)
+      if (draft.narratorVoiceId) setNarratorVoiceId(draft.narratorVoiceId)
+      if (draft.aiProvider) setAiProvider(draft.aiProvider)
+      if (typeof draft.enableComfyUI === 'boolean') setEnableComfyUI(draft.enableComfyUI)
+      setDraftSavedAt('restaurado')
+    } catch {
+      window.localStorage.removeItem(DRAFT_KEY)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!title && !content) return
+    const timeout = window.setTimeout(() => {
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, content, quality, aspectRatio, layoutDensity, narrationStyle, enableNarration, narratorVoiceId, aiProvider, enableComfyUI }))
+      setDraftSavedAt(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    }, 500)
+    return () => window.clearTimeout(timeout)
+  }, [title, content, quality, aspectRatio, layoutDensity, narrationStyle, enableNarration, narratorVoiceId, aiProvider, enableComfyUI])
 
   useEffect(() => {
     if (!externalProblem) return
@@ -251,6 +295,8 @@ export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorP
       setExtracted(null)
       setSourceConfirmed(false)
       setSourceFile(null)
+      window.localStorage.removeItem(DRAFT_KEY)
+      setDraftSavedAt(null)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error desconocido'
       useVideoStore.getState().updateVideo(videoId, { status: 'failed', progress: 100, error: message, errorCode: 'CLIENT_GENERATION_FAILED', message })
@@ -262,7 +308,13 @@ export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorP
 
   return (
     <div className="bg-slate-800 rounded-lg border border-slate-700 p-6 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold text-white mb-6">Generar Nuevo Video</h2>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div><h2 className="text-2xl font-bold text-white">Crear video educativo</h2><p className="mt-1 text-xs text-slate-400">Sigue las etapas y conserva tu trabajo automáticamente.</p></div>
+        {draftSavedAt && <span className="shrink-0 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2.5 py-1 text-[10px] text-emerald-200">✓ Borrador {draftSavedAt === 'restaurado' ? 'restaurado' : `guardado ${draftSavedAt}`}</span>}
+      </div>
+      <div className="mb-6 grid grid-cols-4 gap-1 rounded-xl border border-slate-700 bg-slate-900/70 p-1">
+        {WIZARD_STEPS.map((step) => <button key={step.id} type="button" onClick={() => { setWizardStep(step.id); document.getElementById(step.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} className={`rounded-lg px-1 py-2 text-center transition ${wizardStep === step.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}><span className="block text-[10px] font-bold sm:text-xs">0{step.id} · {step.label}</span><span className="mt-0.5 hidden text-[9px] opacity-70 sm:block">{step.hint}</span></button>)}
+      </div>
 
       {error && (
         <div className="mb-4 bg-red-500/10 border border-red-500/50 rounded p-3">
@@ -272,7 +324,7 @@ export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorP
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Título */}
-        <div>
+        <div id="video-step-exercise">
           <label className="block text-sm font-medium text-white mb-2">
             Título del Video
           </label>
@@ -287,7 +339,7 @@ export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorP
         </div>
 
         {/* Archivo origen: el reconocimiento nunca publica automáticamente. */}
-        <div className="rounded border border-slate-600 bg-slate-900/50 p-4 space-y-3">
+        <div id="video-step-review" className="rounded border border-slate-600 bg-slate-900/50 p-4 space-y-3">
           <label htmlFor="exercise-source" className="block text-sm font-medium text-white">Ejercicio en foto, captura, manuscrito o PDF</label>
           <input
             id="exercise-source"
@@ -455,7 +507,7 @@ export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorP
         </div>
 
         {/* Narración */}
-        <div className="bg-slate-700/50 border border-slate-600 rounded p-4">
+        <div id="video-step-voice" className="bg-slate-700/50 border border-slate-600 rounded p-4">
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
@@ -549,6 +601,7 @@ export function VideoGenerator({ onGenerated, externalProblem }: VideoGeneratorP
 
         {/* Submit */}
         <button
+          id="video-step-generate"
           type="submit"
           disabled={loading}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white font-semibold py-2 rounded transition"

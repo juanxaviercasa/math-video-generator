@@ -238,6 +238,20 @@ router.get('/videos', requireAuth, async (req: AuthenticatedRequest, res: Respon
   }
 });
 
+router.post('/videos/:id/retry', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) return res.status(401).json({ code: 'UNAUTHENTICATED', error: 'Debes iniciar sesión' });
+  try {
+    const job = await generationJobs.retry(req.params.id, req.user.id);
+    return res.status(202).json(job);
+  } catch (error) {
+    const code = error instanceof Error ? error.message : 'VIDEO_RETRY_FAILED';
+    if (code === 'VIDEO_NOT_FOUND') return res.status(404).json({ code, error: 'Video no encontrado' });
+    if (code === 'VIDEO_NOT_RETRYABLE') return res.status(409).json({ code, error: 'Solo se pueden reintentar videos fallidos.' });
+    console.error('[Videos] Could not retry video:', error);
+    return res.status(503).json({ code: 'VIDEO_RETRY_FAILED', error: 'No se pudo reintentar el video' });
+  }
+});
+
 router.get('/videos/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ code: 'UNAUTHENTICATED', error: 'Debes iniciar sesión' });
   try {

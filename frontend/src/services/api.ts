@@ -73,6 +73,7 @@ interface VideoRequest {
 
 interface VideoResponse {
   id?: string
+  title?: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
   progress: number
   message: string
@@ -138,6 +139,8 @@ export interface PreviewResponse {
 
 export interface LibraryVideo {
   id: string
+  title: string
+  content?: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
   progress: number
   message: string
@@ -247,6 +250,15 @@ export const api = {
       const normalized = normalizeApiError(error)
       console.error('API Error:', normalized)
       throw normalized
+    }
+  },
+
+  async retryVideo(id: string): Promise<LibraryVideo> {
+    try {
+      const response = await axios.post<LibraryVideo>(`${API_URL}/videos/${encodeURIComponent(id)}/retry`, {}, { withCredentials: true })
+      return normalizeVideo(response.data)
+    } catch (error) {
+      throw normalizeApiError(error)
     }
   },
 }

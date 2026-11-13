@@ -21,6 +21,7 @@ export interface GenerationRequestSnapshot {
 
 export interface GenerationJob {
   id: string;
+  title: string;
   status: JobState;
   progress: number;
   message: string;
@@ -72,6 +73,7 @@ const getQueue = (): Bull.Queue<{ videoId: string }> => {
 
 const fromPersisted = (video: any): GenerationJob => ({
   id: video.id,
+  title: video.title,
   status: video.status as JobState,
   progress: video.progress,
   message: video.message || (video.status === 'completed' ? 'Video completado' : 'Video guardado'),
@@ -194,6 +196,7 @@ const updateMemoryAndPersist = (id: string, patch: JobPatch): GenerationJob | un
 
   const stub: GenerationJob = {
     id,
+    title: patch.title || 'Video sin título',
     status: patch.status || 'processing',
     progress: patch.progress ?? 0,
     message: patch.message || '',
@@ -221,6 +224,7 @@ export const generationJobs = {
     const timestamp = now();
     const job: GenerationJob = {
       id,
+      title: details.title,
       status: 'pending',
       progress: 0,
       message: 'Video en cola...',
@@ -335,6 +339,31 @@ export const generationJobs = {
       })!;
       return fallback;
     }
+  },
+
+  async retry(id: string, userId: string): Promise<GenerationJob> {
+    const belongs = await this.belongsTo(id, userId);
+    if (!belongs) throw new Error('VIDEO_NOT_FOUND');
+    const current = await this.get(id);
+    if (!current) throw new Error('VIDEO_NOT_FOUND');
+    if (current.status !== 'failed') throw new Error('VIDEO_NOT_RETRYABLE');
+    const updated = await prisma.video.update({
+      where: { id },
+      data: {
+        status: 'pending',
+        progress: 0,
+        message: 'Reintentando video...',
+        lastError: null,
+        errorCode: null,
+        workerId: null,
+        heartbeatAt: null,
+        completedAt: null,
+      },
+    });
+    const job = fromPersisted(updated);
+    jobs.set(id, job);
+    await getQueue().add({ videoId: id }, { jobId: `retry-${id}-${Date.now()}` });
+    return job;
   },
 
   async enqueue(id: string): Promise<void> {

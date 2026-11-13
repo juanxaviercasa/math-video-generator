@@ -126,22 +126,20 @@ export function MathSuperSuite({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Search */}
-      <div className="rounded-2xl border border-slate-700/80 bg-slate-900/90 p-5 shadow-xl">
+      {/* Suite header: compact context instead of a second category grid */}
+      <div className="suite-hero rounded-2xl border border-slate-700/80 bg-slate-900/90 p-5 shadow-xl">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">
-              <span>🌐 Ecosistema Mundial Open-Source</span>
-              <span>•</span>
-              <span>12 Macro-Categorías</span>
-              <span>•</span>
-              <span>60 Herramientas Interactivas</span>
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-cyan-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-cyan-300">
+              <span className="status-dot" /> Laboratorio unificado
+              <span className="text-cyan-600">/</span>
+              <span>12 áreas · 60 motores</span>
             </div>
-            <h2 className="text-2xl font-bold text-white mt-2">
-              Super-Suite Matemática Unificada (#01 – #60)
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white mt-2">
+              Explora, prueba y conecta tus motores matemáticos
             </h2>
-            <p className="text-sm text-slate-300 mt-1">
-              Explora los 60 motores deterministas de código libre organizados por especialidad. Cada pestaña se puede incrustar como widget interactivo en tu sitio web o enviar a la Pizarra de Video Manim 2.2.
+            <p className="text-sm text-slate-400 mt-1 max-w-3xl">
+              Elige una categoría en el panel, abre un motor y trabaja en el mismo espacio. Sin saltos verticales ni páginas largas: tu contexto permanece visible mientras navegas.
             </p>
           </div>
 
@@ -151,7 +149,7 @@ export function MathSuperSuite({
                 type="search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar entre las 60 herramientas (#1..#60, Manim, SymPy...)"
+                placeholder="Buscar motor, repositorio o concepto…"
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none"
               />
               {searchQuery && (
@@ -189,38 +187,6 @@ export function MathSuperSuite({
           </div>
         </div>
 
-        {/* 12 Macro-Categories Bar */}
-        <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5">
-          {MACRO_CATEGORIES.map((cat, idx) => {
-            const isActive = !searchQuery.trim() && activeCategory === cat.id
-            const count = MATH_TOOLS_CATALOG.filter((t) => t.categoryId === cat.id).length
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => handleSelectCategory(cat.id)}
-                className={`group text-left rounded-xl border p-3 transition-all ${
-                  isActive
-                    ? 'border-blue-400 bg-gradient-to-br from-blue-600/25 to-indigo-600/20 text-white shadow-md shadow-blue-950/50'
-                    : 'border-slate-800 bg-slate-950/70 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-lg">{cat.icon}</span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-mono ${
-                      isActive ? 'bg-blue-500/30 text-blue-200' : 'bg-slate-800 text-slate-400'
-                    }`}
-                  >
-                    Cat {idx + 1} · {count}
-                  </span>
-                </div>
-                <div className="mt-1.5 text-xs font-bold leading-snug line-clamp-1">{cat.shortTitle}</div>
-                <div className="text-[10px] text-slate-400 line-clamp-1 mt-0.5">{cat.description}</div>
-              </button>
-            )
-          })}
-        </div>
       </div>
 
       {/* Collapsible Full Directory of all 60 Repositories */}
@@ -290,8 +256,37 @@ export function MathSuperSuite({
         </div>
       )}
 
-      {/* Sub-Tabs for Tools inside the Active Category (or Search Results) */}
-      <div className="rounded-2xl border border-slate-700/80 bg-slate-900/90 p-5 space-y-5">
+      {/* Persistent category navigation + active laboratory */}
+      <div className="suite-layout">
+        <aside className="category-rail rounded-2xl border border-slate-700/80 bg-slate-900/90 p-3" aria-label="Categorías matemáticas">
+          <div className="px-2 pb-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Explorar por área</div>
+            <div className="text-xs text-slate-400 mt-1">Selecciona una categoría</div>
+          </div>
+          <div className="category-list">
+            {MACRO_CATEGORIES.map((cat, idx) => {
+              const isActive = !searchQuery.trim() && activeCategory === cat.id
+              const count = MATH_TOOLS_CATALOG.filter((t) => t.categoryId === cat.id).length
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => handleSelectCategory(cat.id)}
+                  className={`category-nav-item ${isActive ? 'is-active' : ''}`}
+                >
+                  <span className="category-nav-icon">{cat.icon}</span>
+                  <span className="category-nav-copy">
+                    <span className="category-nav-title"><span className="category-number">{String(idx + 1).padStart(2, '0')}</span>{cat.shortTitle.replace(/^\d+\.\s*/, '')}</span>
+                    <span className="category-nav-description">{cat.description}</span>
+                  </span>
+                  <span className="category-nav-count">{count}</span>
+                </button>
+              )
+            })}
+          </div>
+        </aside>
+
+      <section className="rounded-2xl border border-slate-700/80 bg-slate-900/90 p-5 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-800 pb-3">
           <div>
             <div className="text-xs uppercase tracking-wider font-semibold text-blue-400">
@@ -488,6 +483,7 @@ export function MathSuperSuite({
           expression={currentExpression}
           onExpressionChange={setToolExpression}
         />
+      </section>
       </div>
     </div>
   )

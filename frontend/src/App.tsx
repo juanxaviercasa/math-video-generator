@@ -7,7 +7,7 @@ import { PasswordRecovery } from './components/PasswordRecovery'
 import { MathSuperSuite } from './components/MathSuperSuite'
 import { MathWidgetEmbedView } from './components/MathWidgetEmbedView'
 import { WebsiteMathAuditor } from './components/WebsiteMathAuditor'
-import { MACRO_CATEGORIES, type CategoryId } from './suite/catalog'
+import { type CategoryId } from './suite/catalog'
 import { consumePasswordRecoveryUrl } from './services/password-recovery'
 import { auth, User } from './services/auth'
 
@@ -60,14 +60,6 @@ function App() {
     )
   }
 
-  const handleOpenCategory = (catId: CategoryId) => {
-    setSuiteCategory(catId)
-    setSuiteToolId(undefined)
-    setSuiteExpr(undefined)
-    setSuiteKey((prev) => prev + 1)
-    setActiveWorkspaceTab('supersuite')
-  }
-
   const handleOpenSpecificToolInSuite = (
     catId: CategoryId,
     toolId: string,
@@ -91,19 +83,22 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-      <header className="border-b border-slate-700 sticky top-0 z-50 bg-slate-900/85 backdrop-blur">
-        <div className="max-w-7xl mx-auto px-4 py-5 space-y-4">
+      <header className="app-header border-b border-slate-700/80 sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl">
+        <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-4 space-y-3">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-white">🎓 Math Video Generator</h1>
-              <p className="text-slate-400 mt-1 text-sm">
-                Estudio Manim 2.2 + Super-Suite de 60 Motores Open-Source + Auditor e Inyector Web (Kaggle &amp; MCP)
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="brand-mark" aria-hidden="true">∑</div>
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white truncate">Math Video Generator</h1>
+                <p className="text-slate-400 mt-0.5 text-xs sm:text-sm truncate">
+                  Estudio visual para convertir matemáticas en experiencias interactivas
               </p>
+              </div>
             </div>
             <div className="flex items-center gap-5">
               <div className="text-right hidden sm:block">
-                <div className="text-sm text-slate-400">Estudio privado</div>
-                <div className="text-xs text-slate-500 mt-1">12 Categorías · 60 Herramientas</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Espacio privado</div>
+                <div className="text-sm font-semibold text-slate-300 mt-1">60 motores · 12 áreas</div>
               </div>
               {!authLoading && (
                 <AuthPanel
@@ -116,18 +111,14 @@ function App() {
             </div>
           </div>
 
-          {/* Primary Mode Switcher Tabs */}
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800">
+          {/* Primary mode switcher: only three destinations, categories live inside the suite */}
+          <nav className="workspace-nav flex flex-wrap items-center gap-2 pt-3 border-t border-slate-800/80" aria-label="Áreas principales">
             <button
               type="button"
               onClick={() => setActiveWorkspaceTab('studio')}
-              className={`rounded-xl px-4 py-2 text-xs font-bold transition flex items-center gap-2 ${
-                activeWorkspaceTab === 'studio'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/60'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
+              className={`workspace-nav-item ${activeWorkspaceTab === 'studio' ? 'is-active studio' : ''}`}
             >
-              <span>🎬 Estudio Principal (Generador Manim 2.2)</span>
+              <span className="nav-icon">✦</span><span>Generador Manim</span>
               {externalProblem && (
                 <span className="rounded-full bg-amber-400/20 border border-amber-400/40 px-2 py-0.5 text-[10px] text-amber-200">
                   Ejercicio cargado
@@ -138,52 +129,26 @@ function App() {
             <button
               type="button"
               onClick={() => setActiveWorkspaceTab('supersuite')}
-              className={`rounded-xl px-4 py-2 text-xs font-bold transition flex items-center gap-2 ${
-                activeWorkspaceTab === 'supersuite'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-950/60'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
+              className={`workspace-nav-item ${activeWorkspaceTab === 'supersuite' ? 'is-active suite' : ''}`}
             >
-              <span>🧭 Super-Suite Matemática (12 Categorías · 60 Motores)</span>
+              <span className="nav-icon">◈</span><span>Super-Suite</span><span className="nav-count">60</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveWorkspaceTab('auditor')}
-              className={`rounded-xl px-4 py-2 text-xs font-bold transition flex items-center gap-2 ${
-                activeWorkspaceTab === 'auditor'
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-950/60'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
+              className={`workspace-nav-item ${activeWorkspaceTab === 'auditor' ? 'is-active auditor' : ''}`}
             >
-              <span>🕸️ Auditor e Inyector Web (Pipeline Kaggle + MCP → 60 Motores)</span>
+              <span className="nav-icon">◎</span><span>Auditor Web</span>
             </button>
-
-            <div className="h-4 w-px bg-slate-700 mx-1 hidden lg:block" />
-
-            {/* Quick Category Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
-              {MACRO_CATEGORIES.map((cat, idx) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => handleOpenCategory(cat.id)}
-                  title={`${idx + 1}. ${cat.title}`}
-                  className={`shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition ${
-                    activeWorkspaceTab === 'supersuite' && suiteCategory === cat.id
-                      ? 'border-cyan-400 bg-cyan-500/20 text-cyan-200'
-                      : 'border-slate-800 bg-slate-900/90 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-                  }`}
-                >
-                  {cat.icon} {cat.shortTitle}
-                </button>
-              ))}
+            <div className="ml-auto hidden lg:flex items-center gap-2 text-[11px] text-slate-500">
+              <span className="status-dot" /> Navegación por áreas
             </div>
-          </div>
+          </nav>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-[1500px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {recovery ? (
           <PasswordRecovery key={recovery.session?.accessToken ? 'token' : 'request'} recovery={recovery} onClose={() => setRecovery(null)} />
         ) : activeWorkspaceTab === 'auditor' ? (

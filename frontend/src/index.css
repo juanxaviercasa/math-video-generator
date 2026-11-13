@@ -14,6 +14,9 @@ body { min-width: 320px; background: #070d1d; color: #e5edf8; -webkit-font-smoot
 button, input { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 code, pre { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 2px solid #67e8f9; outline-offset: 3px; }
+.skip-link { position: fixed; left: 1rem; top: -4rem; z-index: 100; border-radius: .75rem; background: #22d3ee; color: #082f49; padding: .7rem 1rem; font-size: .8rem; font-weight: 800; transition: top .2s ease; }
+.skip-link:focus { top: 1rem; }
 
 body::before {
   content: "";

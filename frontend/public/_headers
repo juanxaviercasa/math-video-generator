@@ -4,6 +4,7 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
   X-Frame-Options: DENY
   X-Robots-Tag: noindex, nofollow, noarchive
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api-math.forjavia.site; img-src 'self' data: blob: https:; media-src 'self' blob: https:; font-src 'self' data:; frame-src 'self' https:;
 
 /index.html
   Cache-Control: no-store

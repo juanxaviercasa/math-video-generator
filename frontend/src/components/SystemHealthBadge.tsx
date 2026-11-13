@@ -12,6 +12,6 @@ export function SystemHealthBadge() {
     return () => { active = false; window.clearInterval(timer) }
   }, [])
 
-  if (online === null) return <span className="text-[11px] text-slate-500">Comprobando API…</span>
-  return <span className={`inline-flex items-center gap-1.5 text-[11px] ${online ? 'text-emerald-300' : 'text-amber-300'}`}><span className={`status-dot ${online ? '' : '!bg-amber-300 !shadow-amber-300/10'}`} /> API {online ? 'operativa' : 'sin respuesta'}</span>
+  if (online === null) return <span role="status" aria-live="polite" className="text-[11px] text-slate-500">Comprobando API…</span>
+  return <span role="status" aria-live="polite" className={`inline-flex items-center gap-1.5 text-[11px] ${online ? 'text-emerald-300' : 'text-amber-300'}`}><span className={`status-dot ${online ? '' : '!bg-amber-300 !shadow-amber-300/10'}`} /> API {online ? 'operativa' : 'sin respuesta'}</span>
 }

@@ -390,7 +390,7 @@ export const videoProcessing = {
             fs.writeFileSync(path.join(outputDir, `${id}-geometry-qa.json`), JSON.stringify(geometry, null, 2), 'utf8');
             const expectedBeats = Object.fromEntries(pedagogicalScenes
               .filter((scene) => scene.visualBeatOffsets?.length)
-              .map((scene) => [scene.id, scene.visualBeatOffsets!]));
+              .map((scene) => [scene.id, scene.visualBeatOffsets ?? []]));
             const observed = JSON.parse(fs.readFileSync(manimScene.geometryReportPath, 'utf8')) as {
               stages: Array<{ id: string; beats?: Array<{ index: number; expectedSeconds: number; actualSeconds: number }> }>;
             };

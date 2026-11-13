@@ -86,6 +86,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+      <a href="#main-content" className="skip-link">Saltar al contenido principal</a>
       <header className="app-header border-b border-slate-700/80 sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl">
         <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-4 space-y-3">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -153,7 +154,7 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-[1500px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main id="main-content" tabIndex={-1} className="max-w-[1500px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <Suspense fallback={<div className="rounded-2xl border border-slate-700 bg-slate-900/80 p-10 text-center text-sm text-slate-400">Cargando espacio de trabajo…</div>}>
         {recovery ? (
           <PasswordRecovery key={recovery.session?.accessToken ? 'token' : 'request'} recovery={recovery} onClose={() => setRecovery(null)} />

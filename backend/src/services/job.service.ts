@@ -336,7 +336,8 @@ export const generationJobs = {
         message: 'La generación falló',
         error,
         errorCode,
-      })!;
+      });
+      if (!fallback) throw new Error('No se pudo conservar el estado fallido del trabajo');
       return fallback;
     }
   },

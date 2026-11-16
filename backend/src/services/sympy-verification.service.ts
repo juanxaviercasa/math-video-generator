@@ -31,8 +31,31 @@ export function extractBoundedQuadraticCoefficients(validation: MathValidation):
   if (!validation.valid || validation.kind !== 'quadratic') {
     throw new Error('SYMPY_UNSUPPORTED: El oráculo solo acepta cuadráticas previamente verificadas.');
   }
+  let rawA: string | undefined;
+  let rawB: string | undefined;
+  let rawC: string | undefined;
+
   const match = validation.normalizedInput.match(matchQuadratic);
-  if (!match) throw new Error('SYMPY_PARSE: La cuadrática no coincide con el formato validado.');
+  if (match) {
+    rawA = match[1];
+    rawB = match[2];
+    rawC = match[3];
+  } else {
+    const pure = validation.normalizedInput.match(/^([+-]?\s*\d*\.?\d*)\s*x\s*\^\s*2\s*([+-]\s*\d*\.?\d*)\s*=\s*0$/i);
+    if (pure) {
+      rawA = pure[1];
+      rawB = '0';
+      rawC = pure[2];
+    } else {
+      const mixed = validation.normalizedInput.match(/^([+-]?\s*\d*\.?\d*)\s*x\s*\^\s*2\s*([+-]\s*\d*\.?\d*)\s*x\s*=\s*0$/i);
+      if (mixed) {
+        rawA = mixed[1];
+        rawB = mixed[2];
+        rawC = '0';
+      }
+    }
+  }
+  if (rawA === undefined) throw new Error('SYMPY_PARSE: La cuadrática no coincide con el formato validado.');
   const canonical = (value: string | undefined, defaultValue: number): string => {
     const text = (value || '').replace(/\s/g, '');
     const parsed = text === '' || text === '+' ? defaultValue : text === '-' ? -defaultValue : Number(text);
@@ -45,7 +68,7 @@ export function extractBoundedQuadraticCoefficients(validation: MathValidation):
     }
     return formatted;
   };
-  return { a: canonical(match[1], 1), b: canonical(match[2], 0), c: canonical(match[3], 0) };
+  return { a: canonical(rawA, 1), b: canonical(rawB, 0), c: canonical(rawC, 0) };
 }
 
 /** Reject mathematical disagreements. An optional missing binary is different from a wrong solution. */

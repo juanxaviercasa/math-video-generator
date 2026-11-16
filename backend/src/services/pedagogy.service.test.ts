@@ -143,3 +143,88 @@ test('Pizarra 2.2 recap includes general formula and 5 semantic beat phrases', (
   assert.equal(recap.visualLatex?.[3], 'x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}');
   assert.deepEqual(recap.visualTextLines, ['Ecuación original', 'Coeficientes', 'Discriminante', 'Fórmula general', 'Raíces', 'Comprobado']);
 });
+
+
+test('incomplete mixed quadratic x^2 - 6x = 0 factors by common monomial and zero product property without discriminant', () => {
+  const problem = 'x^2 - 6x = 0';
+  const scenes = buildQuadraticStoryboard(problem, validateMathProblem(problem));
+
+  assert.deepEqual(scenes.map((s) => s.id), [
+    'hook',
+    'coefficients',
+    'factorization',
+    'zero-product-property',
+    'solution-branches',
+    'solution-set',
+    'verification',
+    'graph',
+    'recap',
+  ]);
+
+  // NEVER use discriminant or general formula for incomplete mixed
+  assert.equal(scenes.some((s) => s.id === 'discriminant-setup' || s.id === 'discriminant-calculate' || s.id === 'formula-symbolic'), false);
+  assert.equal(scenes.some((s) => s.visualLatex?.some((l) => l.includes('\\Delta'))), false);
+
+  const factorization = scenes.find((s) => s.id === 'factorization');
+  assert.ok(factorization?.visualLatex?.includes('x(x - 6) = 0'));
+
+  const zeroProduct = scenes.find((s) => s.id === 'zero-product-property');
+  assert.ok(zeroProduct?.visualLatex?.some((l) => l.includes('A \\cdot B = 0')));
+  assert.ok(zeroProduct?.visualLatex?.some((l) => l.includes('x = 0') && l.includes('x - 6 = 0')));
+
+  const branches = scenes.find((s) => s.id === 'solution-branches');
+  assert.ok(branches?.visualLatex?.includes('x_1 = 0'));
+  assert.ok(branches?.visualLatex?.includes('x_2 = 6'));
+
+  const solutionSet = scenes.find((s) => s.id === 'solution-set');
+  assert.deepEqual(solutionSet?.visualLatex, ['C.S. = \\{0,\\; 6\\}']);
+
+  const recap = scenes.find((s) => s.id === 'recap');
+  assert.ok(recap?.visualLatex?.includes('C.S. = \\{0,\\; 6\\}'));
+  assert.deepEqual(recap?.visualBeatPhrases, ['Recapitulamos', 'identificamos', 'factorizamos', 'aplicamos', 'obtuvimos']);
+});
+
+test('incomplete mixed no monica 3x^2 + 12x = 0 factors 3x(x + 4) = 0', () => {
+  const problem = '3x^2 + 12x = 0';
+  const scenes = buildQuadraticStoryboard(problem, validateMathProblem(problem));
+
+  const factorization = scenes.find((s) => s.id === 'factorization');
+  assert.ok(factorization?.visualLatex?.includes('3x(x + 4) = 0'));
+
+  const solutionSet = scenes.find((s) => s.id === 'solution-set');
+  assert.deepEqual(solutionSet?.visualLatex, ['C.S. = \\{-4,\\; 0\\}']);
+});
+
+test('incomplete pure quadratic x^2 - 25 = 0 isolates x^2 = 25 and extracts +-5 without discriminant', () => {
+  const problem = 'x^2 - 25 = 0';
+  const scenes = buildQuadraticStoryboard(problem, validateMathProblem(problem));
+
+  assert.deepEqual(scenes.map((s) => s.id), [
+    'hook',
+    'coefficients',
+    'transposition',
+    'square-root-extraction',
+    'solution-branches',
+    'solution-set',
+    'verification',
+    'graph',
+    'recap',
+  ]);
+
+  // NEVER use discriminant or general formula for incomplete pure
+  assert.equal(scenes.some((s) => s.id === 'discriminant-setup' || s.id === 'discriminant-calculate' || s.id === 'formula-symbolic'), false);
+  assert.equal(scenes.some((s) => s.visualLatex?.some((l) => l.includes('\\Delta'))), false);
+
+  const transposition = scenes.find((s) => s.id === 'transposition');
+  assert.ok(transposition?.visualLatex?.includes('x^2 = 25'));
+
+  const extraction = scenes.find((s) => s.id === 'square-root-extraction');
+  assert.ok(extraction?.visualLatex?.includes('x = \\pm 5'));
+
+  const solutionSet = scenes.find((s) => s.id === 'solution-set');
+  assert.deepEqual(solutionSet?.visualLatex, ['C.S. = \\{-5,\\; 5\\}']);
+
+  const recap = scenes.find((s) => s.id === 'recap');
+  assert.ok(recap?.visualLatex?.includes('C.S. = \\{-5,\\; 5\\}'));
+  assert.deepEqual(recap?.visualBeatPhrases, ['Recapitulamos', 'identificamos', 'despejamos', 'extrajimos', 'obtuvimos']);
+});

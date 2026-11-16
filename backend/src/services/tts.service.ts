@@ -2,6 +2,7 @@ import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { fileURLToPath } from 'url';
 
 const wordSynthScript = fileURLToPath(new URL('../../python/synthesize_words.py', import.meta.url));
@@ -91,9 +92,13 @@ export const tts = {
 
         // Prefer word-boundary python synthesizer to extract exact word timings
         if (fs.existsSync(wordSynthScript)) {
-          const pythonCommands = process.platform === 'win32'
-            ? ['python', 'py', 'python3']
-            : ['python3', 'python'];
+          const venvPy = path.join(os.homedir(), 'Videos', 'Math Video Generator', '.venv', 'Scripts', 'python.exe');
+          const localVenvPy = path.join(process.cwd(), '.venv', 'Scripts', 'python.exe');
+          const pythonCommands = [
+            fs.existsSync(venvPy) ? venvPy : null,
+            fs.existsSync(localVenvPy) ? localVenvPy : null,
+            ...(process.platform === 'win32' ? ['python', 'py', 'python3'] : ['python3', 'python']),
+          ].filter(Boolean) as string[];
           for (const pyCmd of pythonCommands) {
             try {
               await execFileAsync(pyCmd, [wordSynthScript, voiceId, rate, neuralOutputPath, subtitlePath, normalized], {

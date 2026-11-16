@@ -28,24 +28,54 @@ export function validateMathProblem(content: string): MathValidation {
     .replace(/\s+/g, ' ')
     .trim();
 
-  const quadratic = normalizedInput.match(
+  // Forma completa: ax^2 + bx + c = 0
+  let quadratic = normalizedInput.match(
     /^([+-]?\s*\d*\.?\d*)\s*x\s*\^\s*2\s*([+-]\s*\d*\.?\d*)\s*x\s*([+-]\s*\d*\.?\d*)\s*=\s*0$/i,
   );
+  let rawA: string | undefined;
+  let rawB: string | undefined;
+  let rawC: string | undefined;
 
-  if (!quadratic) {
+  if (quadratic) {
+    rawA = quadratic[1];
+    rawB = quadratic[2];
+    rawC = quadratic[3];
+  } else {
+    // Incompleta pura: ax^2 + c = 0 (con b = 0)
+    const pure = normalizedInput.match(
+      /^([+-]?\s*\d*\.?\d*)\s*x\s*\^\s*2\s*([+-]\s*\d*\.?\d*)\s*=\s*0$/i,
+    );
+    if (pure) {
+      rawA = pure[1];
+      rawB = '0';
+      rawC = pure[2];
+    } else {
+      // Incompleta mixta: ax^2 + bx = 0 (con c = 0)
+      const mixed = normalizedInput.match(
+        /^([+-]?\s*\d*\.?\d*)\s*x\s*\^\s*2\s*([+-]\s*\d*\.?\d*)\s*x\s*=\s*0$/i,
+      );
+      if (mixed) {
+        rawA = mixed[1];
+        rawB = mixed[2];
+        rawC = '0';
+      }
+    }
+  }
+
+  if (rawA === undefined) {
     return {
       supported: false,
       valid: false,
       kind: 'unsupported',
       normalizedInput,
       steps: [],
-      warnings: ['Por ahora la validación automática cubre ecuaciones cuadráticas en forma ax² + bx + c = 0.'],
+      warnings: ['Por ahora la validación automática cubre ecuaciones cuadráticas en forma ax² + bx + c = 0, ax² + c = 0 o ax² + bx = 0.'],
     };
   }
 
-  const a = parseCoefficient(quadratic[1], 1);
-  const b = parseCoefficient(quadratic[2], 0);
-  const c = parseCoefficient(quadratic[3], 0);
+  const a = parseCoefficient(rawA, 1);
+  const b = parseCoefficient(rawB, 0);
+  const c = parseCoefficient(rawC, 0);
 
   if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(c) || a === 0) {
     return {

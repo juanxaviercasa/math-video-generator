@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import os from 'node:os';
 import type { SynchronizedScene } from './synchronization.service.js';
 import type { LessonTimeline } from './timeline.types.js';
 import { getVideoFormatProfile, type VideoFormatProfile } from './video-format.service.js';
@@ -10,6 +11,11 @@ import { buildAdaptiveManimHelpers, selectProblemAnchor } from './adaptive-math-
 const execAsync = promisify(exec);
 
 const manimCandidates = [
+  path.join(os.homedir(), 'Videos', 'Math Video Generator', '.venv', 'Scripts', 'manim.exe'),
+  path.join(process.cwd(), '.venv', 'Scripts', 'manim.exe'),
+  path.resolve(process.cwd(), '..', '.venv', 'Scripts', 'manim.exe'),
+  path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'Python', 'Python312', 'Scripts', 'manim.exe'),
+  'C:\\Users\\cabel\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\manim.exe',
   'C:\\Users\\pc\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\manim.exe',
   'C:\\Users\\pc\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\manim.cmd',
   'manim',
@@ -29,10 +35,12 @@ const resolveManimBinary = () => {
 };
 
 const latexBinPaths = [
-  'C:\\Users\\pc\\AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64',
+  path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'MiKTeX', 'miktex', 'bin', 'x64'),
   'C:\\Program Files\\MiKTeX\\miktex\\bin\\x64',
-  'C:\\Users\\pc\\AppData\\Local\\Programs\\MiKTeX\\miktex\\bin',
+  path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'MiKTeX', 'miktex', 'bin'),
   'C:\\Program Files\\MiKTeX\\miktex\\bin',
+  'C:\\Users\\pc\\AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64',
+  'C:\\Users\\pc\\AppData\\Local\\Programs\\MiKTeX\\miktex\\bin',
 ];
 
 const buildProcessEnv = () => {
@@ -234,8 +242,8 @@ const latexCompilerAvailable = (): boolean => {
     'pdflatex',
     'xelatex',
     'lualatex',
+    path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'MiKTeX', 'miktex', 'bin', 'x64', 'pdflatex.exe'),
     'C:\\Program Files\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe',
-    'C:\\Users\\pc\\AppData\\Local\\Programs\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe',
     'C:\\Program Files\\MiKTeX\\miktex\\bin\\x64\\miktex.exe',
   ];
 
@@ -495,6 +503,8 @@ ${cueAnimation}
             const yAt = (x: number) => graphSpec.a * x * x + graphSpec.b * x + graphSpec.c;
             const ymin = Math.floor(Math.min(yAt(left), yAt(right), yAt(vertexX), 0) - 1);
             const ymax = Math.ceil(Math.max(yAt(left), yAt(right), yAt(vertexX), 0) + 1);
+            const xStep = Math.max(1, Math.round((right - left) / 8));
+            const yStep = Math.max(1, Math.round((ymax - ymin) / 8));
             const vertexLabelStr = `V(${formatNum(vertexX)}, ${formatNum(vertexY)})`;
             const axisLabelStr = `x = ${formatNum(vertexX)}`;
             const concavityStr = graphSpec.a > 0 ? 'a > 0: cóncava hacia arriba' : 'a < 0: cóncava hacia abajo';
@@ -520,7 +530,7 @@ ${cueAnimation}
             return `
         # Storyboard pedagógico: gráfica a pantalla completa
         panel_${i} = RoundedRectangle(width=${panelWidth}, height=${panelHeight}, corner_radius=0.2, fill_color="#101D33", fill_opacity=1, stroke_color=BLUE, stroke_width=2)
-        axes_${i} = Axes(x_range=[${left}, ${right}, 1], y_range=[${ymin}, ${ymax}, 1], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).move_to(UP * self._work_bounds()["center_y"])
+        axes_${i} = Axes(x_range=[${left}, ${right}, ${xStep}], y_range=[${ymin}, ${ymax}, ${yStep}], x_length=${graphXLength}, y_length=${graphYLength}, axis_config={"include_tip": True}).move_to(UP * self._work_bounds()["center_y"])
         curve_${i} = axes_${i}.plot(lambda x: ${graphSpec.a} * x**2 + (${graphSpec.b}) * x + (${graphSpec.c}), x_range=[${left}, ${right}], color=YELLOW)
         x_label_${i} = axes_${i}.get_x_axis_label(MathTex("x", font_size=${formatProfile.orientation === 'square' ? 62 : 50}))
         y_label_${i} = axes_${i}.get_y_axis_label(MathTex("y", font_size=50))

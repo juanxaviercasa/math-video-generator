@@ -63,7 +63,7 @@ export function PasswordRecovery({ recovery, initialEmail = '', onClose }: Props
       </p>
       {error && <p role="alert" className="mt-4 rounded border border-red-500/50 p-3 text-sm text-red-300">{error}</p>}
       {complete ? (
-        <p role="status" className="mt-4 text-green-300">Contraseña actualizada. Podrás iniciar sesión cuando el backend de Oracle esté disponible.</p>
+        <p role="status" className="mt-4 text-green-300">Contraseña actualizada correctamente. Ya puedes volver al inicio de sesión y entrar con tu nueva contraseña.</p>
       ) : session ? (
         <form className="mt-5 space-y-3" onSubmit={(event) => { event.preventDefault(); void submit() }}>
           <label htmlFor="new-password" className="block text-sm text-slate-200">Nueva contraseña (mínimo 12 caracteres)</label>

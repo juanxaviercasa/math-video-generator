@@ -4,7 +4,7 @@
  * Recovery tokens are held in memory and immediately removed from the URL.
  */
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://jplhbgyhswvbghhzhjvm.supabase.co'
-const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || ''
+const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_nlwINeJLy_a-XWUcigMdcQ_xTiV9Jos'
 
 export interface RecoverySession {
   accessToken: string
@@ -27,11 +27,16 @@ export async function requestPasswordRecovery(email: string): Promise<void> {
   const target = new URL('/auth/v1/recover', supabaseUrl)
   // Root is the configured Site URL, so no additional redirect allowlist entry is required.
   target.searchParams.set('redirect_to', 'https://math.forjavia.site')
-  const response = await fetch(target.toString(), {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify({ email: email.trim() }),
-  })
+  let response: Response
+  try {
+    response = await fetch(target.toString(), {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ email: email.trim() }),
+    })
+  } catch {
+    throw new Error('No se pudo conectar con Supabase Auth desde el navegador. Revisa la política CSP o tu conexión.')
+  }
   if (!response.ok) throw await responseError(response)
 }
 
@@ -55,10 +60,15 @@ export function consumePasswordRecoveryUrl(): { session?: RecoverySession; error
 
 export async function updateRecoveredPassword(session: RecoverySession, password: string): Promise<void> {
   if (password.length < 12 || password.length > 128) throw new Error('Usa una contraseña de entre 12 y 128 caracteres.')
-  const response = await fetch(new URL('/auth/v1/user', supabaseUrl).toString(), {
-    method: 'PUT',
-    headers: { ...headers(), Authorization: `Bearer ${session.accessToken}` },
-    body: JSON.stringify({ password }),
-  })
+  let response: Response
+  try {
+    response = await fetch(new URL('/auth/v1/user', supabaseUrl).toString(), {
+      method: 'PUT',
+      headers: { ...headers(), Authorization: `Bearer ${session.accessToken}` },
+      body: JSON.stringify({ password }),
+    })
+  } catch {
+    throw new Error('No se pudo conectar con Supabase Auth para guardar la nueva contraseña.')
+  }
   if (!response.ok) throw await responseError(response)
 }

@@ -5,8 +5,8 @@ import axios from 'axios'
 const API_URL = import.meta.env.VITE_API_URL ||
   (import.meta.env.PROD ? 'https://api-math.forjavia.site/api' : 'http://localhost:3001/api')
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://jplhbgyhswvbghhzhjvm.supabase.co'
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || ''
-const OWNER_ID = import.meta.env.VITE_OWNER_USER_ID || ''
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_nlwINeJLy_a-XWUcigMdcQ_xTiV9Jos'
+const OWNER_ID = import.meta.env.VITE_OWNER_USER_ID || 'f8ac2d08-5301-4585-9919-252ea34f91da'
 const STORAGE_KEY = 'mvg.personal.supabase.session'
 
 export interface User {

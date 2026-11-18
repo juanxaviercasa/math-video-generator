@@ -1,0 +1,39 @@
+Este es un problema real de olimpiada matemática.
+
+A simple vista, parece que necesitas una supercomputadora para determinar el máximo común divisor de los números: tres al cubo menos tres, cinco a la quinta menos cinco, siete a la séptima menos siete, y así hasta dos mil siete a la dos mil siete menos dos mil siete.
+
+Pero en matemáticas, la fuerza bruta es para los robots. Los humanos buscamos la estructura oculta. Piensa como un estratega lógico: el máximo común divisor de una lista de números jamás podrá ser mayor que el número más pequeño de esa lista.
+
+Así que en lugar de asustarnos, calculemos solo el primer término: tres al cubo es veintisiete, menos tres, nos da veinticuatro.
+
+¡Bum! Nuestro techo absoluto, nuestro máximo candidato a dividir a todos los demás, es exactamente veinticuatro.
+
+El reto real ahora es demostrar si veinticuatro es capaz de dividir a cualquier número de la forma n a la n menos n, sabiendo que n siempre es un número impar.
+
+Aquí entra el arte de la factorización, que no es memorizar paréntesis, sino hacer ingeniería inversa para desarmar un objeto y ver sus engranajes fundamentales.
+
+Si extraemos la n, nos queda n multiplicando a n a la n menos uno, menos uno. Como n es impar en nuestro problema, su exponente n menos uno es obligatoriamente un número par.
+
+Por las propiedades de los polinomios, tener un exponente par nos garantiza que esta expresión esconde en sus entrañas al factor n al cuadrado menos uno.
+
+¿Por qué esto rompe el problema? Porque n al cuadrado menos uno es la clásica diferencia de cuadrados: si lo desdoblamos, obtenemos n menos uno por n más uno.
+
+Ahora, reordenemos nuestras piezas matemáticas de menor a mayor: tenemos n menos uno, multiplicado por n, multiplicado por n más uno.
+
+Físicamente acabamos de transformar un polinomio caótico en tres bloques enteros consecutivos: una escalera perfecta.
+
+La magia de la teoría de números dicta que en cualquier trío de enteros consecutivos en el universo, uno de ellos es obligatoriamente múltiplo de tres.
+
+Además, como nuestra n original era un número impar, sus vecinos a la izquierda y derecha son obligatoriamente números pares. Y entre dos pares consecutivos, la regla de oro es que uno es divisible por dos, y el otro, forzosamente, es divisible por cuatro.
+
+Si multiplicamos la genética de estos bloques: tres, por dos, por cuatro, nos da exactamente veinticuatro.
+
+Hemos demostrado matemáticamente que el veinticuatro divide absolutamente a todos los números de esta serie infinita.
+
+Ese es el máximo común divisor: ¡veinticuatro!
+
+Extraer factores y aislar enteros consecutivos no es solo un truco de olimpiada para ganar medallas. Es el mismo principio aritmético de divisibilidad y congruencia que utilizan los algoritmos de criptografía RSA y de curvas elípticas para proteger y encriptar el saldo de tu cuenta bancaria.
+
+Las matemáticas no se memorizan, se descifran.
+
+Síguenos para más.

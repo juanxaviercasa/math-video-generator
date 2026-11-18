@@ -1,0 +1,13 @@
+¿Qué significa realmente a más b al cuadrado? En la escuela nos lo enseñan de memoria sin que tengamos idea de qué implica esto, y muchos creen por error que es solo a cuadrada más b cuadrada. Veamos qué hay detrás del concepto.
+
+Esto se puede explicar con álgebra o con geometría. Hoy veremos la geometría por su elegancia visual, y porque las sociedades antiguas hicieron de la geometría las reglas más básicas del juego de las matemáticas.
+
+Tomamos un cuadrado. Como no sabemos cuánto mide, diremos que tiene lado a, lo que significa que su área es a al cuadrado. Ahora me pregunto: ¿qué pasaría si este cuadrado crece y se hace más grande? Vemos que ha crecido, pero ¿cuánto?
+
+A este lado sobrante que creció le llamamos b. Vemos que la parte nueva forma una figura en ele más compleja. Entonces tracemos dos líneas para dividirla en figuras más fáciles para todos.
+
+Observa que ahora tenemos dos rectángulos iguales de lados a y b, y un cuadrado más pequeño en la esquina. El área de cada rectángulo es a por b igual a ab. Y el cuadrado pequeño mide b por cada lado, así que su área es b por b igual a b al cuadrado.
+
+Recordemos que queríamos saber el área total del cuadrado grande de lado a más b. Si sumamos todas sus piezas obtenemos a cuadrada, más ab, más ab, más b cuadrada. ¡Y listo! Al juntar los dos rectángulos nace la famosa fórmula: a más b al cuadrado es igual a a cuadrada, más dos ab, más b cuadrada.
+
+Así nunca volverás a olvidar el dos ab del centro, porque son los dos rectángulos que completan la figura. Guarda este video y síguenos en Zénit Matemática.

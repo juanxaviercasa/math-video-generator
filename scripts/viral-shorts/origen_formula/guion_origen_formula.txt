@@ -1,0 +1,45 @@
+Todo el mundo se sabe de memoria el famoso menos b, más menos raíz cuadrada de b al cuadrado menos cuatro a c, todo sobre dos a.
+
+Pero casi nadie tiene idea de por qué la fórmula general tiene esa forma tan extraña.
+
+No la inventaron para torturarte en la escuela. En realidad, nació hace más de mil años como un rompecabezas geométrico al que le faltaba una esquina.
+
+En los próximos dos minutos vas a descubrir con tus propios ojos de dónde sale cada pieza de esta fórmula.
+
+Mira la ecuación general: a equis al cuadrado, más b equis, más c, igual a cero.
+
+Primero limpiemos el terreno: pasamos la c restando a la derecha, y dividimos todo entre a. Nos queda: equis al cuadrado, más b sobre a por equis, igual a menos c sobre a.
+
+Ahora míralo con ojos geométricos: ese equis al cuadrado no es un símbolo abstracto, es literalmente el área de un cuadrado que mide equis por cada lado.
+
+Y ese b sobre a por equis es simplemente un rectángulo azul de ancho b sobre a y altura equis, que le sumamos a un costado. Toda esta figura junta vale menos c sobre a.
+
+Aquí viene el truco brillante que explica de dónde sale todo. Con un rectángulo alargado no podemos despejar el lado equis fácilmente; así que los matemáticos antiguos buscaron convertir la figura en un cuadrado más grande.
+
+¿Cómo? Partieron el rectángulo azul exactamente a la mitad: dejaron una mitad a la derecha, y pegaron la otra mitad arriba.
+
+Como partimos b sobre a en dos, ahora cada tira mide b sobre dos a de ancho.
+
+¡Pero mira qué pasó! Casi formamos un cuadrado grande perfecto, salvo porque quedó un hueco vacío en la esquina superior derecha.
+
+¿Por qué la fórmula tiene esa famosa raíz con b al cuadrado menos cuatro a c adentro? Todo sale de tapar ese hueco.
+
+Como ese espacio vacío mide b sobre dos a de ancho y b sobre dos a de alto, el pedacito que falta para completar nuestro cuadrado tiene un área de b al cuadrado entre cuatro a al cuadrado.
+
+Si metemos esa pieza dorada para completar el cuadrado geométrico, también tenemos que sumarla del otro lado de la ecuación para no romper la igualdad.
+
+Ahora el cuadrado completo mide equis más b sobre dos a por cada lado, así que su área es equis más b sobre dos a al cuadrado.
+
+Al juntar las dos fracciones de la derecha, aparece frente a tus ojos el mítico b al cuadrado menos cuatro a c, sobre cuatro a al cuadrado.
+
+Finalmente, como el área del cuadrado completo es igual a todo eso, sacamos raíz cuadrada para conocer cuánto mide un solo lado: más menos la raíz de b al cuadrado menos cuatro a c, sobre dos a.
+
+Restamos el pedacito b sobre dos a... ¡y ahí tienes la legendaria fórmula general!
+
+¿Y para qué sirve esto en el mundo real, y qué significa el más menos?
+
+Ese más menos existe porque tanto un número positivo como uno negativo, al elevarse al cuadrado, dan la misma área. En la física, eso se traduce en dos respuestas: cuando algo sube y cuando vuelve a bajar.
+
+Esta fórmula es la reina para predecir curvas y parábolas: calcula desde dónde aterriza un cohete o un balón en un tiro libre, hasta la resistencia de los puentes colgantes y la física de los saltos en tus videojuegos.
+
+Las matemáticas no se memorizan, se ven. Síguenos para más.

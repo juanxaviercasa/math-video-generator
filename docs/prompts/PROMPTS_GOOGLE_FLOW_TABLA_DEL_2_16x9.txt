@@ -1,0 +1,56 @@
+==============================================================================
+PROMPTS PARA GOOGLE FLOW (16:9 HORIZONTAL / LANDSCAPE) — VIDEO YOUTUBE (45-60 MIN)
+"JUEGA Y APRENDE: LA TABLA DE MULTIPLICAR DEL 2 (MISIÓN 7 ESFERAS)"
+IMPORTANTE EN GOOGLE FLOW: Seleccionar formato 16:9 (Horizontal / Landscape)
+Guardar las imágenes como 1.jpg hasta 10.jpg en:
+<repo>\tablas de multiplicar\imagenes_flow
+==============================================================================
+
+--- IMAGEN 1 (1.jpg) — PORTADA / MINIATURA OFICIAL DE YOUTUBE (16:9) ---
+
+Horizontal 16:9 ultra-high-CTR YouTube thumbnail in Spanish, vibrant 3D Pixar and anime adventure game style. On the left, a giant glowing 3D golden number "2" surrounded by 7 glowing orange-gold crystal spheres with stars inside, emitting electric cyan and golden energy sparks. On the right, over a deep dark navy blueprint and tropical sky backdrop, giant bold 3D text: "JUEGA Y APRENDE" in glowing cyan, "¡LA TABLA DEL 2!" in giant metallic gold and white 3D letters, and a vibrant red/gold game badge below: "7 NIVELES · FÁCIL Y RÁPIDO". Happy adventurous kid character on the corner looking amazed. Exact Spanish spelling, zero typos, ultra-vivid contrast.
+
+
+--- IMAGEN 2 (2.jpg) — FONDO INTRODUCCIÓN Y CONSTRUCCIÓN (S001-S009) ---
+
+Horizontal 16:9 3D Pixar-style animated background of a sunny tropical wooden boardwalk deck overlooking a calm turquoise ocean and bright blue sky with soft clouds. In the center 75% of the frame, a clean semi-transparent dark navy-blue glass panel (#081428) with a glowing cyan border, completely empty inside (NO text or numbers inside the panel) so mathematical animations can be overlaid clearly. Warm, cheerful lighting, high resolution.
+
+
+--- IMAGEN 3 (3.jpg) — FONDO MAPA FASE 1: "MISIÓN PODER 2" (NIVELES 1 AL 4) ---
+
+Horizontal 16:9 adventure video game world map background in 3D stylized art. Lush enchanted forest and floating stone islands at the outer edges with 4 glowing golden energy pedestals along a path. The central 75% of the image is a deep, dark obsidian-blue holographic mission board (#071124) with subtle grid lines and a glowing gold and cyan frame, completely empty in the center (NO text or numbers) to overlay level icons.
+
+
+--- IMAGEN 4 (4.jpg) — FONDO ARENA DE ENTRENAMIENTO FASE 1 (NIVELES 1 AL 4) ---
+
+Horizontal 16:9 futuristic adventure training dojo background. Outer edges show sleek glowing cyan and golden energy pillars and floating golden particles. The central 80% of the screen is a clean, uniform deep dark navy-obsidian canvas (#071020) with a subtle coordinate grid and thin glowing cyan corner brackets, completely empty in the middle (NO text, NO numbers) for high-contrast multiplication cards and quizzes.
+
+
+--- IMAGEN 5 (5.jpg) — FONDO VICTORIA FASE 1: "¡MISIÓN PODER 2 COMPLETA!" (S105) ---
+
+Horizontal 16:9 celebratory video game victory background in 3D Pixar/anime style. At the bottom and sides, an open ornate golden treasure chest in a temple emitting beams of golden light and 4 glowing orange-gold crystal spheres floating on the sides. The central 70% area is a clean dark royal-blue space (#08152C) with golden sparkles, empty of text so the victory title can be animated on top.
+
+
+--- IMAGEN 6 (6.jpg) — FONDO DESCANSO ACTIVO DE 5 MINUTOS (S106) ---
+
+Horizontal 16:9 cozy 3D animated illustration of a peaceful sunlit forest clearing by a crystal-clear stream. On the left and right edges, a wooden picnic table with a refreshing water bottle, fresh fruit, and lush green trees. The center 70% of the frame features a soft, dark translucent slate-blue rounded panel (#0A182E) with a glowing emerald border, completely empty inside (NO text or clock numbers) to overlay an animated 5-minute countdown timer.
+
+
+--- IMAGEN 7 (7.jpg) — FONDO MAPA FASE 2: "MISIÓN SABER 2" (NIVELES 5, 6, 7 Y DESAFÍO) ---
+
+Horizontal 16:9 epic cosmic citadel adventure map background at twilight. Floating crystal islands and glowing constellation pathways along the outer borders under a starry purple and deep blue nebula sky. The central 75% of the screen is a clean, deep dark midnight-blue holographic panel (#060E20) framed by glowing gold and magenta energy lines, completely empty of text or numbers in the center.
+
+
+--- IMAGEN 8 (8.jpg) — FONDO ARENA DE VELOCIDAD FASE 2 (FLASHCARDS Y RETO 3 SEGUNDOS) ---
+
+Horizontal 16:9 high-energy cyber-arcade speed arena background. Along the outer borders, dynamic glowing neon gold, coral-red, and cyan light streaks suggesting extreme speed. The central 80% of the frame is a clean, uniform deep dark obsidian-navy canvas (#050B18) with a subtle blueprint grid, completely empty in the middle (NO text, NO numbers) so rapid-fire multiplication flashcards and 3-second countdown rings have maximum contrast.
+
+
+--- IMAGEN 9 (9.jpg) — FONDO DESAFÍO FINAL: "EL PODER DE LAS 7 ESFERAS" (S193-S207) ---
+
+Horizontal 16:9 legendary anime/game temple chamber background. Around the outer perimeter of the frame, 7 glowing orange-gold crystal spheres with stars inside float in a wide protective circle, radiating golden lightning and aura sparks. The central 75% of the image is a deep, dark obsidian energy field (#060C1A) completely free of text or numbers so the final challenge equations stand out clearly.
+
+
+--- IMAGEN 10 (10.jpg) — FONDO GRADUACIÓN Y CIERRE: "¡MISIÓN COMPLETA!" (S208-S212) ---
+
+Horizontal 16:9 grand victory graduation background in 3D game style. Golden confetti, glowing spotlights, and a golden trophy pedestal on the left flank surrounded by 7 illuminated crystal spheres. The center-right 75% of the frame is a sleek dark navy-blue celebration stage backdrop (#071226) with a glowing golden frame, completely empty of text inside so the final graduation certificate and "Profesor Juan Xavier" credits can be animated cleanly.

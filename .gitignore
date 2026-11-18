@@ -52,5 +52,21 @@ lerna-debug.log*
 .coverage
 .pytest_cache
 
+# Local virtualenvs, media outputs, and temporary renders
+/.venv/
+/media/
+/temp_*/
+/tablas de multiplicar/
+/*.mp4
+/*.mp3
+/*.wav
+/*.srt
+/*.log
+/cover_*.jpg
+/model_frame_*.jpg
+/test_frame*.jpg
+/test_latex*
+.deploy_report.json
+
 # Misc
 .turbo/

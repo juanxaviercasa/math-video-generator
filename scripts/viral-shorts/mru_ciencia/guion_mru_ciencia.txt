@@ -1,0 +1,11 @@
+En la escuela nos enseñan el Movimiento Rectilíneo Uniforme haciéndonos memorizar un triangulito con las letras d, v y t. Pero casi nadie nos dice por qué la fórmula es así ni qué significa realmente. Hoy veremos cómo se interpreta de forma visual y geométrica.
+
+Primero traduzcamos su nombre. Rectilíneo significa moverse en línea recta. Y uniforme significa que el ritmo nunca cambia. Olvidemos las letras sueltas e imaginemos que, por cada segundo que pasa, colocamos en el suelo un bloque de distancia exactamente del mismo tamaño, sin acelerar ni frenar.
+
+¿Cómo se interpreta entonces la fórmula de la velocidad? Si recorres una barra de 12 metros en 3 segundos, dividir distancia entre tiempo significa partir esa barra en 3 pedazos iguales: uno para cada segundo. Al dividir 12 entre 3, descubres que en cada segundo avanzaste un bloque de 4 metros. Eso significa velocidad igual a distancia entre tiempo: cuántos metros caben en un solo segundo.
+
+¿Y por qué la fórmula se invierte multiplicando cuando buscamos la distancia? Porque multiplicar es repetir bloques iguales uno tras otro, como los vagones de un tren. Si tu velocidad es un vagón de 4 metros por cada segundo y avanzas durante 3 segundos, juntas 3 vagones de 4 metros y llegas exactamente a los 12 metros.
+
+Geométricamente, ni siquiera necesitas memorizar el famoso triangulito para despejar. Si dibujas la velocidad como la altura de 4 y el tiempo como la base de 3, se forma un rectángulo perfecto de 12 cuadrados. Multiplicar base por altura te da el área total, que es la distancia. Y dividir el área entre un lado siempre te devuelve el otro lado.
+
+¿Y en qué nos ayuda esto día a día? Es la regla que usa el GPS en carretera para estimar en cuántos minutos llegarás a tu destino, lo que calcula tu cerebro antes de cruzar una avenida al ver venir un auto, o el ritmo constante de una escalera eléctrica para transportarnos sin tropiezos. Velocidad es el bloque que avanzas en un segundo, y distancia es la suma de todos tus vagones. Síguenos en Zénit Ciencia y comparte este video.

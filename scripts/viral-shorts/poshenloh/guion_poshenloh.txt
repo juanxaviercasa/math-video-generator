@@ -1,0 +1,21 @@
+Durante cuatro mil años nos enseñaron a resolver las ecuaciones de segundo grado memorizando una fórmula monstruosa, o adivinando a ciegas números que encajaran.
+
+Hasta que en dos mil diecinueve, el profesor de Carnegie Mellon Po-Shen Loh demostró que la humanidad entera estaba ignorando un atajo visual brutal. En los próximos dos minutos vas a ver cómo resolver cualquier ecuación cuadrática en segundos, usando solo la simetría de un espejo y sin memorizar raíces imposibles.
+
+Mira esta ecuación: equis al cuadrado menos seis equis más cinco igual a cero. En el fondo, esto no son letras abstractas: dibuja una curva perfecta llamada parábola. Resolver la ecuación significa únicamente encontrar los dos puntos exactos donde la curva corta el suelo, es decir, el eje equis. El error de la escuela siempre fue buscar esos dos puntos por separado como si fueran una adivinanza.
+
+Pero mira con atención la figura: ¿notas que ambos lados son un espejo exacto?
+
+Toda parábola es perfectamente simétrica. Eso significa que justo en el medio de las dos soluciones siempre está el centro de la curva. Y ese centro se calcula al instante: tomas el número del medio, menos seis, le cambias el signo a seis positivo, y le sacas la mitad: tres. ¡Listo! El centro es tres.
+
+Ahora, en vez de buscar dos números desconocidos, solo buscas una distancia u: una respuesta está en tres menos u hacia la izquierda. La otra respuesta está en tres más u hacia la derecha. Un problema de dos incógnitas se convirtió en encontrar una sola distancia.
+
+Y aquí viene la parte que parece magia negra matemática pero que tiene una explicación visual asombrosa.
+
+En toda ecuación cuadrática, el último número, el cinco, es la multiplicación de las dos soluciones. Si multiplicas tu punto izquierdo, tres menos u, por tu punto derecho, tres más u, los términos cruzados se cancelan solos. Te queda una resta de cuadrados perfecta: tres al cuadrado menos u al cuadrado igual a cinco.
+
+Tres al cuadrado es nueve. ¿Cuánto le restas a nueve para que te dé cinco? Cuatro. Por lo tanto, u al cuadrado vale cuatro. Y lo más increíble: ese cuatro es exactamente la profundidad a la que se hunde el vértice de la parábola debajo del suelo.
+
+Si u al cuadrado es cuatro, la distancia u vale dos. Ahora caminas desde el centro: tres menos dos, uno; tres más dos, cinco. ¡Las raíces son exactamente uno y cinco! Resuelto sin una sola raíz cuadrada infernal.
+
+Guarda este video para tu próximo examen y compárteselo a quien todavía sufre con la fórmula general. Sígueme para más atajos matemáticos.
